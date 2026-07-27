@@ -1,0 +1,2 @@
+pyinstaller SrboliLight.spec
+pyinstaller --onefile --windowed --name "SrboliLight" --add-data "screens;screens" --add-data "wheel_saves;wheel_saves" --add-data "backrooms_data.json;." --hidden-import PIL --hidden-import PIL.Image --hidden-import kivy --hidden-import tkinter --hidden-import tkinter.filedialog main.py

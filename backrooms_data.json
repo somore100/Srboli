@@ -1,0 +1,682 @@
+{
+  "0": {
+    "nickname": "The Lobby",
+    "danger": "Low",
+    "expectation": "Endless yellowed office corridors with flickering fluorescent lights",
+    "entities": ["None"],
+    "description": "Level 0 is an endless maze of damp carpeted rooms with inconsistent layouts...",
+    "tips": ["Mark your path", "Bring water/food", "Stay calm", "Manage exposure"]
+  },
+  "1": {
+    "nickname": "Parking Zone",
+    "danger": "Low",
+    "expectation": "A vast concrete parking garage with humid heat and occasional fog pockets",
+    "entities": ["Facelings", "Clumps", "Hounds", "Dullers", "Deathmoths"],
+    "description": "Level 1 resembles an abandoned parking garage with pillars, flickering lights...",
+    "tips": ["Use flashlights", "Watch for fog", "Collect tripse", "Avoid sharp objects"]
+  },
+  "2": {
+    "nickname": "Pipe Dreams",
+    "danger": "Medium",
+    "expectation": "Labyrinthine utility tunnels with boiling pipes and toxic moisture",
+    "entities": ["None confirmed"],
+    "description": "Level 2 is a vast network of maintenance tunnels with extreme heat and toxic moisture...",
+    "tips": ["No touching liquids", "Protective gear", "Mark your path", "Evacuation exit"]
+  },
+  "3": {
+    "nickname": "Electrical Station",
+    "danger": "High",
+    "expectation": "Endless derelict electrical halls filled with humming machinery",
+    "entities": ["Deathmoths", "Wretches (rumored)"],
+    "description": "Level 3 consists of decrepit halls with transformer banks and boiling pipes...",
+    "tips": ["Avoid tunnels", "Stay alert in darkness", "Hydrate with caution", "Exit strategy"]
+  },
+  "4": {
+    "nickname": "The Abandoned Office",
+    "danger": "Low",
+    "expectation": "Endless empty modern office with cold rain outside",
+    "entities": ["None"],
+    "description": "Level 4 is a vast empty office complex of cubicles and barren rooms...",
+    "tips": ["Refill supplies", "Stay dry", "Group up", "Mind exits"]
+  },
+  "5": {
+    "nickname": "Terror Hotel",
+    "danger": "Extreme",
+    "expectation": "Infinite eerie 1920s-style hotel with crumbling luxury and endless corridors",
+    "entities": ["Hounds", "Skin-stealers", "Wretches", "Death Moths", "Predatory Windows"],
+    "description": "Level 5 is an ever-expanding luxury hotel with inconsistent geometry and high anxiety...",
+    "tips": ["Do not sleep or eat unknown food", "Keep moving", "Stay armed", "Note landmarks"]
+  },
+  "6": {
+    "nickname": "Lights Out",
+    "danger": "High",
+    "expectation": "Vast dark tundra under perpetual night with unstable ground",
+    "entities": ["Unknown"],
+    "description": "Level 6 is a frozen wilderness marked by jagged rocks and dying shrubs...",
+    "tips": ["Mark your path", "Stay warm", "Probe carefully", "Bring light sources"]
+  },
+  "7": {
+    "nickname": "Thalassophobia",
+    "danger": "High",
+    "expectation": "A lonely metal bunker afloat on an infinite frozen ocean",
+    "entities": ["The Thing on Level 7"],
+    "description": "Level 7 centers on a derelict steel ship floating on an endless cold ocean...",
+    "tips": ["Avoid deep diving", "Wear thermal gear", "Use the bunker exit", "Watch for hallucinations"]
+  },
+  "8": {
+    "nickname": "Cave System",
+    "danger": "High",
+    "expectation": "Vast underground limestone cave network with freezing pools",
+    "entities": ["Mortisdoptera (giant moths)"],
+    "description": "Level 8 is an enormous subterranean cave system with dark echoing tunnels...",
+    "tips": ["Avoid light", "Keep warm", "Mark route", "Test water carefully"]
+  },
+  "9": {
+    "nickname": "Darkened Suburbs",
+    "danger": "Medium",
+    "expectation": "Endless suburban neighborhood in perpetual darkness with non-functional streetlights",
+    "entities": ["Facelings", "Hounds", "Skin-stealers", "Smilers"],
+    "description": "Level 9 is an expansive network of paved asphalt roads and residential homes resembling a modern suburban neighborhood. Natural light sources are scarce with permanent darkness and malfunctioning street lighting creating navigation challenges...",
+    "tips": ["Bring reliable light sources", "Stay on roads when possible", "Avoid entering houses", "Watch for entity movement in shadows"]
+  },
+  "10": {
+    "nickname": "Field of Wheat",
+    "danger": "Low",
+    "expectation": "Infinite golden wheat field under a bright blue sky with occasional farmhouses",
+    "entities": ["Rare entity sightings"],
+    "description": "Level 10 appears as an endless wheat field stretching to the horizon under perpetual daylight. The wheat grows in perfect rows and sways despite no apparent wind. Scattered throughout are abandoned farmhouses and barns that may contain supplies...",
+    "tips": ["Stay hydrated in constant sunlight", "Use farmhouses for shelter", "Watch for weather changes", "Don't venture too far from landmarks"]
+  },
+  "11": {
+    "nickname": "The Endless City",
+    "danger": "Medium",
+    "expectation": "Infinite urban cityscape with towering skyscrapers and empty streets",
+    "entities": ["Facelings", "Hounds", "Smilers", "Dullers"],
+    "description": "Level 11 manifests as a sprawling metropolitan area with towering buildings, empty streets, and functioning traffic lights. The city appears abandoned but well-maintained, with occasional red sky events that increase entity activity...",
+    "tips": ["Use building rooftops for navigation", "Avoid red sky events", "Stock up in convenience stores", "Don't trust elevators"]
+  },
+  "12": {
+    "nickname": "The Matrix",
+    "danger": "High",
+    "expectation": "Glitching digital reality with unstable physics and data streams",
+    "entities": ["Digital Phantoms", "Glitch Entities"],
+    "description": "Level 12 resembles a computer simulation with constantly shifting digital landscapes. Reality frequently glitches, walls may become transparent, and physics can behave unpredictably. Green data streams occasionally fall from the sky...",
+    "tips": ["Don't trust visual reality", "Move quickly through glitch zones", "Avoid touching data streams", "Mental stability crucial"]
+  },
+  "13": {
+    "nickname": "Vitrum Madness",
+    "danger": "Low",
+    "expectation": "Endless glass-paneled botanical corridors with toxic plants",
+    "entities": ["Phyllodoce vitrum (blind worms)"],
+    "description": "Level 13 is a floating conservatory of glass corridors filled with toxic plants...",
+    "tips": ["Do not consume anything", "Stay sane", "Observe entities", "Find exits quickly"]
+  },
+  "14": {
+    "nickname": "Paradise",
+    "danger": "Medium",
+    "expectation": "Endless forest with crimson leaves and violet fog hiding threats",
+    "entities": ["Smilers", "Hounds", "Facelings", "Clumps", "Deathmoths"],
+    "description": "Level 14 is a surreal forest where sudden 'Red Mood' events increase entity activity...",
+    "tips": ["Avoid Red Mood", "Do not consume flora", "Stay on marked paths", "Use caution near water"]
+  },
+  "15": {
+    "nickname": "Futuristic Halls",
+    "danger": "Low",
+    "expectation": "Sterile, high-tech corridors with occasional blackouts",
+    "entities": ["None reported"],
+    "description": "Level 15 consists of sleek, metallic hallways with sudden blackouts in some areas...",
+    "tips": ["Monitor mental health", "Avoid staying too long", "Keep track of movements", "Look for maintenance rooms"]
+  },
+  "16": {
+    "nickname": "J. Barry Mental Asylum",
+    "danger": "High",
+    "expectation": "Decaying psychiatric facility with reality shifts and hostile entities",
+    "entities": ["Entity 2", "Facelings", "Hounds"],
+    "description": "Level 16 is an abandoned mental asylum with hallucinations and unstable reality...",
+    "tips": ["Stay close to entrance", "Avoid mirrors", "Use noise strategically", "Carry a source of light"]
+  },
+  "17": {
+    "nickname": "The Carrier",
+    "danger": "High",
+    "expectation": "Massive aircraft carrier deck surrounded by endless ocean",
+    "entities": ["Hounds", "Skin-stealers", "Maritime entities"],
+    "description": "Level 17 appears to be the deck of a colossal aircraft carrier floating on an infinite ocean. The ship's interior contains maze-like corridors, rusted machinery, and flooded lower decks. Weather can change rapidly from calm to severe storms...",
+    "tips": ["Stay above deck during storms", "Avoid flooded sections", "Use ship equipment for navigation", "Watch for entities in dark corridors"]
+  },
+  "18": {
+    "nickname": "Memories",
+    "danger": "Medium",
+    "expectation": "Shifting rooms that manifest personal memories and past experiences",
+    "entities": ["Memory Wraiths", "Echo Entities"],
+    "description": "Level 18 manifests as rooms and locations from wanderers' personal memories. The level shifts to show different memories, often becoming more distorted over time. Entities may appear as people from your past but behave incorrectly...",
+    "tips": ["Don't trust familiar faces", "Memories may be distorted", "Exit quickly if distressed", "Avoid emotional attachment"]
+  },
+  "19": {
+    "nickname": "The Attic",
+    "danger": "Low",
+    "expectation": "Endless dusty attic space with old furniture and storage boxes",
+    "entities": ["Rare sightings"],
+    "description": "Level 19 resembles an infinite attic filled with old furniture, dusty boxes, and vintage items. The space has slanted wooden ceilings, scattered windows showing only darkness outside, and creaky floorboards...",
+    "tips": ["Watch for weak floorboards", "Search boxes for supplies", "Avoid staying near windows", "Use furniture to mark paths"]
+  },
+  "20": {
+    "nickname": "Warehouse",
+    "danger": "Low",
+    "expectation": "Massive concrete warehouse with towering metal shelving and dim lighting",
+    "entities": ["Rare entity sightings"],
+    "description": "Level 20 appears as an enormous warehouse with concrete floors, metal shelving reaching impossibly high ceilings, and sparse fluorescent lighting. The shelves contain various mundane items and supplies that can be useful for survival...",
+    "tips": ["Use shelving to navigate", "Collect useful supplies", "Watch for unstable shelving", "Bring adequate lighting"]
+  },
+  "21": {
+    "nickname": "The Office Complex",
+    "danger": "Medium",
+    "expectation": "Modern office building with cubicles, meeting rooms, and artificial lighting",
+    "entities": ["Office Workers", "Facelings", "Dullers"],
+    "description": "Level 21 resembles a typical corporate office building with cubicles, conference rooms, and break areas. However, the building extends infinitely with no exterior windows. Strange 'Office Workers' entities patrol the area...",
+    "tips": ["Act professional around Office Workers", "Use conference rooms for rest", "Avoid making loud noises", "Check supply closets for resources"]
+  },
+  "22": {
+    "nickname": "The School",
+    "danger": "Medium",
+    "expectation": "Endless school hallways with lockers, classrooms, and harsh fluorescent lighting",
+    "entities": ["Students", "Teachers", "Hall Monitors"],
+    "description": "Level 22 manifests as an infinite school building with long hallways lined with lockers, empty classrooms, and cafeteria areas. Entity behavior follows school-like patterns with entities acting as students and staff...",
+    "tips": ["Follow school rules to avoid entities", "Use classrooms for temporary shelter", "Cafeteria may have food supplies", "Avoid detention rooms"]
+  },
+  "23": {
+    "nickname": "The Mall",
+    "danger": "Medium",
+    "expectation": "Abandoned shopping mall with empty storefronts and echoing corridors",
+    "entities": ["Shoppers", "Security Guards", "Mall Walkers"],
+    "description": "Level 23 appears as a vast shopping mall with multiple floors connected by escalators and elevators. Most stores are empty, but some contain useful supplies. The mall seems abandoned yet entities behave as if it's still operational...",
+    "tips": ["Explore stores for supplies", "Use elevators cautiously", "Food court may have resources", "Avoid security entities"]
+  },
+  "24": {
+    "nickname": "The Parking Lot",
+    "danger": "Low",
+    "expectation": "Infinite asphalt parking lot with scattered cars under streetlights",
+    "entities": ["Rare sightings"],
+    "description": "Level 24 is an endless parking lot stretching to the horizon, filled with empty cars under dim streetlights. The parking lot has painted lines and occasional abandoned vehicles that may contain useful items...",
+    "tips": ["Search cars for supplies", "Use streetlights for navigation", "Watch for hot asphalt", "Vehicles may provide shelter"]
+  },
+  "25": {
+    "nickname": "Out of Order",
+    "danger": "High",
+    "expectation": "Broken facility with malfunctioning equipment and hazardous conditions",
+    "entities": ["Maintenance Entities", "Broken Machines", "Static Beings"],
+    "description": "Level 25 appears as a massive industrial facility where everything is broken or malfunctioning. Machinery sparks dangerously, pipes leak unknown substances, and the environment is unstable and hazardous...",
+    "tips": ["Avoid touching machinery", "Watch for electrical hazards", "Protective gear essential", "Find working exits quickly"]
+  },
+  "26": {
+    "nickname": "Otherworldly",
+    "danger": "High",
+    "expectation": "Alien landscape with strange physics and reality distortions",
+    "entities": ["Interdimensional Beings", "Reality Wraiths"],
+    "description": "Level 26 exists as an alien environment with impossible geometry, strange lighting, and physics that don't follow normal rules. The landscape shifts between different otherworldly terrains without warning...",
+    "tips": ["Don't trust your senses", "Reality may shift suddenly", "Avoid interdimensional entities", "Find stable ground quickly"]
+  },
+  "27": {
+    "nickname": "The Woodrooms",
+    "danger": "Medium",
+    "expectation": "Endless wooden corridors and rooms resembling a rustic cabin interior",
+    "entities": ["Wood Sprites", "Bark Hounds", "Tree Shepherds"],
+    "description": "Level 27 consists entirely of wooden structures - walls, floors, and ceilings all made of various types of wood. The level resembles the interior of an infinite log cabin with wooden furniture and fireplaces...",
+    "tips": ["Fire hazard - careful with heat sources", "Wooden furniture may contain supplies", "Listen for entity movement", "Use fireplaces for warmth"]
+  },
+  "28": {
+    "nickname": "Chlorine Mess",
+    "danger": "High",
+    "expectation": "Chemical facility with pools of chlorine and toxic gas hazards",
+    "entities": ["Chemical Wraiths", "Toxic Slimes"],
+    "description": "Level 28 is a hazardous chemical processing facility with pools of chlorine and other toxic chemicals. The air is thick with dangerous fumes and the floor is often covered in corrosive liquids...",
+    "tips": ["Protective breathing gear essential", "Avoid all liquids", "Ventilated areas safer", "Exit immediately if overwhelmed"]
+  },
+  "29": {
+    "nickname": "Artistic View",
+    "danger": "Medium",
+    "expectation": "Art gallery with paintings that may come alive or change",
+    "entities": ["Living Paintings", "Art Curators", "Gallery Guards"],
+    "description": "Level 29 resembles an infinite art gallery with paintings, sculptures, and artistic displays. However, the artwork is alive and may change when not being observed directly...",
+    "tips": ["Don't stare at paintings too long", "Art may move when not watched", "Some artworks are helpful", "Gallery layout changes periodically"]
+  },
+  "30": {
+    "nickname": "Avian Conservatory",
+    "danger": "Low",
+    "expectation": "Large greenhouse-like structure filled with birds and tropical plants",
+    "entities": ["Various Birds", "Plant Entities"],
+    "description": "Level 30 appears as a massive greenhouse or conservatory filled with tropical plants and various species of birds. The environment is warm and humid with natural lighting filtering through glass panels...",
+    "tips": ["Birds generally harmless", "Tropical climate - stay hydrated", "Plants may bear fruit", "Watch for aggressive bird species"]
+  },
+  "31": {
+    "nickname": "Roller Rink",
+    "danger": "Medium",
+    "expectation": "1980s roller skating rink with disco lights and constant music",
+    "entities": ["Roller Skaters", "DJ Entity", "Rink Guards"],
+    "description": "Level 31 is an endless 1980s-style roller skating rink complete with disco lights, loud music, and entity skaters who never stop moving. The music never stops and the rink extends infinitely...",
+    "tips": ["Learn to skate or stay on sidelines", "Music can be disorienting", "Snack bar may have food", "Don't interfere with skaters"]
+  },
+  "32": {
+    "nickname": "Entertainland",
+    "danger": "High",
+    "expectation": "Twisted amusement park with broken rides and carnival atmosphere",
+    "entities": ["Carnival Workers", "Broken Animatronics", "Ticket Takers"],
+    "description": "Level 32 resembles a nightmarish amusement park with broken rides, flickering neon signs, and disturbing carnival music. The rides may still operate but are extremely dangerous...",
+    "tips": ["Do not ride the attractions", "Avoid carnival workers", "Games may be rigged deadly", "Find exit before dark"]
+  },
+  "33": {
+    "nickname": "The Mall 2.0",
+    "danger": "Medium",
+    "expectation": "Modern shopping mall with functioning stores but strange shoppers",
+    "entities": ["Mall Entities", "Store Clerks", "Shoppers"],
+    "description": "Level 33 appears as a fully operational modern shopping mall with functioning stores, but the shoppers and staff are all entities with uncanny valley behavior...",
+    "tips": ["Pretend to shop normally", "Stores have real merchandise", "Don't draw attention", "Use service corridors to move"]
+  },
+  "34": {
+    "nickname": "The Sewer",
+    "danger": "High",
+    "expectation": "Underground sewer system with rushing water and toxic waste",
+    "entities": ["Sewer Dwellers", "Toxic Slimes", "Pipe Crawlers"],
+    "description": "Level 34 is a vast underground sewer system with rushing water, toxic waste, and dangerous entities adapted to the dark, wet environment...",
+    "tips": ["Avoid the water", "Bring waterproof gear", "Air quality poor", "High ground safer"]
+  },
+  "35": {
+    "nickname": "The Apartment",
+    "danger": "Low",
+    "expectation": "Infinite apartment complex with residential hallways and units",
+    "entities": ["Neighbors", "Maintenance Workers"],
+    "description": "Level 35 resembles an endless apartment building with residential units, hallways with carpet and wallpaper, and domestic atmospheres. Most apartments are empty but some contain supplies...",
+    "tips": ["Check apartments for supplies", "Neighbors usually peaceful", "Use stairwells to navigate", "Some units may be occupied"]
+  },
+  "36": {
+    "nickname": "The Airport",
+    "danger": "Medium",
+    "expectation": "Infinite airport terminal with gates, baggage areas, and flight announcements",
+    "entities": ["Travelers", "Airport Staff", "Security"],
+    "description": "Level 36 appears as an endless airport terminal with gates, waiting areas, and constant flight announcements for flights that never arrive or depart...",
+    "tips": ["Act like a passenger", "Restaurants may have food", "Don't try to board flights", "Security can be hostile"]
+  },
+  "37": {
+    "nickname": "Poolrooms",
+    "danger": "Medium",
+    "expectation": "Endless network of indoor swimming pools with humid air and chlorine smell",
+    "entities": ["Skin-stealers", "Pool Cleaners", "Lurkers"],
+    "description": "Level 37 consists of an infinite complex of indoor swimming pools, pool decks, and changing rooms. The air is humid and thick with chlorine. Pool depths vary dramatically and some contain strange liquids instead of water...",
+    "tips": ["Test water before entering", "Stay in shallow areas", "Bring water purification", "Avoid deep diving", "Watch for entities near drains"]
+  },
+  "38": {
+    "nickname": "The Atmosphere of Venus",
+    "danger": "Extreme",
+    "expectation": "Toxic atmosphere with extreme heat and crushing pressure resembling Venus",
+    "entities": ["Heat Wraiths", "Pressure Phantoms"],
+    "description": "Level 38 simulates the hostile atmosphere of Venus with crushing atmospheric pressure, extreme heat, and toxic gases. The environment is lethal without proper protection and visibility is severely limited...",
+    "tips": ["Protective suit absolutely essential", "Limited survival time", "Find shelter immediately", "Avoid prolonged exposure"]
+  },
+  "39": {
+    "nickname": "False Hell",
+    "danger": "High",
+    "expectation": "Hellish landscape with fake demonic imagery and psychological torture",
+    "entities": ["False Demons", "Psychological Tormentors", "Memory Thieves"],
+    "description": "Level 39 appears as a stereotypical hell with fire, brimstone, and demonic imagery. However, it's designed to psychologically torment wanderers rather than physically harm them. The 'demons' are entities that feed on fear and despair...",
+    "tips": ["Remember it's not real hell", "Control your fear", "Don't believe the illusions", "Stay mentally strong"]
+  },
+  "40": {
+    "nickname": "The Running Arcade",
+    "danger": "Medium",
+    "expectation": "Infinite arcade filled with games that require constant running and movement",
+    "entities": ["Game Masters", "Pixel Ghosts", "Arcade Attendants"],
+    "description": "Level 40 is an endless arcade where all games require physical running and movement. The arcade games are alive and will chase players who don't keep moving. Stopping for too long triggers aggressive game entities...",
+    "tips": ["Keep moving constantly", "Play games to appease entities", "Collect tokens for supplies", "Don't break the machines"]
+  },
+  "41": {
+    "nickname": "Draining Darkness",
+    "danger": "High",
+    "expectation": "Completely dark environment that slowly drains energy and sanity",
+    "entities": ["Shadow Feeders", "Void Walkers", "Darkness Itself"],
+    "description": "Level 41 is an area of absolute darkness that actively drains the life force and sanity from wanderers. Light sources dim rapidly and the darkness seems to have malevolent intelligence...",
+    "tips": ["Bring multiple light sources", "Don't stay too long", "Move quickly", "Avoid the deepest darkness"]
+  },
+  "42": {
+    "nickname": "Everlasting Wait",
+    "danger": "Medium",
+    "expectation": "Infinite waiting room where time moves strangely",
+    "entities": ["Patient Entities", "Receptionist", "Time Wardens"],
+    "description": "Level 42 appears as an endless waiting room with uncomfortable chairs and old magazines. Time moves erratically - seconds can feel like hours or hours like seconds. The waiting never ends...",
+    "tips": ["Don't expect to be called", "Time distortion affects supplies", "Magazines contain clues", "Patience is key"]
+  },
+  "43": {
+    "nickname": "Water World",
+    "danger": "Medium",
+    "expectation": "Endless ocean with floating structures and unpredictable weather",
+    "entities": ["Sea Dwellers", "Storm Spirits", "Aquatic Mimics"],
+    "description": "Level 43 is an infinite ocean with scattered floating platforms, boats, and structures. Weather patterns change rapidly and the water contains unknown entities...",
+    "tips": ["Stay on floating platforms", "Watch for weather changes", "Don't drink the water", "Swimming is dangerous"]
+  },
+  "44": {
+    "nickname": "Alternis",
+    "danger": "High",
+    "expectation": "Reality constantly shifts between different alternate versions",
+    "entities": ["Reality Shifters", "Alternate Selves", "Dimension Wraiths"],
+    "description": "Level 44 constantly shifts between different alternate realities. The environment, layout, and even the laws of physics can change without warning. Wanderers may encounter alternate versions of themselves...",
+    "tips": ["Don't trust alternate selves", "Reality shifts unpredictably", "Mark your path frequently", "Stay mentally grounded"]
+  },
+  "45": {
+    "nickname": "Infinity Store",
+    "danger": "Low",
+    "expectation": "Massive retail store with infinite aisles of merchandise",
+    "entities": ["Store Clerks", "Shopping Cart Entities", "Price Checkers"],
+    "description": "Level 45 appears as an enormous retail store with endless aisles of merchandise. The store seems to stock everything imaginable, but prices are paid in strange ways rather than money...",
+    "tips": ["Understand the pricing system", "Clerks are usually helpful", "Don't shoplift", "Some items have hidden costs"]
+  },
+  "46": {
+    "nickname": "Backrooms Television Studio",
+    "danger": "Medium",
+    "expectation": "TV studio with sets, cameras, and broadcast equipment",
+    "entities": ["Camera Operators", "TV Hosts", "Audience Members"],
+    "description": "Level 46 resembles a television studio with various sets, cameras, and broadcasting equipment. The studio produces shows that air in unknown dimensions, and wanderers may be forced to participate...",
+    "tips": ["Don't look directly at cameras", "Play along with shows", "Audience can be hostile", "Find the control room"]
+  },
+  "47": {
+    "nickname": "The Frozen Labyrinth",
+    "danger": "High",
+    "expectation": "Ice maze with freezing temperatures and unstable frozen walls",
+    "entities": ["Ice Wraiths", "Frozen Guardians", "Frost Spiders"],
+    "description": "Level 47 is a massive labyrinth made entirely of ice. The walls are extremely cold and can shift position. Hypothermia is a constant threat and ice entities patrol the maze...",
+    "tips": ["Stay warm at all costs", "Ice walls can move", "Watch for thin ice", "Find heat sources quickly"]
+  },
+  "48": {
+    "nickname": "The Pharaoh's Pyramid",
+    "danger": "High",
+    "expectation": "Ancient Egyptian pyramid with traps, hieroglyphs, and cursed artifacts",
+    "entities": ["Mummies", "Scarab Swarms", "Pharaoh's Guards", "Curse Bearers"],
+    "description": "Level 48 appears as the interior of an enormous Egyptian pyramid filled with traps, treasures, and ancient entities. The pyramid seems to extend infinitely both up and down...",
+    "tips": ["Avoid touching artifacts", "Watch for traps", "Hieroglyphs give warnings", "Don't disturb the dead"]
+  },
+  "49": {
+    "nickname": "Remember The Fallen",
+    "danger": "Medium",
+    "expectation": "Memorial ground with graves, monuments, and ghostly apparitions",
+    "entities": ["Memorial Spirits", "Fallen Soldiers", "Grief Wraiths"],
+    "description": "Level 49 is a vast memorial ground filled with graves, monuments, and memorials to unknown fallen. Ghostly apparitions of soldiers and civilians wander the grounds peacefully...",
+    "tips": ["Show respect to monuments", "Spirits are usually peaceful", "Don't disturb graves", "Leave flowers if found"]
+  },
+  "50": {
+    "nickname": "The Moribund Highway",
+    "danger": "High",
+    "expectation": "Endless highway with abandoned vehicles and road hazards",
+    "entities": ["Highway Phantoms", "Crash Victims", "Road Rage Spirits"],
+    "description": "Level 50 is an infinite highway filled with abandoned and crashed vehicles. The road seems to stretch forever with various hazards and hostile entities that were once drivers...",
+    "tips": ["Avoid crashed vehicles", "Stay in the median when possible", "Don't pick up hitchhikers", "Fuel is scarce"]
+  },
+  "51": {
+    "nickname": "Caverns of Olympus",
+    "danger": "Medium",
+    "expectation": "Massive underground caverns with Greek mythological themes",
+    "entities": ["Minor Gods", "Mythical Creatures", "Oracle Spirits"],
+    "description": "Level 51 consists of enormous underground caverns decorated with Greek architecture and populated by entities resembling mythological beings. The caverns seem to exist outside normal time...",
+    "tips": ["Respect the mythological entities", "Oracles may give guidance", "Don't anger the gods", "Ancient rules apply"]
+  },
+  "52": {
+    "nickname": "School Halls",
+    "danger": "Medium",
+    "expectation": "Endless school corridors with lockers, classrooms, and school entities",
+    "entities": ["Students", "Teachers", "Hall Monitors", "Principals"],
+    "description": "Level 52 appears as infinite school hallways with functioning classrooms, lockers, and school-related entities. The school operates on its own schedule and rules...",
+    "tips": ["Follow school rules", "Attend classes if required", "Hall pass may be needed", "Don't cut class"]
+  },
+  "53": {
+    "nickname": "Alone",
+    "danger": "Low",
+    "expectation": "Empty personal space designed to induce complete isolation",
+    "entities": ["None - Complete isolation"],
+    "description": "Level 53 appears as a comfortable but empty personal space like a bedroom or living room. No entities exist here, creating perfect isolation. Extended stay can affect mental health...",
+    "tips": ["Don't stay too long", "Isolation affects sanity", "Use time for rest", "Keep mental stimulation"]
+  },
+  "54": {
+    "nickname": "The Stairwell",
+    "danger": "Medium",
+    "expectation": "Endless concrete staircase going up and down infinitely",
+    "entities": ["Stair Climbers", "Echo Entities", "Floor Guardians"],
+    "description": "Level 54 is an infinite concrete stairwell that extends both upward and downward without end. The stairs are lit by harsh fluorescent lighting and echoes can be heard from unknown sources...",
+    "tips": ["Pick a direction and stick to it", "Count floors to track progress", "Rest on landings", "Echoes may not be friendly"]
+  },
+  "55": {
+    "nickname": "The Poolrooms Expanded",
+    "danger": "High",
+    "expectation": "Vast pool complex with deeper, more dangerous waters",
+    "entities": ["Pool Demons", "Water Wraiths", "Deep Dwellers"],
+    "description": "Level 55 is an expanded version of the poolrooms with deeper pools, more complex architecture, and significantly more dangerous aquatic entities...",
+    "tips": ["Stay in shallow water", "Deep pools contain hostile entities", "Chlorine levels vary", "Emergency exits scarce"]
+  },
+  "56": {
+    "nickname": "The Red Rooms",
+    "danger": "High",
+    "expectation": "Rooms with red lighting and walls that induce aggression",
+    "entities": ["Rage Spirits", "Red Shadows", "Violence Wraiths"],
+    "description": "Level 56 consists of rooms bathed in red light that psychologically influences wanderers toward violence and aggression. The red lighting seems to feed hostile entities...",
+    "tips": ["Control your temper", "Red light affects behavior", "Avoid confrontation", "Find normal lighting quickly"]
+  },
+  "57": {
+    "nickname": "The Snackrooms",
+    "danger": "Low",
+    "expectation": "Infinite vending machine area with endless snacks",
+    "entities": ["Vending Machine Spirits", "Snack Guardians"],
+    "description": "Level 57 appears as an endless area filled with vending machines offering various snacks and drinks. Most machines work without requiring payment, making it a supply haven...",
+    "tips": ["Stock up on supplies", "Not all machines are safe", "Some snacks may be expired", "Entities are generally peaceful"]
+  },
+  "58": {
+    "nickname": "The Greenhouse",
+    "danger": "Medium",
+    "expectation": "Vast greenhouse with overgrown plants and humid conditions",
+    "entities": ["Plant Monsters", "Garden Sprites", "Pollinator Swarms"],
+    "description": "Level 58 is an enormous greenhouse with overgrown vegetation, high humidity, and plant entities. Some plants are beneficial while others are predatory...",
+    "tips": ["Identify safe plants", "High humidity - stay hydrated", "Some plants are carnivorous", "Fresh air pockets exist"]
+  },
+  "59": {
+    "nickname": "The Suburbs at Night",
+    "danger": "High",
+    "expectation": "Dark suburban neighborhood with hostile residents",
+    "entities": ["Suburban Nightmares", "Porch Watchers", "Lawn Keepers"],
+    "description": "Level 59 appears as a suburban neighborhood perpetually stuck at night. House lights flicker and hostile entities patrol the streets pretending to be residents...",
+    "tips": ["Avoid going into houses", "Entities patrol regularly", "Streetlights provide some safety", "Dawn never comes"]
+  },
+  "60": {
+    "nickname": "Atrium",
+    "danger": "Low",
+    "expectation": "Large glass-roofed courtyard with plants and seating areas",
+    "entities": ["Peaceful Gardeners", "Sun Sprites"],
+    "description": "Level 60 appears as a beautiful glass-roofed atrium with natural lighting, plants, and comfortable seating. It's one of the more peaceful levels in the Backrooms...",
+    "tips": ["Safe rest area", "Plants may bear fruit", "Natural lighting beneficial", "Entities are non-hostile"]
+  },
+  "61": {
+    "nickname": "Confined Dread",
+    "danger": "High",
+    "expectation": "Tight, claustrophobic tunnels that induce panic",
+    "entities": ["Anxiety Wraiths", "Claustrophobia Demons"],
+    "description": "Level 61 consists of extremely narrow tunnels and confined spaces designed to trigger claustrophobia and panic. The walls seem to close in over time...",
+    "tips": ["Control breathing", "Don't panic", "Move quickly through tight spaces", "Find wider areas to rest"]
+  },
+  "65": {
+    "nickname": "The Binary World",
+    "danger": "Medium",
+    "expectation": "Digital landscape of 1s and 0s with computer-like architecture",
+    "entities": ["Code Entities", "Binary Ghosts", "Data Streams"],
+    "description": "Level 65 appears as a world made of binary code, with landscapes formed from 1s and 0s. The environment operates like a computer system...",
+    "tips": ["Understand basic programming", "Binary patterns give clues", "Avoid corrupted data areas", "System reboots randomly"]
+  },
+  "78": {
+    "nickname": "The Observatory",
+    "danger": "Low",
+    "expectation": "Astronomical observatory with telescopes and star charts",
+    "entities": ["Star Watchers", "Cosmic Spirits"],
+    "description": "Level 78 is an astronomical observatory with functioning telescopes that show unknown star systems and cosmic phenomena...",
+    "tips": ["Telescopes show other levels", "Star charts helpful for navigation", "Peaceful environment", "Time moves strangely"]
+  },
+  "87": {
+    "nickname": "The Boiler Room",
+    "danger": "High",
+    "expectation": "Industrial boiler room with extreme heat and dangerous machinery",
+    "entities": ["Steam Phantoms", "Pressure Wraiths", "Boiler Guardians"],
+    "description": "Level 87 is a massive industrial boiler room with extreme temperatures, dangerous steam, and maze-like pipe networks...",
+    "tips": ["Extreme heat hazard", "Steam can be deadly", "Wear protective gear", "Watch pressure gauges"]
+  },
+  "94": {
+    "nickname": "Motion",
+    "danger": "High",
+    "expectation": "Constantly moving and shifting mechanical environment",
+    "entities": ["Gear Entities", "Mechanical Mimics"],
+    "description": "Level 94 is a massive mechanical complex with constantly moving parts, conveyor belts, and shifting platforms. Nothing stays still for long, and wanderers must constantly adapt to the changing environment...",
+    "tips": ["Stay alert and agile", "Avoid getting caught in machinery", "Time movements carefully", "Find stable rest areas quickly"]
+  },
+  "100": {
+    "nickname": "The Century",
+    "danger": "Medium",
+    "expectation": "Celebration hall marking the 100th level milestone",
+    "entities": ["Century Keepers", "Milestone Guardians"],
+    "description": "Level 100 appears as a grand celebration hall commemorating reaching the 100th level. It serves as a checkpoint for deeper level access...",
+    "tips": ["Major milestone level", "Checkpoint for deeper levels", "Entities are ceremonial", "Stock up on supplies here"]
+  },
+  "122": {
+    "nickname": "The Lighthouse",
+    "danger": "Low",
+    "expectation": "Coastal lighthouse surrounded by endless fog and ocean sounds",
+    "entities": ["Lighthouse Keeper", "Fog Spirits"],
+    "description": "Level 122 consists of a lighthouse on a rocky coast surrounded by thick fog. The lighthouse beam reveals glimpses of other levels...",
+    "tips": ["Lighthouse beam shows other levels", "Fog can be disorienting", "Keeper entity is helpful", "Safe harbor for rest"]
+  },
+  "135": {
+    "nickname": "The Toy Store",
+    "danger": "Medium",
+    "expectation": "Infinite toy store with living toys and childhood memories",
+    "entities": ["Living Toys", "Toy Soldiers", "Doll Entities"],
+    "description": "Level 135 appears as an endless toy store where toys have come to life. Some toys are playful while others are hostile...",
+    "tips": ["Not all toys are friendly", "Childhood memories manifest", "Some toys offer help", "Avoid the doll section"]
+  },
+  "188": {
+    "nickname": "The Windows",
+    "danger": "Medium",
+    "expectation": "School-like building with countless windows showing different realities",
+    "entities": ["Window Watchers", "Glass Shards"],
+    "description": "Level 188 resembles an endless school building with hallways lined with windows. Each window shows a different view - some of Earth locations, others of unknown places. Breaking windows or looking too long can be dangerous...",
+    "tips": ["Don't stare at windows too long", "Avoid breaking glass", "Move quickly through hallways", "Don't trust what you see outside"]
+  },
+  "200": {
+    "nickname": "The Bicentennial",
+    "danger": "High",
+    "expectation": "Massive ceremonial complex marking 200 levels of descent",
+    "entities": ["Bicentennial Guards", "Depth Wraiths", "Level Counters"],
+    "description": "Level 200 is a grand ceremonial complex that marks the significant milestone of 200 levels deep. The level tests worthiness for deeper access...",
+    "tips": ["Major checkpoint level", "Trials required for deeper access", "Ceremonial challenges", "Prepare for deeper dangers"]
+  },
+  "222": {
+    "nickname": "The Triplets",
+    "danger": "Medium",
+    "expectation": "Three identical connected rooms that mirror each other",
+    "entities": ["Mirror Triplets", "Echo Chambers", "Reflection Guards"],
+    "description": "Level 222 consists of three identical rooms connected in a triangle. Each room mirrors the others, creating confusing spatial loops...",
+    "tips": ["Rooms mirror each other", "Easy to get lost", "Mark your path clearly", "Reflections may be hostile"]
+  },
+  "300": {
+    "nickname": "The Tricentennial Hall",
+    "danger": "High",
+    "expectation": "Ancient hall commemorating 300 levels with historical artifacts",
+    "entities": ["Ancient Guardians", "History Keepers", "Tricentennial Wraiths"],
+    "description": "Level 300 is an ancient hall filled with artifacts from all previous levels. It serves as a museum and checkpoint for the deepest levels...",
+    "tips": ["Historical artifacts everywhere", "Major deep checkpoint", "Ancient entities", "Study artifacts for clues"]
+  },
+  "404": {
+    "nickname": "Not Found",
+    "danger": "High",
+    "expectation": "Glitchy, incomplete level that seems corrupted or missing",
+    "entities": ["404 Errors", "Missing Data", "Corrupted Files"],
+    "description": "Level 404 appears to be corrupted or incomplete, with missing textures, floating objects, and glitchy behavior similar to a broken video game...",
+    "tips": ["Reality glitches frequently", "Terrain may not exist", "Navigation extremely difficult", "Exit quickly if possible"]
+  },
+  "500": {
+    "nickname": "The Quincentennial Archive",
+    "danger": "Medium",
+    "expectation": "Vast library containing records of all previous levels",
+    "entities": ["Librarians", "Archive Keepers", "Knowledge Spirits"],
+    "description": "Level 500 is an enormous library containing detailed records and documentation of all levels encountered so far...",
+    "tips": ["Vast knowledge repository", "Librarians are helpful", "Research other levels here", "Major milestone checkpoint"]
+  },
+  "513": {
+    "nickname": "Synthwave Aquascape",
+    "danger": "Medium",
+    "expectation": "Retro-futuristic underwater world with neon lighting and synthwave aesthetics",
+    "entities": ["Neon Fish", "Synth Spirits", "Wave Riders"],
+    "description": "Level 513 combines underwater environments with 1980s synthwave aesthetics, featuring neon-lit aquatic landscapes and retro-futuristic architecture...",
+    "tips": ["Breathable water environment", "Neon lights provide navigation", "Synthwave music affects mood", "Retro technology functions"]
+  },
+  "514": {
+    "nickname": "Vaporwave Mansion",
+    "danger": "Low",
+    "expectation": "Aesthetic mansion with vaporwave styling and nostalgic atmosphere",
+    "entities": ["Aesthetic Spirits", "Memory Fragments", "Nostalgia Wraiths"],
+    "description": "Level 514 appears as an elegant mansion decorated in vaporwave aesthetics with pink and blue lighting, marble statues, and nostalgic music...",
+    "tips": ["Generally peaceful", "Nostalgic atmosphere affects emotions", "Music provides comfort", "Safe resting place"]
+  },
+  "666": {
+    "nickname": "Welcome To Hell",
+    "danger": "EXTREME",
+    "expectation": "Genuine hellish landscape with actual demonic entities and extreme danger",
+    "entities": ["True Demons", "Hell Hounds", "Torture Spirits", "Satan's Guards"],
+    "description": "Level 666 is actual Hell - not a false replica like Level 39. This level contains genuine demonic entities, lakes of fire, and eternal torment. It's one of the most dangerous levels in existence...",
+    "tips": ["AVOID AT ALL COSTS", "Real demons - extremely hostile", "Fire and brimstone everywhere", "Escape immediately", "Religious protection may help"]
+  },
+  "777": {
+    "nickname": "Divine Sanctuary",
+    "danger": "Low",
+    "expectation": "Heavenly realm with peaceful angels and divine light",
+    "entities": ["Angels", "Divine Spirits", "Heavenly Guardians"],
+    "description": "Level 777 appears as a heavenly sanctuary with golden light, peaceful music, and benevolent angelic entities. It serves as a counter to Level 666...",
+    "tips": ["Completely safe", "Angels are protective", "Divine healing available", "Perfect rest location"]
+  },
+  "888": {
+    "nickname": "The Infinite Loop",
+    "danger": "Medium",
+    "expectation": "Endlessly looping pathway that repeats the same sequence",
+    "entities": ["Loop Guards", "Repetition Spirits", "Cycle Keepers"],
+    "description": "Level 888 is a pathway that loops infinitely, repeating the same sequence over and over. Breaking the loop requires specific actions...",
+    "tips": ["Pathway loops endlessly", "Look for pattern breaks", "Specific actions break loop", "Don't get trapped in cycle"]
+  },
+  "999": {
+    "nickname": "The Deepest Well",
+    "danger": "EXTREME",
+    "expectation": "Bottomless pit or well representing the deepest known level",
+    "entities": ["Depth Guardians", "Well Spirits", "Bottom Feeders"],
+    "description": "Level 999 appears as an enormous well or pit that extends infinitely downward. It's considered one of the deepest accessible levels before reaching the theoretical bottom...",
+    "tips": ["Bottomless pit", "Falling is lethal", "Rope/climbing gear essential", "Last major numbered level"]
+  },
+  "1000": {
+    "nickname": "The Millennium",
+    "danger": "EXTREME",
+    "expectation": "Ultimate milestone level with reality-breaking properties",
+    "entities": ["Millennium Guardians", "Reality Warpers", "The Final Keepers"],
+    "description": "Level 1000 represents the ultimate milestone - 1000 levels deep. Reality itself becomes unstable here, and the level serves as a gateway to even deeper, unnamed levels...",
+    "tips": ["Reality breaks down", "Ultimate depth milestone", "Gateway to unnamed levels", "Preparation crucial"]
+  },
+  "fun": {
+    "nickname": "Level Fun",
+    "danger": "EXTREME",
+    "expectation": "Colorful party room with balloons and decorations - DECEPTIVE APPEARANCE",
+    "entities": ["Partygoers", "Balloon Entities", "Party Mimics"],
+    "description": "Level Fun appears as a vibrant birthday party room with balloons, confetti, and party decorations. DO NOT BE FOOLED - this is one of the most dangerous levels. Partygoers will attempt to forcibly convert wanderers into more Partygoers through violent means. The cheerful appearance is a deadly trap...",
+    "tips": ["AVOID AT ALL COSTS", "Do not interact with Partygoers", "Run immediately upon arrival", "Do not eat or drink anything", "The fun never ends - escape quickly"]
+  },
+  "∞": {
+    "nickname": "Infinite Airport",
+    "danger": "EXTREME",
+    "expectation": "Airport terminal that extends infinitely in all directions with impossible geometry",
+    "entities": ["Infinite Travelers", "Terminal Guards", "Flight Announcers"],
+    "description": "Level ∞ is an airport terminal that literally extends infinitely, with impossible geometry and flights to destinations that don't exist...",
+    "tips": ["Infinite in all directions", "Impossible geometry", "Flights go nowhere", "Navigation nearly impossible"]
+  },
+  "!": {
+    "nickname": "Run For Your Life",
+    "danger": "EXTREME",
+    "expectation": "Long narrow hallway being pursued by deadly entity",
+    "entities": ["The Thing", "Pursuer Entity"],
+    "description": "Level ! is a single long hallway that wanderers must run through while being chased by a deadly entity. There is no stopping, no hiding, only running. The hallway seems endless but has an exit if you can outrun the pursuer...",
+    "tips": ["RUN - DO NOT STOP", "Don't look back", "Conserve stamina but maintain speed", "Look for the exit door"]
+  }
+}

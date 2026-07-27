@@ -1,0 +1,6 @@
+kivy>=2.2.0
+pygame>=2.5.0
+Pillow>=10.0.0
+psutil>=5.9.0
+opencv-python
+ffpyplayer
