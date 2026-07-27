@@ -1,202 +1,98 @@
 # Srboli
 
-A collection of useful everyday tools combined into one lightweight application.
-
-Srboli is designed for people who want a variety of small quality-of-life utilities without installing dozens of separate applications.
-
-Instead of having a different app for every small task, Srboli bundles many tools together into one place.
-
-## Why Srboli?
-
-Many useful utilities already exist, but they are often:
-
-- Spread across many different applications
-- Filled with unnecessary features
-- Locked behind subscriptions
-- Difficult to discover
-
-Srboli focuses on providing simple, practical tools in one package.
+A pocket swiss-knife desktop app built with Python + Kivy.
 
 ## Features
 
-## Text & Data Tools
-
-### Image → Text Conversion
-
-- Convert images into text-based formats
-- Base64 encoding/decoding support
-
-### Text Editor
-
-- Basic writing and editing tools
-- Lightweight alternative for quick edits
-
-### Batch Paster
-
-- Paste repeated text automatically
-- Useful for repetitive workflows
-
-### Morse Translator
-
-- Convert text to Morse code
-- Convert Morse code back to text
-
----
-
-## Productivity Tools
-
-### Clock
-
-- Simple time tracking utilities
-
-### Timer
-
-- Custom timers for different tasks
-
-### Loading Timer
-
-A customizable timer tool that can also:
-
-- Schedule shutdowns
-- Manage notification timing
-- Act as a delayed action tool
-
----
-
-## Creative Tools
-
-### Shape Generator
-
-Create simple generated shapes for experimentation and design.
-
-### Randomizer
-
-Generate random values for:
-
-- Decisions
-- Experiments
-- Games
-- Testing
-
-### Spin Screen
-
-A fun experimental tool that rotates the screen.
-
-(Currently buggy)
-
----
-
-## Media Tools
-
-### Music Player
-
-A lightweight built-in music player.
-
-### Gallery Sorter
-
-Organize image collections and manage galleries.
-
----
-
-## System Tools
-
-### System Statistics Checker
-
-Monitor basic system information:
-
-- Hardware usage
-- Performance information
-- System status
-
----
-
-## Advanced Tools
-
-### Backrooms Guide
-
-A guide/exploration tool based around the Backrooms concept.
-
-### Full Editing Suite
-
-A larger work-in-progress section containing:
-
-- Text editing
-- Presentation creation
-- Spreadsheet tools
-
-The goal is to provide a lightweight alternative to installing multiple office applications.
-
-(Currently under development)
-
----
-
-# Current Status
-
-🟡 Active development
-
-Some tools are complete, while others are experimental or still being expanded.
-
-## Project Goals
-
-- Keep tools lightweight
-- Avoid unnecessary installations
-- Provide useful utilities in one application
-- Maintain simple user experience
-
----
-
-# Roadmap
-
-## Core Improvements
-
-- [ ] Improve UI consistency
-- [ ] Better tool organization
-- [ ] Plugin/module system
-- [ ] Better settings management
-
-## New Features
-
-- [ ] More productivity tools
-- [ ] Improved editing suite
-- [ ] Additional system utilities
-- [ ] Better customization
-
----
-
-# Project Structure
-
-Example:
-
-
-Srboli/
-│
-├── Tools/
-│ ├── Timer/
-│ ├── Editor/
-│ ├── Translator/
-│ └── Utilities/
-│
-├── Media/
-│
-├── System/
-│
-└── Main Application
-
-
----
-
-# Philosophy
-
-Srboli is built around a simple idea:
-
-> Useful tools should be easy to access.
-
-Not every problem needs a separate application.
-
-Sometimes you just need one toolbox.
-
----
-
-# License
-
-TBD
+| Screen | What it does |
+|---|---|
+| Loading / Timer | Countdown timer with shutdown option |
+| Text Editor | Plain text editor with colour tags, autosave, script mode |
+| Script Mode | Paste full text, auto-copy chunks one by one |
+| Full Editor | Word + Slides + Spreadsheet in one |
+| Basic Tools | Clock, stopwatch, alarm, real calculator |
+| System Stats | CPU/RAM/Disk/GPU live stats + ping/FPS graphs + overlay window |
+| Gallery Sorter | Sort images and videos into folders, in-app video player |
+| Music Player | Playlist manager with pygame playback |
+| Random Tools | Number/password/dice/list randomizer |
+| Image to Text | Base64 image encoder/decoder |
+| Morse Converter | Text ↔ Morse code |
+| Backrooms | JSON-driven Backrooms level guide |
+| Wheel of Names | Weighted spinner |
+| Shape Generator | Procedural logo/pattern generator |
+| Metadata Inspector | EXIF/video metadata viewer + AI image detector |
+| Quick Switcher | Global keyboard shortcuts to jump between screens |
+
+## Requirements
+
+- Python 3.10+
+- Linux (PopOS/Ubuntu) or Windows
+
+## Setup
+
+```bash
+# Clone
+git clone https://github.com/somore100/Srboli.git
+cd Srboli
+
+# Create virtual environment
+python3 -m venv .venv
+source .venv/bin/activate        # Linux/Mac
+# .venv\Scripts\activate         # Windows
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run
+python3 main.py
+```
+
+## Building executable (Linux)
+
+```bash
+pip install pyinstaller
+pyinstaller srboli.spec
+# Output: dist/Srboli
+```
+
+## Building executable (Windows)
+
+```bat
+pip install pyinstaller
+pyinstaller srboli.spec
+REM Output: dist\Srboli.exe
+```
+
+## Project structure
+
+```
+srboli/
+├── main.py              # App entry point
+├── app_data.py          # Data directory manager
+├── _overlay_app.py      # System stats overlay (separate process)
+├── requirements.txt
+├── srboli.spec          # PyInstaller spec
+└── screens/
+    ├── __init__.py
+    ├── backrooms_screen.py
+    ├── basic_tools_screen.py
+    ├── full_editor_screen.py
+    ├── gallery_sorter_screen.py
+    ├── image_text_screen.py
+    ├── loading_timer_screen.py
+    ├── metadata_screen.py
+    ├── morse_screen.py
+    ├── music_screen.py
+    ├── quickswitcher_screen.py
+    ├── randomizer.py
+    ├── script_mode_screen.py
+    ├── shape_generator_screen.py
+    ├── spin_screen.py
+    ├── system_stats_screen.py
+    ├── text_editor_screen.py
+    └── unhelpful_calc_screen.py
+```
+
+## License
+
+MIT
