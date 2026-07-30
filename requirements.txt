@@ -1,27 +1,6 @@
-# Srboli — Python dependencies
-# Install with:  pip install -r requirements.txt
-
-# Core UI
 kivy>=2.2.0
-kivy-deps.sdl2; sys_platform == "win32"
-kivy-deps.glew; sys_platform == "win32"
-
-# Audio playback
 pygame>=2.5.0
-
-# Image processing (Image ↔ Text screen)
 Pillow>=10.0.0
-
-# System stats screen
 psutil>=5.9.0
-
-# Optional: real ICMP ping (needs sudo or cap_net_raw on Linux)
-# ping3>=4.0.4
-
-# Optional: NVIDIA GPU info
-# gputil>=1.4.0
-
-# Optional: TTS / STT (heavy — only if you use those screens)
-# TTS>=0.22.0
-# SpeechRecognition>=3.10.0
-# pyaudio>=0.2.13
+opencv-python
+ffpyplayer

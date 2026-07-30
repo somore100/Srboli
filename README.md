@@ -1,87 +1,98 @@
-# Srboli v2.0 — Setup Guide (PopOS / Linux + Windows)
+# Srboli
 
-## Quick start on PopOS
+A pocket swiss-knife desktop app built with Python + Kivy.
+
+## Features
+
+| Screen | What it does |
+|---|---|
+| Loading / Timer | Countdown timer with shutdown option |
+| Text Editor | Plain text editor with colour tags, autosave, script mode |
+| Script Mode | Paste full text, auto-copy chunks one by one |
+| Full Editor | Word + Slides + Spreadsheet in one |
+| Basic Tools | Clock, stopwatch, alarm, real calculator |
+| System Stats | CPU/RAM/Disk/GPU live stats + ping/FPS graphs + overlay window |
+| Gallery Sorter | Sort images and videos into folders, in-app video player |
+| Music Player | Playlist manager with pygame playback |
+| Random Tools | Number/password/dice/list randomizer |
+| Image to Text | Base64 image encoder/decoder |
+| Morse Converter | Text ↔ Morse code |
+| Backrooms | JSON-driven Backrooms level guide |
+| Wheel of Names | Weighted spinner |
+| Shape Generator | Procedural logo/pattern generator |
+| Metadata Inspector | EXIF/video metadata viewer + AI image detector |
+| Quick Switcher | Global keyboard shortcuts to jump between screens |
+
+## Requirements
+
+- Python 3.10+
+- Linux (PopOS/Ubuntu) or Windows
+
+## Setup
 
 ```bash
-# 1. System deps (Kivy needs these on Linux)
-sudo apt install -y python3-pip python3-venv \
-    libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
-    libgstreamer1.0-dev gstreamer1.0-plugins-{base,good,bad,ugly} \
-    libmtdev-dev xclip
+# Clone
+git clone https://github.com/somore100/Srboli.git
+cd Srboli
 
-# 2. Create a virtual environment (recommended)
+# Create virtual environment
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate        # Linux/Mac
+# .venv\Scripts\activate         # Windows
 
-# 3. Install Python packages
+# Install dependencies
 pip install -r requirements.txt
 
-# 4. Run
-python main.py
+# Run
+python3 main.py
 ```
 
-## File layout expected
+## Building executable (Linux)
+
+```bash
+pip install pyinstaller
+pyinstaller srboli.spec
+# Output: dist/Srboli
+```
+
+## Building executable (Windows)
+
+```bat
+pip install pyinstaller
+pyinstaller srboli.spec
+REM Output: dist\Srboli.exe
+```
+
+## Project structure
 
 ```
 srboli/
-├── main.py
+├── main.py              # App entry point
+├── app_data.py          # Data directory manager
+├── _overlay_app.py      # System stats overlay (separate process)
 ├── requirements.txt
-├── screens/
-│   ├── __init__.py
-│   ├── tts_screen.py          ← not changed (optional)
-│   ├── stt_screen.py          ← not changed (optional)
-│   ├── image_text_screen.py   ← UPDATED
-│   └── converted/
-│       ├── __init__.py
-│       ├── backrooms_screen.py       ← UPDATED
-│       ├── loading_timer_screen.py   ← UPDATED
-│       ├── morse_screen.py           ← UPDATED
-│       ├── music_screen.py           ← UPDATED
-│       ├── randomizer.py             ← UPDATED (class: UtilityToolsScreen)
-│       ├── spin_screen.py            ← UPDATED (arrow fixed)
-│       ├── system_stats_screen.py    ← NEW
-│       └── unhelpful_calc_screen.py  ← UPDATED
+├── srboli.spec          # PyInstaller spec
+└── screens/
+    ├── __init__.py
+    ├── backrooms_screen.py
+    ├── basic_tools_screen.py
+    ├── full_editor_screen.py
+    ├── gallery_sorter_screen.py
+    ├── image_text_screen.py
+    ├── loading_timer_screen.py
+    ├── metadata_screen.py
+    ├── morse_screen.py
+    ├── music_screen.py
+    ├── quickswitcher_screen.py
+    ├── randomizer.py
+    ├── script_mode_screen.py
+    ├── shape_generator_screen.py
+    ├── spin_screen.py
+    ├── system_stats_screen.py
+    ├── text_editor_screen.py
+    └── unhelpful_calc_screen.py
 ```
 
-## What changed per file
+## License
 
-| File | Changes |
-|---|---|
-| `main.py` | No Windows-only paths, lazy import, Linux model cache dir |
-| `spin_screen.py` | Arrow direction fixed, labels no longer use broken canvas rotation |
-| `randomizer.py` | Class renamed `UtilityToolsScreen`, added History tab, Dice tab, password strength bar |
-| `loading_timer_screen.py` | Cross-platform shutdown (`systemctl`), pause/resume, presets, colour bar |
-| `music_screen.py` | Volume slider, pause, track remove, `xdg-open` fallback, home-dir file picker |
-| `morse_screen.py` | Punctuation support, copy button, history list |
-| `unhelpful_calc_screen.py` | Spinner animation, expression preview, more errors, copy button |
-| `backrooms_screen.py` | Home-dir file picker, config saved to `~/.srboli_backrooms_path.txt` |
-| `image_text_screen.py` | Replaced tkinter dialogs with Kivy-native (works on Wayland) |
-| `system_stats_screen.py` | **NEW** — CPU/RAM/disk/GPU text + live FPS & ping graphs |
-
-## Optional extras
-
-**Real ICMP ping** (instead of subprocess fallback):
-```bash
-pip install ping3
-# ping3 needs raw socket access on Linux:
-sudo setcap cap_net_raw+ep $(which python3)
-# OR just run with sudo (not recommended)
-```
-
-**NVIDIA GPU info**:
-```bash
-pip install gputil
-# or install nvidia-smi (comes with NVIDIA drivers)
-```
-
-**Startup slow?**
-The TTS/STT screens load heavy models (Torch, Coqui). If you don't use them,
-comment out their entries in `SCREENS` in `main.py`. Everything else starts in ~1s.
-
-## Known Kivy quirks on Linux
-
-- **Wayland**: if the window doesn't appear, try `export DISPLAY=:0` or
-  force X11: `export SDL_VIDEODRIVER=x11`
-- **Audio**: if pygame mixer fails, install `gstreamer1.0-plugins-good`
-- **FileChooser**: all file pickers now start at `~/` (home dir) instead of
-  Windows-style paths
+MIT
