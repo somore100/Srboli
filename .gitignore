@@ -1,3 +1,11 @@
+# Python
 .venv/
 __pycache__/
 *.pyc
+
+# Runtime caches
+srboli_data/gallery_cache/
+srboli_data/metadata_cache/
+
+# Logs
+screens/.overlay_log.txt
