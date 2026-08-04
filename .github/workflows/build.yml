@@ -56,16 +56,34 @@ jobs:
         run: |
           pyinstaller srboli.spec
 
-      - name: Create AppImage
+      - name: Prepare AppImage
         run: |
-          mkdir AppDir
-          cp -r dist/* AppDir/
+          mkdir -p Srboli.AppDir/usr/bin
+          cp -r dist/Srboli/* Srboli.AppDir/usr/bin/
+
+          cp logo.png Srboli.AppDir/
+
+          cat > Srboli.AppDir/Srboli.desktop <<EOF
+          [Desktop Entry]
+          Name=Srboli
+          Exec=Srboli
+          Icon=logo
+          Type=Application
+          Categories=Utility;
+          EOF
+
+          ln -s usr/bin/Srboli Srboli.AppDir/AppRun
+
+      - name: Build AppImage
+        run: |
+          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+          ./appimagetool-x86_64.AppImage Srboli.AppDir Srboli.AppImage
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Srboli-Linux
-          path: AppDir/
-
+          name: Srboli-Linux-AppImage
+          path: Srboli.AppImage
 
   macos:
     name: macOS Build
