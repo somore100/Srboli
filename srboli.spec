@@ -1,12 +1,9 @@
 # srboli.spec — PyInstaller build spec for Srboli
-# Run: pyinstaller srboli.spec
 
-import os
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 block_cipher = None
 
-# Collect kivy data files
 kivy_datas = collect_data_files('kivy', includes=['**/*'])
 
 a = Analysis(
@@ -16,8 +13,9 @@ a = Analysis(
     datas=[
         ('screens', 'screens'),
         ('app_data.py', '.'),
-        ('_overlay_app.py', '.'),
+        ('logo.png', '.'),
     ] + kivy_datas,
+
     hiddenimports=[
         'kivy',
         'kivy.core.window',
@@ -40,17 +38,20 @@ a = Analysis(
         'math',
         'collections',
     ] + collect_submodules('kivy'),
+
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=['tkinter'],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
     cipher=block_cipher,
     noarchive=False,
 )
 
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz = PYZ(
+    a.pure,
+    a.zipped_data,
+    cipher=block_cipher
+)
 
 exe = EXE(
     pyz,
@@ -59,14 +60,12 @@ exe = EXE(
     exclude_binaries=True,
     name='Srboli',
     debug=False,
-    bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,      # no terminal window
-    disable_windowed_traceback=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
+    console=False,
+
+    # App icon
+    icon='logo.png',
 )
 
 coll = COLLECT(
@@ -76,6 +75,5 @@ coll = COLLECT(
     a.datas,
     strip=False,
     upx=True,
-    upx_exclude=[],
     name='Srboli',
 )
