@@ -6,29 +6,36 @@ on:
       - "v*"
   workflow_dispatch:
 
+env:
+  PYTHON_VERSION: "3.10"
+
 jobs:
 
   windows:
-    name: Windows Build
+    name: Windows EXE
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Build
+      - name: Build EXE
         run: |
-          pyinstaller SrboliLight.spec
+          pyinstaller srboli.spec --clean
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload Windows build
+        uses: actions/upload-artifact@v4
         with:
           name: Srboli-Windows
           path: dist/
@@ -39,16 +46,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install dependencies
+      - name: Install system packages
         run: |
           sudo apt update
           sudo apt install -y fuse libfuse2
+<<<<<<< HEAD
           pip install -r requirements.txt
           pip install pyinstaller
 
@@ -95,17 +105,73 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
+=======
+>>>>>>> 183dce0 (Fix cross platform builds)
 
       - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
 
       - name: Build
         run: |
-          pyinstaller srboli.spec
+          pyinstaller srboli.spec --clean
 
-      - uses: actions/upload-artifact@v4
+      - name: Install AppImage tools
+        run: |
+          wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+
+      - name: Make AppDir
+        run: |
+          mkdir -p AppDir/usr/bin
+          cp -r dist/* AppDir/usr/bin/
+
+          cat > AppDir/Srboli.desktop <<EOF
+          [Desktop Entry]
+          Name=Srboli
+          Exec=Srboli
+          Type=Application
+          Categories=Utility;
+          EOF
+
+      - name: Create AppImage
+        run: |
+          ./appimagetool-x86_64.AppImage AppDir Srboli-Linux.AppImage
+
+      - name: Upload Linux build
+        uses: actions/upload-artifact@v4
+        with:
+          name: Srboli-Linux-AppImage
+          path: Srboli-Linux.AppImage
+
+
+  macos:
+    name: macOS App
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build
+        run: |
+          pyinstaller srboli.spec --clean
+
+      - name: Upload macOS build
+        uses: actions/upload-artifact@v4
         with:
           name: Srboli-macOS
           path: dist/

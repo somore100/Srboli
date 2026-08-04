@@ -1,57 +1,59 @@
-# srboli.spec — PyInstaller build spec for Srboli
+# srboli.spec
 
-from PyInstaller.utils.hooks import collect_data_files, collect_submodules
+import os
 
-block_cipher = None
+from PyInstaller.utils.hooks import collect_data_files
 
-kivy_datas = collect_data_files('kivy', includes=['**/*'])
+
+datas = [
+    ('screens', 'screens'),
+    ('app_data.py', '.'),
+    ('_overlay_app.py', '.'),
+]
+
+datas += collect_data_files('kivy')
+datas += collect_data_files('ffpyplayer')
+
+
+hiddenimports = [
+    'kivy',
+    'kivy.core.window',
+    'kivy.core.text.markup',
+    'kivy.uix.video',
+    'ffpyplayer',
+    'ffpyplayer.player',
+    'PIL',
+    'PIL.Image',
+    'cv2',
+    'psutil',
+    'pygame',
+    'pygame.mixer',
+]
+
 
 a = Analysis(
     ['main.py'],
     pathex=['.'],
     binaries=[],
-    datas=[
-        ('screens', 'screens'),
-        ('app_data.py', '.'),
-        ('logo.png', '.'),
-    ] + kivy_datas,
-
-    hiddenimports=[
-        'kivy',
-        'kivy.core.window',
-        'kivy.core.text.markup',
-        'kivy.uix.video',
-        'ffpyplayer',
-        'ffpyplayer.player',
-        'PIL',
-        'PIL.Image',
-        'PIL.ExifTags',
-        'cv2',
-        'psutil',
-        'pygame',
-        'pygame.mixer',
-        'colorsys',
-        'threading',
-        'json',
-        'subprocess',
-        're',
-        'math',
-        'collections',
-    ] + collect_submodules('kivy'),
-
+    datas=datas,
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['tkinter'],
-    cipher=block_cipher,
+    excludes=[
+        'tkinter',
+        'pytest',
+        'kivy.tests',
+    ],
     noarchive=False,
 )
 
+
 pyz = PYZ(
     a.pure,
-    a.zipped_data,
-    cipher=block_cipher
+    a.zipped_data
 )
+
 
 exe = EXE(
     pyz,
@@ -61,19 +63,16 @@ exe = EXE(
     name='Srboli',
     debug=False,
     strip=False,
-    upx=True,
+    upx=False,
     console=False,
-
-    # App icon
-    icon='logo.png',
 )
+
 
 coll = COLLECT(
     exe,
     a.binaries,
-    a.zipfiles,
     a.datas,
     strip=False,
-    upx=True,
+    upx=False,
     name='Srboli',
 )
