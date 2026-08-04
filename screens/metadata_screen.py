@@ -30,6 +30,8 @@ try:
 except ImportError:
     HAS_CV2 = False
 
+import app_data
+
 IMAGE_EXTS = {".jpg",".jpeg",".png",".bmp",".gif",".webp",".tiff",".tif"}
 VIDEO_EXTS = {".mp4",".mkv",".avi",".mov",".wmv",".flv",".webm",".m4v"}
 
@@ -158,6 +160,30 @@ def _extract_video_meta(path):
 
     return meta
 
+def _video_thumb(path):
+    """Grab a single frame from a video so it can be previewed too."""
+    if not (HAS_CV2 and HAS_PIL):
+        return None
+    try:
+        cache = app_data.subdir("metadata_cache")
+        name  = f"mt_{abs(hash(path))}.jpg"
+        thumb = os.path.join(cache, name)
+        if os.path.exists(thumb):
+            return thumb
+        cap   = cv2.VideoCapture(path)
+        total = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+        cap.set(cv2.CAP_PROP_POS_FRAMES, max(0, int(total * 0.05)))
+        ok, frame = cap.read()
+        cap.release()
+        if ok:
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            PILImage.fromarray(rgb).save(thumb, "JPEG", quality=82)
+            return thumb
+    except Exception:
+        pass
+    return None
+
+
 def _analyse_ai(meta):
     """
     Returns list of (level, reason) tuples.
@@ -179,12 +205,22 @@ def _analyse_ai(meta):
 
     # Run all rules
     for field, pattern, level, reason in AI_RULES:
-        val = ""
-        # check multiple keys
+        val = None
+        fl = field.lower()
+        # exact key match first, so e.g. field "Model" doesn't accidentally
+        # pick up the value of an unrelated "LensModel" tag
         for k, v in meta.items():
-            if field.lower() in k.lower():
+            if k.lower() == fl:
                 val = str(v)
                 break
+        if val is None:
+            # fall back to substring match, needed for prefixed keys like
+            # "PNG:parameters" or "Stream0:codec"
+            for k, v in meta.items():
+                if fl in k.lower():
+                    val = str(v)
+                    break
+        val = val or ""
         if pattern == r"^$":
             if not val:
                 findings.append((level, reason))
@@ -264,6 +300,11 @@ class MetadataScreen(Screen):
         pick_row.add_widget(self._file_lbl)
         root.add_widget(pick_row)
 
+        # ── preview ────────────────────────────────────────────────────────
+        self._preview_img = KivyImage(
+            size_hint_y=0.20, allow_stretch=True, keep_ratio=True)
+        root.add_widget(self._preview_img)
+
         # ── verdict banner ─────────────────────────────────────────────────
         self._verdict_lbl = Label(
             text="", size_hint_y=None, height=dp(36),
@@ -339,21 +380,36 @@ class MetadataScreen(Screen):
         self._find_grid.clear_widgets()
         self._meta_grid.clear_widgets()
 
+        ext = os.path.splitext(path)[1].lower()
+        if ext in IMAGE_EXTS:
+            # images can be shown straight away, no extraction needed
+            self._preview_img.source = path
+            self._preview_img.reload()
+        else:
+            self._preview_img.source = ""
+
         def _run():
-            ext = os.path.splitext(path)[1].lower()
             if ext in IMAGE_EXTS:
                 meta = _extract_image_meta(path)
+                thumb = None
             elif ext in VIDEO_EXTS:
                 meta = _extract_video_meta(path)
+                thumb = _video_thumb(path)
             else:
                 meta = {"Error": "Unsupported file type"}
+                thumb = None
 
             findings = _analyse_ai(meta)
             level, verdict_text = _verdict(findings)
 
             def _apply(dt):
+                if self._path != path:
+                    return  # a different file was picked while this ran
                 self._meta     = meta
                 self._findings = findings
+                if thumb and os.path.exists(thumb):
+                    self._preview_img.source = thumb
+                    self._preview_img.reload()
                 self._show_results(meta, findings, level, verdict_text)
 
             Clock.schedule_once(_apply, 0)
@@ -391,9 +447,10 @@ class MetadataScreen(Screen):
                 color=(0.7, 0.85, 1, 1))
             key_lbl.bind(size=key_lbl.setter("text_size"))
             val_lbl = Label(
-                text=str(v), size_hint_y=None, height=dp(22),
-                font_size=11, halign="left",
-                text_size=(None, None))
+                text=str(v), size_hint_y=None,
+                font_size=11, halign="left", valign="top")
+            val_lbl.bind(
+                width=lambda inst, w: setattr(inst, "text_size", (w, None)))
             val_lbl.bind(
                 texture_size=lambda inst, ts: setattr(
                     inst, "height", max(dp(22), ts[1])))
@@ -410,7 +467,8 @@ class MetadataScreen(Screen):
     def _export_json(self, *a):
         if not self._meta or not self._path:
             return
-        out_path = self._path + "_metadata.json"
+        base, _ext = os.path.splitext(self._path)
+        out_path = base + "_metadata.json"
         data = {
             "file":     self._path,
             "metadata": self._meta,

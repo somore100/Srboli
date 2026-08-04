@@ -1,0 +1,10 @@
+{
+  "binds": [
+    {
+      "modifier": "ctrl",
+      "key": "1",
+      "dest": "basic_tools"
+    }
+  ],
+  "enabled": true
+}

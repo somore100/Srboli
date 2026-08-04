@@ -39,80 +39,6 @@ HISTORY = 60
 PING_HOST_DEFAULT = "8.8.8.8"
 
 
-# ── tiny overlay app script written to disk and launched as subprocess ────────
-_OVERLAY_SCRIPT = """
-import sys, time, threading, collections
-import kivy
-from kivy.config import Config
-Config.set('graphics','width','300')
-Config.set('graphics','height','220')
-Config.set('graphics','always_on_top','1')
-Config.set('graphics','borderless','0')
-Config.set('input','mouse','mouse,disable_multitouch')
-from kivy.app import App
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.label import Label
-from kivy.uix.checkbox import CheckBox
-from kivy.clock import Clock
-try:
-    import psutil
-    HAS_PSUTIL = True
-except Exception:
-    HAS_PSUTIL = False
-
-KEYS = {k: '--' for k in ('CPU','RAM','Disk','FPS','Ping')}
-SHOW = {k: True for k in KEYS}
-
-class OverlayApp(App):
-    def build(self):
-        self.title = 'Srboli Stats'
-        root = BoxLayout(orientation='vertical', padding=6, spacing=3)
-        # toggles
-        tog = BoxLayout(size_hint_y=None, height=30, spacing=4)
-        self._lbls = {}
-        for k in KEYS:
-            cb = CheckBox(active=True, size=(22,22), size_hint_x=None)
-            cb.bind(active=lambda inst,v,key=k: SHOW.update({key:v}))
-            from kivy.uix.label import Label as L
-            tog.add_widget(cb)
-            tog.add_widget(L(text=k, font_size=11,
-                             size_hint_x=None, width=36))
-        root.add_widget(tog)
-        for k in KEYS:
-            lbl = Label(text=f'{k}: --', font_size=13,
-                        halign='left', size_hint_y=None, height=26)
-            lbl.bind(size=lbl.setter('text_size'))
-            self._lbls[k] = lbl
-            root.add_widget(lbl)
-        Clock.schedule_interval(self._tick, 1.0)
-        return root
-
-    def _tick(self, dt):
-        if not HAS_PSUTIL:
-            return
-        try:
-            if SHOW.get('CPU'):
-                self._lbls['CPU'].text = f"CPU: {psutil.cpu_percent():.0f}%"
-            if SHOW.get('RAM'):
-                vm = psutil.virtual_memory()
-                self._lbls['RAM'].text = (f"RAM: {vm.percent:.0f}%  "
-                    f"{vm.used/1e9:.1f}/{vm.total/1e9:.1f}GB")
-            if SHOW.get('Disk'):
-                parts = psutil.disk_partitions(all=False)
-                if parts:
-                    u = psutil.disk_usage(parts[0].mountpoint)
-                    self._lbls['Disk'].text = f"Disk: {u.percent:.0f}%"
-            if SHOW.get('FPS'):
-                self._lbls['FPS'].text = "FPS: (in main app)"
-            if SHOW.get('Ping'):
-                self._lbls['Ping'].text = "Ping: measuring..."
-        except Exception:
-            pass
-
-OverlayApp().run()
-"""
-
-
 class GraphWidget(BoxLayout):
     def __init__(self, label="", unit="", max_val=100.0,
                  color=(0.3, 0.8, 0.4), **kw):
@@ -245,6 +171,7 @@ class SystemStatsScreen(Screen):
         self._frame_times         = collections.deque(maxlen=30)
         self._update_ev           = None
         self._overlay_proc        = None   # subprocess for overlay window
+        self._overlay_log_path    = None   # set at launch time
 
         root = BoxLayout(orientation="vertical", padding=6, spacing=6)
         self.tabs = TabbedPanel(do_default_tab=False, tab_height=dp(40))
@@ -372,6 +299,7 @@ class SystemStatsScreen(Screen):
         # Use a log file so we can read errors if it crashes
         log_path = os.path.join(os.path.dirname(script_path),
                                 ".overlay_log.txt")
+        self._overlay_log_path = log_path
         try:
             env = os.environ.copy()
             # Ensure display is set on Linux
@@ -398,9 +326,11 @@ class SystemStatsScreen(Screen):
     def _check_overlay_startup(self, dt):
         """Check 2s after launch if overlay crashed and show log."""
         if self._overlay_proc and self._overlay_proc.poll() is not None:
-            log_path = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                "..", ".overlay_log.txt")
+            # read from the same folder the log was actually written to
+            # (next to whichever _overlay_app.py copy we launched — this
+            # used to be hardcoded to the root folder, which silently
+            # missed the log whenever _overlay_app.py was found in screens/)
+            log_path = self._overlay_log_path
             try:
                 with open(os.path.abspath(log_path), encoding="utf-8",
                           errors="replace") as f:
@@ -488,7 +418,8 @@ class SystemStatsScreen(Screen):
     def _update_system(self):
         if not HAS_PSUTIL:
             for lbl in self._sys_labels.values():
-                lbl.text = "psutil not installed"
+                lbl.text = ("psutil not installed\n"
+                           "Run: python3 -m pip install psutil")
             return
         try:
             freq = psutil.cpu_freq()

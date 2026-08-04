@@ -399,6 +399,8 @@ class GallerySorterScreen(Screen):
         self._queue      = []
         self._undo_stack = []
         self._instant    = True
+        self._preview_gen = 0   # bumped each _show_current(); async loads
+                                 # check this to discard stale results
 
         root = BoxLayout(orientation="vertical", spacing=3, padding=4)
 
@@ -744,7 +746,12 @@ class GallerySorterScreen(Screen):
             self._status.text = "Nothing to undo."; return
         action, src, dst_folder, moved_to = self._undo_stack.pop()
         try:
-            shutil.move(moved_to, os.path.dirname(src))
+            # Move back to the EXACT original path (not just the original
+            # folder) — _do_move() may have renamed the file to dodge a
+            # collision, so restoring to the folder alone would leave it
+            # under that renamed name while self._files still points at
+            # the old `src` path, silently orphaning the file.
+            shutil.move(moved_to, src)
             self._files.insert(self._index, src)
             self._show_current()
             self._status.text = f"Undone: {os.path.basename(src)}"
@@ -815,6 +822,8 @@ class GallerySorterScreen(Screen):
             self._strip_btn.opacity   = 0
             return
         path = self._files[self._index]
+        self._preview_gen += 1
+        gen = self._preview_gen
         self._file_lbl.text = os.path.basename(path)
         self._prog.text     = f"{self._index+1}/{len(self._files)}"
         self._ren_in.text   = ""
@@ -841,6 +850,8 @@ class GallerySorterScreen(Screen):
             except Exception:
                 info = os.path.splitext(p)[1].upper().lstrip(".")
             def _apply(dt):
+                if gen != self._preview_gen:
+                    return  # a newer file was selected while this was loading
                 self._info_lbl.text = info
             Clock.schedule_once(_apply, 0)
 
@@ -854,6 +865,8 @@ class GallerySorterScreen(Screen):
             def _load(p):
                 thumb = _make_thumb(p)
                 def _apply(dt):
+                    if gen != self._preview_gen:
+                        return  # a newer file was selected while this was loading
                     if not self._files: return
                     if thumb and os.path.exists(thumb):
                         self._preview_img.source = ""

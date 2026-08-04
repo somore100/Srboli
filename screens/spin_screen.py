@@ -228,7 +228,7 @@ class SpinScreen(Screen):
 
         # ── spin + result ──
         bottom = BoxLayout(size_hint_y=None, height=dp(52), spacing=8)
-        spin_btn = Button(text="  Spin!", font_size=17)
+        spin_btn = Button(text="Spin!", font_size=17)
         spin_btn.bind(on_release=self._spin)
         self._result_label = Label(text="", font_size=14)
         bottom.add_widget(spin_btn)
@@ -368,9 +368,9 @@ class SpinScreen(Screen):
             self.wheel.highlight_index = idx
             self.wheel.redraw()
             name = items[idx]["name"] if idx is not None else "?"
-            self._result_label.text = f"🏆  {name}"
+            self._result_label.text = f"Winner: {name}"
             self._history.appendleft(name)
-            Popup(title="🎉 Result!",
+            Popup(title="Result!",
                   content=Label(text=name, font_size=22, halign="center"),
                   size_hint=(0.55, 0.38)).open()
 

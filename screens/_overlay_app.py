@@ -119,7 +119,7 @@ class OverlayApp(App):
 
         if not HAS_PSUTIL:
             for lbl in self._lbls.values():
-                lbl.text = "psutil missing"
+                lbl.text = "psutil missing — run: python3 -m pip install psutil"
             return
 
         try:

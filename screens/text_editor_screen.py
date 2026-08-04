@@ -213,7 +213,8 @@ class TextEditorScreen(Screen):
 
         # format hint label
         self._fmt_hint = Label(
-            text="Plain text — colour and size not preserved.",
+            text="Plain text — colour not preserved. Zoom is just for "
+                 "editing, it isn't saved to the file.",
             font_size=11, size_hint_y=None, height=dp(20),
             halign="left", color=(0.6, 0.8, 1, 1))
         self._fmt_hint.bind(size=self._fmt_hint.setter("text_size"))
@@ -243,15 +244,16 @@ class TextEditorScreen(Screen):
         # ── format row ───────────────────────────────────────────────────────
         fmt = BoxLayout(size_hint_y=None, height=dp(36), spacing=5)
 
-        fmt.add_widget(Label(text="Size:", size_hint_x=None,
-                             width=dp(38), font_size=12))
-        self._font_sl = Slider(min=10, max=48, value=15,
+        fmt.add_widget(Label(text="Zoom:", size_hint_x=None,
+                             width=dp(42), font_size=12))
+        self._base_font_size = 15
+        self._font_sl = Slider(min=50, max=250, value=100,
                                size_hint_x=None, width=dp(100))
-        self._font_lbl = Label(text="15", size_hint_x=None,
-                               width=dp(26), font_size=12)
+        self._font_lbl = Label(text="100%", size_hint_x=None,
+                               width=dp(40), font_size=12)
         self._font_sl.bind(value=lambda s, v: (
-            setattr(self._ed, "font_size", int(v)),
-            setattr(self._font_lbl, "text", str(int(v)))))
+            setattr(self._ed, "font_size", int(self._base_font_size * v / 100)),
+            setattr(self._font_lbl, "text", f"{int(v)}%")))
         fmt.add_widget(self._font_sl)
         fmt.add_widget(self._font_lbl)
 
@@ -303,9 +305,12 @@ class TextEditorScreen(Screen):
 
     def _on_fmt_change(self, spinner, text):
         hints = {
-            ".txt": "Plain text — colour and size not preserved.",
-            ".html": "HTML export — colour [color=hex]tags[/color] rendered, size preserved.",
-            ".md": "Markdown — basic formatting, no colour.",
+            ".txt": "Plain text — colour not preserved. Zoom is just for "
+                    "editing, it isn't saved to the file.",
+            ".html": "HTML export — colour [color=hex]tags[/color] rendered. "
+                     "Zoom is just for editing, it isn't saved to the file.",
+            ".md": "Markdown — basic formatting, no colour. Zoom is just "
+                   "for editing, it isn't saved to the file.",
         }
         key = text.split(" ")[0]
         self._fmt_hint.text = hints.get(key, "")
