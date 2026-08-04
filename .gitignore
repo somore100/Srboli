@@ -2,16 +2,15 @@
 .venv/
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
 # Logs
 screens/.overlay_log.txt
 
-# Python cache
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+# Runtime cache
+srboli_data/gallery_cache/
+srboli_data/metadata_cache/
 
-# Build output
+# PyInstaller temporary files
 build/
-dist/
