@@ -6,6 +6,19 @@ for p in (app_dir, os.path.join(app_dir, "_internal")):
     if os.path.isdir(p) and p not in sys.path:
         sys.path.insert(0, p)
 
+# ── overlay dispatch ─────────────────────────────────────────────────────────
+# In a PyInstaller build, sys.executable IS Srboli itself (there's no
+# separate python interpreter to hand a script path to). So system_stats
+# launches the overlay as `Srboli --overlay` instead of `python _overlay_app.py`
+# when frozen. This has to be checked and handled BEFORE any Kivy Config
+# calls below — Kivy only supports one Window per process, so the overlay
+# (which sets its own small always-on-top window config) must take over this
+# process completely rather than running after the main app's config exists.
+if len(sys.argv) > 1 and sys.argv[1] == "--overlay":
+    sys.path.insert(0, os.path.join(app_dir, "screens"))
+    import _overlay_app  # noqa: F401 — runs OverlayApp().run() itself
+    sys.exit(0)
+
 from kivy.config import Config
 Config.set("input", "mouse", "mouse,disable_multitouch")
 Config.set("kivy", "exit_on_escape", "0")

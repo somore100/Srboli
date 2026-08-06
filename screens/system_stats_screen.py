@@ -306,9 +306,18 @@ class SystemStatsScreen(Screen):
             if not env.get("DISPLAY"):
                 env["DISPLAY"] = ":0"
 
+            # Packaged (PyInstaller) builds: sys.executable IS Srboli itself,
+            # there's no separate python interpreter to run script_path with.
+            # Re-exec the packaged binary with a flag instead — see the
+            # dispatch at the top of main.py.
+            if getattr(sys, "frozen", False):
+                launch_args = [sys.executable, "--overlay"]
+            else:
+                launch_args = [sys.executable, script_path]
+
             with open(log_path, "w") as log_f:
                 self._overlay_proc = subprocess.Popen(
-                    [sys.executable, script_path],
+                    launch_args,
                     stdout=log_f, stderr=log_f,
                     env=env,
                     start_new_session=True)  # fully detach from parent

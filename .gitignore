@@ -14,3 +14,5 @@ srboli_data/metadata_cache/
 
 # PyInstaller temporary files
 build/
+.srboli_overlay_data.json
+.overlay_log.txt
