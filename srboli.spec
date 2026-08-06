@@ -1,20 +1,12 @@
 # srboli.spec
-
 import os
-
 from PyInstaller.utils.hooks import collect_data_files
-
-
 datas = [
     ('screens', 'screens'),
     ('app_data.py', '.'),
-    ('_overlay_app.py', '.'),
 ]
-
 datas += collect_data_files('kivy')
 datas += collect_data_files('ffpyplayer')
-
-
 hiddenimports = [
     'kivy',
     'kivy.core.window',
@@ -29,8 +21,6 @@ hiddenimports = [
     'pygame',
     'pygame.mixer',
 ]
-
-
 a = Analysis(
     ['main.py'],
     pathex=['.'],
@@ -47,14 +37,10 @@ a = Analysis(
     ],
     noarchive=False,
 )
-
-
 pyz = PYZ(
     a.pure,
     a.zipped_data
 )
-
-
 exe = EXE(
     pyz,
     a.scripts,
@@ -66,8 +52,6 @@ exe = EXE(
     upx=False,
     console=False,
 )
-
-
 coll = COLLECT(
     exe,
     a.binaries,
