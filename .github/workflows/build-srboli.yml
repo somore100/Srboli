@@ -1,77 +1,63 @@
 name: Build Srboli
-
 on:
   push:
     tags:
       - "v*"
   workflow_dispatch:
-
 env:
   PYTHON_VERSION: "3.10"
-
 jobs:
-
   windows:
     name: Windows EXE
     runs-on: windows-latest
-
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
-
       - name: Build EXE
+        env:
+          KIVY_GL_BACKEND: angle_sdl2
         run: |
           pyinstaller srboli.spec --clean
-
       - name: Upload Windows build
         uses: actions/upload-artifact@v4
         with:
           name: Srboli-Windows
           path: dist/
-
-
   linux:
     name: Linux AppImage
     runs-on: ubuntu-latest
-
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-
       - name: Install system packages
         run: |
           sudo apt update
-          sudo apt install -y fuse libfuse2
+          sudo apt install -y fuse libfuse2 xvfb
           pip install -r requirements.txt
           pip install pyinstaller
-
       - name: Build
         run: |
-          pyinstaller srboli.spec
-
+          xvfb-run -a pyinstaller srboli.spec
       - name: Prepare AppImage
         run: |
           mkdir -p Srboli.AppDir/usr/bin
           cp -r dist/Srboli/* Srboli.AppDir/usr/bin/
-
           cp logo.png Srboli.AppDir/
-
           cat > Srboli.AppDir/Srboli.desktop <<EOF
           [Desktop Entry]
           Name=Srboli
@@ -80,45 +66,35 @@ jobs:
           Type=Application
           Categories=Utility;
           EOF
-
           ln -s usr/bin/Srboli Srboli.AppDir/AppRun
-
       - name: Build AppImage
         run: |
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x appimagetool-x86_64.AppImage
           ./appimagetool-x86_64.AppImage Srboli.AppDir Srboli.AppImage
-
       - uses: actions/upload-artifact@v4
         with:
           name: Srboli-Linux-AppImage
           path: Srboli.AppImage
-
-
-
   macos:
     name: macOS App
     runs-on: macos-latest
-
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
-
       - name: Build
         run: |
           pyinstaller srboli.spec --clean
-
       - name: Upload macOS build
         uses: actions/upload-artifact@v4
         with:
