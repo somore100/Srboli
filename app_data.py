@@ -1,16 +1,53 @@
 # app_data.py — Central data directory manager
-# Default: srboli_data/ next to main.py (Linux/Mac) or %APPDATA%/Srboli (Windows)
-# Remembers choice in .srboli_config.json next to main.py
-# MOVES data (not copies) when changing location
+#
+# Dev mode (python3 main.py): srboli_data/ next to main.py, same as before.
+#
+# Packaged builds (AppImage / .exe / .app): writing next to the executable
+# doesn't work reliably —
+#   - AppImages mount themselves read-only at /tmp/.mount_XXXXXX/, so
+#     anything "next to the exe" can NEVER be written there, ever.
+#   - Program Files (Windows) and /Applications (macOS) both typically
+#     require admin/elevated rights to write into.
+# So frozen builds use the platform's real user-data location instead:
+#   Linux:   ~/.local/share/Srboli/          (XDG_DATA_HOME if set)
+#   Windows: %APPDATA%/Srboli/
+#   macOS:   ~/Library/Application Support/Srboli/
+#
+# Remembers choice in .srboli_config.json (same directory logic as above).
+# MOVES data (not copies) when changing location.
 
 import os, json, shutil, sys
 
-_APP_ROOT    = os.path.dirname(os.path.abspath(__file__))
-_CONFIG_FILE = os.path.join(_APP_ROOT, ".srboli_config.json")
-_APP_DIR     = None
+_APP_ROOT = os.path.dirname(os.path.abspath(__file__))
+_FROZEN   = getattr(sys, "frozen", False)
+
+
+def _user_data_root():
+    """Platform-appropriate, always-writable location for app data.
+    Only used for frozen/packaged builds — see module docstring."""
+    if sys.platform.startswith("win"):
+        base = os.environ.get("APPDATA") or os.path.expanduser("~")
+        return os.path.join(base, "Srboli")
+    if sys.platform == "darwin":
+        return os.path.join(os.path.expanduser("~"),
+                             "Library", "Application Support", "Srboli")
+    # Linux and other unix-likes
+    base = os.environ.get("XDG_DATA_HOME") or os.path.join(
+        os.path.expanduser("~"), ".local", "share")
+    return os.path.join(base, "Srboli")
+
+
+if _FROZEN:
+    _CONFIG_FILE = os.path.join(_user_data_root(), ".srboli_config.json")
+else:
+    _CONFIG_FILE = os.path.join(_APP_ROOT, ".srboli_config.json")
+
+_APP_DIR = None
 
 
 def _default_dir():
+    if _FROZEN:
+        return os.path.join(_user_data_root(), "data")
     if sys.platform.startswith("win"):
         base = os.environ.get("APPDATA", _APP_ROOT)
         return os.path.join(base, "Srboli", "data")
@@ -103,6 +140,7 @@ def _load_config():
 
 def _save_config(data: dict):
     try:
+        os.makedirs(os.path.dirname(_CONFIG_FILE), exist_ok=True)
         with open(_CONFIG_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
     except Exception as e:
