@@ -96,3 +96,6 @@ srboli/
 ## License
 
 MIT
+
+<img width="937" height="637" alt="Srboli 2026-08-24 18-43-34-V2" src="https://github.com/user-attachments/assets/943e84d4-d894-47bc-b1f9-ec6149f3d7bf" />
+<img width="937" height="637" alt="Srboli 2026-08-24 18-43-14-V2" src="https://github.com/user-attachments/assets/22bde96b-28af-4b57-97bf-23872f33dfc3" />
