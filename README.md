@@ -1,6 +1,16 @@
 # Srboli
 
-A pocket swiss-knife desktop app built with Python + Kivy.
+**A pocket swiss-army knife desktop app** — 16 tools in one window, built with Python + Kivy.
+
+![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows-lightgrey)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+<p align="center">
+  <img width="49%" alt="Srboli main screen" src="https://github.com/user-attachments/assets/943e84d4-d894-47bc-b1f9-ec6149f3d7bf" />
+  <img width="49%" alt="Srboli tool screen" src="https://github.com/user-attachments/assets/22bde96b-28af-4b57-97bf-23872f33dfc3" />
+</p>
+
+From a countdown timer to a metadata inspector, Srboli bundles the small utilities you'd otherwise hunt down as separate apps into one lightweight desktop tool, with global shortcuts to jump between them instantly.
 
 ## Features
 
@@ -26,7 +36,7 @@ A pocket swiss-knife desktop app built with Python + Kivy.
 ## Requirements
 
 - Python 3.10+
-- Linux (PopOS/Ubuntu) or Windows
+- Linux (Pop!_OS / Ubuntu) or Windows
 
 ## Setup
 
@@ -47,23 +57,25 @@ pip install -r requirements.txt
 python3 main.py
 ```
 
-## Building executable (Linux)
+## Building an executable
 
+Uses [PyInstaller](https://pyinstaller.org/) via the included `srboli.spec`.
+
+**Linux:**
 ```bash
 pip install pyinstaller
 pyinstaller srboli.spec
 # Output: dist/Srboli
 ```
 
-## Building executable (Windows)
-
+**Windows:**
 ```bat
 pip install pyinstaller
 pyinstaller srboli.spec
 REM Output: dist\Srboli.exe
 ```
 
-## Project structure
+## Project Structure
 
 ```
 srboli/
@@ -71,9 +83,8 @@ srboli/
 ├── app_data.py          # Data directory manager
 ├── _overlay_app.py      # System stats overlay (separate process)
 ├── requirements.txt
-├── srboli.spec          # PyInstaller spec
+├── srboli.spec           # PyInstaller spec
 └── screens/
-    ├── __init__.py
     ├── backrooms_screen.py
     ├── basic_tools_screen.py
     ├── full_editor_screen.py
@@ -93,9 +104,10 @@ srboli/
     └── unhelpful_calc_screen.py
 ```
 
+## Contributing
+
+Issues and pull requests are welcome — new tool screens, bug fixes, or packaging improvements (a macOS build is an open gap) are all fair game.
+
 ## License
 
 MIT
-
-<img width="937" height="637" alt="Srboli 2026-08-24 18-43-34-V2" src="https://github.com/user-attachments/assets/943e84d4-d894-47bc-b1f9-ec6149f3d7bf" />
-<img width="937" height="637" alt="Srboli 2026-08-24 18-43-14-V2" src="https://github.com/user-attachments/assets/22bde96b-28af-4b57-97bf-23872f33dfc3" />
