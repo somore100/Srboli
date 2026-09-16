@@ -3,7 +3,6 @@
 **A pocket swiss-army knife desktop app** — 16 tools in one window, built with Python + Kivy.
 
 ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows-lightgrey)
-![License](https://img.shields.io/badge/license-MIT-green)
 
 <p align="center">
   <img width="49%" alt="Srboli main screen" src="https://github.com/user-attachments/assets/943e84d4-d894-47bc-b1f9-ec6149f3d7bf" />
@@ -110,4 +109,10 @@ Issues and pull requests are welcome — new tool screens, bug fixes, or packagi
 
 ## License
 
-MIT
+This project is source-available software.
+
+You are free to view, study, modify, fork, and share the project for non-commercial purposes. Addons, plugins, extensions, and integrations are also permitted under the license terms.
+
+Commercial distribution of this project, or substantially derived versions of it, is not permitted without permission from the copyright holder.
+
+See the [LICENSE](LICENSE) file for the full terms.
