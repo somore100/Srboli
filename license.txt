@@ -1,21 +1,118 @@
-MIT License
+# Source-Available Community License v1.0
 
-Copyright (c) 2026 Somore100
+Copyright © 2026 somore100. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+## 1. Definitions
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+In this License:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+* **“Software”** means the source code, documentation, assets, and other materials distributed with this License.
+* **“Copyright Holder”** means the copyright owner of the Software.
+* **“Fork”** means a modified or independently maintained version of the Software.
+* **“Addon”** means a plugin, extension, theme, integration, script, or other separate work that extends the Software without incorporating a substantial portion of its source code.
+* **“Commercial Distribution”** means selling, licensing, renting, sublicensing, or otherwise distributing the Software or a substantially derived version of the Software as a product or service for payment or other commercial benefit.
+
+## 2. Permissions
+
+Subject to the restrictions in this License, you are permitted to:
+
+1. View, study, and learn from the Software.
+2. Use the Software for personal, educational, research, and non-commercial purposes.
+3. Modify the Software for permitted purposes.
+4. Create and distribute non-commercial Forks.
+5. Create and distribute Addons, plugins, extensions, themes, and integrations.
+6. Contribute modifications or improvements to the project.
+7. Share the Software or modified versions with others for free.
+
+## 3. Commercial Restrictions
+
+You may **not**, without prior written permission from the Copyright Holder:
+
+1. Sell the Software itself.
+2. Sell, license, or commercially distribute a Fork that is substantially derived from the Software.
+3. Rebrand or substantially modify the Software and offer it as a competing commercial product.
+4. Package the Software, or a substantially derived version of it, as a paid product or service where the Software is a substantial part of what is being sold.
+5. Create a commercial distribution that falsely represents itself as the official project or as being produced, endorsed, or maintained by the Copyright Holder.
+
+These restrictions apply regardless of whether the Software has been modified.
+
+## 4. Commercial Use of Independent Addons
+
+Commercial Addons, plugins, extensions, themes, integrations, and services are permitted provided that they:
+
+* are sufficiently independent from the Software;
+* do not contain a substantial portion of the Software's source code; and
+* do not falsely claim to be official or endorsed by the Copyright Holder.
+
+Nothing in this section grants permission to commercially distribute the Software itself or a substantially derived version of it.
+
+## 5. Forks and Community Development
+
+Non-commercial Forks and community development are encouraged.
+
+Forks may modify, improve, or extend the Software and may be distributed freely.
+
+Forks must clearly indicate that they are independent projects and must not imply that they are the official project or endorsed by the Copyright Holder.
+
+## 6. Attribution
+
+When redistributing the Software or a Fork, you must:
+
+* retain this License;
+* retain applicable copyright notices;
+* clearly indicate significant modifications where reasonably practical.
+
+You may not remove or alter copyright notices belonging to the Copyright Holder.
+
+## 7. Name and Branding
+
+The project name, logos, artwork, and other official branding associated with the Software are not automatically granted under this License.
+
+You may truthfully describe a project as:
+
+* “based on Srboli”; or
+* “Srboli-compatible”
+
+provided that such wording does not imply official affiliation, endorsement, or authorship.
+
+## 8. Contributions
+
+Unless a separate written agreement states otherwise, contributions submitted to the project are provided under the terms of this License.
+
+By submitting a contribution, you represent that you have the necessary rights to submit it under these terms.
+
+## 9. Third-Party Components
+
+The Software may include or depend upon third-party software, libraries, models, assets, or other materials.
+
+Such components remain subject to their respective licenses. This License does not replace or override those licenses.
+
+## 10. No Warranty
+
+The Software is provided **“AS IS”**, without warranty of any kind, express or implied.
+
+To the maximum extent permitted by applicable law, the Copyright Holder shall not be liable for any claim, damages, or other liability arising from the use of the Software.
+
+## 11. Termination
+
+Your rights under this License terminate automatically if you violate its terms.
+
+Upon termination, you must cease activities that are no longer permitted by this License.
+
+Permissions may be reinstated if the violation is cured and the Copyright Holder provides written permission.
+
+## 12. Reservation of Rights
+
+All rights not expressly granted by this License are reserved by the Copyright Holder.
+
+Commercial use or distribution that is not expressly permitted by this License requires prior written permission from the Copyright Holder.
+
+## 13. License Status
+
+This is **source-available software** and is **not an OSI-approved Open Source license**.
+
+The purpose of this License is to allow public access, learning, modification, community development, and non-commercial redistribution while reserving commercial distribution rights to the Copyright Holder.
+
+---
+
+**Copyright © 2026 somore100. All rights reserved.**
