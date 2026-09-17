@@ -67,45 +67,26 @@ def try_import(module_path, class_name):
         return Placeholder
 
 
-SCREENS = [
-    ("loading_timer",  "screens.loading_timer_screen",    "LoadingTimerScreen"),
-    ("text_editor",    "screens.text_editor_screen",      "TextEditorScreen"),
-    ("script_mode",    "screens.script_mode_screen",      "ScriptModeScreen"),
-    ("full_editor",    "screens.full_editor_screen",      "FullEditorScreen"),
-    ("basic_tools",    "screens.basic_tools_screen",      "BasicToolsScreen"),
-    ("system_stats",   "screens.system_stats_screen",     "SystemStatsScreen"),
-    ("gallery",        "screens.gallery_sorter_screen",   "GallerySorterScreen"),
-    ("music",          "screens.music_screen",            "MusicScreen"),
-    ("random_tools",   "screens.randomizer",              "UtilityToolsScreen"),
-    ("image_text",     "screens.image_text_screen",       "ImageTextScreen"),
-    ("morse",          "screens.morse_screen",            "MorseScreen"),
-    ("backrooms",      "screens.backrooms_screen",        "BackroomsScreen"),
-    ("spin",           "screens.spin_screen",             "SpinScreen"),
-    ("unhelpful_calc", "screens.unhelpful_calc_screen",   "UnhelpfulCalcScreen"),
-    ("shape_gen",      "screens.shape_generator_screen",  "ShapeGeneratorScreen"),
-    ("metadata",       "screens.metadata_screen",         "MetadataScreen"),
-    ("quickswitcher",  "screens.quickswitcher_screen",    "QuickSwitcherScreen"),
-]
+from screens.registry import SCREENS, LABELS
+from screens.settings_screen import load_settings, effective_menu_order
 
-LABELS = {
-    "loading_timer":  "Loading / Timer",
-    "text_editor":    "Text Editor",
-    "script_mode":    "Script / Teleprompter",
-    "full_editor":    "Full Editor",
-    "basic_tools":    "Basic Tools",
-    "system_stats":   "System Stats",
-    "gallery":        "Gallery Sorter",
-    "music":          "Music Player",
-    "random_tools":   "Random Tools",
-    "image_text":     "Image to Text",
-    "morse":          "Morse Converter",
-    "backrooms":      "Backrooms",
-    "spin":           "Wheel of Names",
-    "unhelpful_calc": "Unhelpful Calc",
-    "shape_gen":      "Shape Generator",
-    "metadata":       "Metadata Inspector",
-    "quickswitcher":  "Quick Switcher",
-}
+# "settings" is a core route like "dashboard" — always eager-loaded,
+# not part of the manageable/hideable list in registry.SCREENS.
+SETTINGS_ROUTE = ("settings", "screens.settings_screen", "SettingsScreen")
+
+
+def ensure_screen_loaded(sm, route):
+    """Build + add a screen to the ScreenManager if it isn't already
+    present. Used both eagerly (non-lazy startup) and on-demand (lazy
+    mode, or a Quick Switcher bind targeting a not-yet-built screen).
+    Returns True if the screen is present after this call."""
+    if sm.has_screen(route):
+        return True
+    for r, mod, cls_name in SCREENS:
+        if r == route:
+            sm.add_widget(try_import(mod, cls_name)(name=route))
+            return True
+    return False
 
 
 class Dashboard(Screen):
@@ -117,11 +98,18 @@ class Dashboard(Screen):
         self.clear_widgets()
         root = BoxLayout(orientation="vertical", padding=10, spacing=8)
 
-        hdr = BoxLayout(orientation="vertical", size_hint_y=None, height=70)
-        hdr.add_widget(Label(text="[b]Srboli[/b]", markup=True,
+        hdr = BoxLayout(size_hint_y=None, height=70)
+        title_col = BoxLayout(orientation="vertical")
+        title_col.add_widget(Label(text="[b]Srboli[/b]", markup=True,
                              font_size=32, size_hint_y=None, height=48))
-        hdr.add_widget(Label(text="your pocket swiss-knife",
+        title_col.add_widget(Label(text="your pocket swiss-knife",
                              font_size=11, size_hint_y=None, height=18))
+        hdr.add_widget(title_col)
+        gear = Button(text="\u2699 Settings", size_hint=(None, None),
+                     width=100, height=40, font_size=12,
+                     pos_hint={"center_y": 0.5})
+        gear.bind(on_release=lambda *a: setattr(self.manager, "current", "settings"))
+        hdr.add_widget(gear)
         root.add_widget(hdr)
 
         dir_row = BoxLayout(size_hint_y=None, height=dp(28), spacing=6)
@@ -139,10 +127,9 @@ class Dashboard(Screen):
         sv = ScrollView()
         grid = GridLayout(cols=1, spacing=5, size_hint_y=None, padding=(6,6))
         grid.bind(minimum_height=grid.setter("height"))
-        for route, label in LABELS.items():
+        for route, label in effective_menu_order():
             btn = Button(text=label, size_hint_y=None, height=50, font_size=14)
-            btn.bind(on_release=lambda inst, r=route: setattr(
-                self.manager, "current", r))
+            btn.bind(on_release=lambda inst, r=route: self._goto(r))
             grid.add_widget(btn)
         sv.add_widget(grid)
         root.add_widget(sv)
@@ -151,9 +138,14 @@ class Dashboard(Screen):
                               size_hint_y=None, height=18))
         self.add_widget(root)
 
+    def _goto(self, route):
+        ensure_screen_loaded(self.manager, route)
+        self.manager.current = route
+
     def on_enter(self, *a):
-        if hasattr(self, "_dir_lbl"):
-            self._dir_lbl.text = f"Data: {app_data.get_data_dir()}"
+        # rebuild fully so screen-list reorders/hides made in Settings
+        # show up immediately on returning to the dashboard
+        self._build()
 
     def _change_dir(self, *a):
         chooser = FileChooserIconView(
@@ -214,48 +206,31 @@ class SrboliApp(App):
         self.title = "Srboli"
         sm = ScreenManager(transition=NoTransition())
         sm.add_widget(Dashboard(name="dashboard"))
-        for route, mod, cls_name in SCREENS:
-            sm.add_widget(try_import(mod, cls_name)(name=route))
+        sm.add_widget(try_import(SETTINGS_ROUTE[1], SETTINGS_ROUTE[2])(
+            name=SETTINGS_ROUTE[0]))
+
+        settings_cfg = load_settings()
+        lazy = settings_cfg.get("lazy_load", False)
+        if lazy:
+            # Only "quickswitcher" is eager-loaded besides dashboard/settings
+            # (it needs to exist for its own config-editing screen; the
+            # global keybind listener itself doesn't need the screen built).
+            # Everything else is built on first navigation via
+            # ensure_screen_loaded(), called from Dashboard._goto() and
+            # from the Quick Switcher's key dispatcher.
+            ensure_screen_loaded(sm, "quickswitcher")
+        else:
+            for route, mod, cls_name in SCREENS:
+                sm.add_widget(try_import(mod, cls_name)(name=route))
         sm.current = "dashboard"
 
         # Install global quick switcher (works from any screen)
         try:
             from screens.quickswitcher_screen import install_global_switcher
-            install_global_switcher(sm)
+            install_global_switcher(
+                sm, ensure_loader=(lambda r: ensure_screen_loaded(sm, r)))
         except Exception as e:
             print(f"QuickSwitcher not installed: {e}")
-
-        # Start global FPS writer for overlay (runs regardless of active screen)
-        import collections as _col
-        import time as _time
-        import json as _json
-
-        _frame_times = _col.deque(maxlen=30)
-        _overlay_json = os.path.join(app_dir, ".srboli_overlay_data.json")
-
-        def _fps_tick(dt):
-            _frame_times.append(_time.monotonic())
-            times = list(_frame_times)
-            if len(times) >= 2:
-                elapsed = times[-1] - times[0]
-                fps = (len(times) - 1) / elapsed if elapsed > 0 else 0.0
-            else:
-                fps = 0.0
-            try:
-                try:
-                    with open(_overlay_json, encoding="utf-8") as f:
-                        data = _json.load(f)
-                except Exception:
-                    data = {}
-                data["fps"] = round(fps, 1)
-                data["ts"]  = _time.time()
-                with open(_overlay_json, "w", encoding="utf-8") as f:
-                    _json.dump(data, f)
-            except Exception:
-                pass
-
-        from kivy.clock import Clock as _Clock
-        _Clock.schedule_interval(_fps_tick, 1.0)
 
         return sm
 

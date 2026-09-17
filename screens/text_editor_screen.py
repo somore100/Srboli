@@ -57,12 +57,25 @@ class ColorWheel(Widget):
         seg = self._segments
         with self.canvas:
             for i in range(seg):
-                hue = i / seg
+                ang_start = i * (360 / seg)
+                ang_end   = ang_start + (360 / seg) + 0.5
+                # BUG FIX: Kivy's Ellipse angle_start/angle_end use a
+                # different convention than the touch-picking math below
+                # (Kivy: 0deg = north/up, angle increases CLOCKWISE.
+                #  _pick()/atan2: 0deg = east, angle increases CCW).
+                # Without correcting for this, the wedge painted under
+                # the user's finger did not match the hue _pick() computed
+                # for that same screen position - the wheel's displayed
+                # colour and the colour actually picked disagreed.
+                # Convert this wedge's Kivy-angle midpoint to the
+                # equivalent standard (atan2-style) angle before choosing
+                # its hue, so the two stay in sync.
+                kivy_mid  = ang_start + (360 / seg) / 2
+                theta_std = (90 - kivy_mid) % 360
+                hue = theta_std / 360
                 import colorsys
                 r, g, b = colorsys.hsv_to_rgb(hue, 1.0, 1.0)
                 Color(r, g, b, 1)
-                ang_start = i * (360 / seg)
-                ang_end   = ang_start + (360 / seg) + 0.5
                 Ellipse(pos=(cx-R, cy-R), size=(R*2, R*2),
                         angle_start=ang_start, angle_end=ang_end)
             # white centre gradient (fake saturation)

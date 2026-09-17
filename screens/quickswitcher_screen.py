@@ -2,7 +2,7 @@
 # Quick Switcher — assign keybinds to jump to any Srboli screen instantly
 # Also supports a "lock / log out" keybind that returns to dashboard
 
-import os, sys, json, subprocess
+import os, sys, re, json, shlex, subprocess
 
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
@@ -13,6 +13,7 @@ from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 from kivy.uix.spinner import Spinner
 from kivy.uix.togglebutton import ToggleButton
+from kivy.uix.checkbox import CheckBox
 from kivy.uix.filechooser import FileChooserIconView
 from kivy.uix.popup import Popup
 from kivy.core.window import Window
@@ -20,34 +21,16 @@ from kivy.clock import Clock
 from kivy.metrics import dp
 
 import app_data
+from screens.registry import SCREENS as _REG_SCREENS, LABELS as _REG_LABELS
 
-# All available Srboli routes (must match SCREENS in main.py)
-ALL_ROUTES = [
-    "dashboard", "loading_timer", "text_editor", "script_mode",
-    "full_editor", "basic_tools", "system_stats", "gallery",
-    "music", "random_tools", "image_text", "morse", "backrooms",
-    "spin", "unhelpful_calc", "shape_gen", "metadata", "quickswitcher",
-]
+# All available Srboli routes — sourced from the same registry main.py
+# uses, so this can't drift out of sync with the real screen list anymore.
+ALL_ROUTES = ["dashboard", "settings"] + [r for r, _, _ in _REG_SCREENS]
 
 ROUTE_LABELS = {
-    "dashboard":      "Dashboard (home)",
-    "loading_timer":  "Loading / Timer",
-    "text_editor":    "Text Editor",
-    "script_mode":    "Script Mode",
-    "full_editor":    "Full Editor",
-    "basic_tools":    "Basic Tools",
-    "system_stats":   "System Stats",
-    "gallery":        "Gallery Sorter",
-    "music":          "Music Player",
-    "random_tools":   "Random Tools",
-    "image_text":     "Image to Text",
-    "morse":          "Morse Converter",
-    "backrooms":      "Backrooms",
-    "spin":           "Wheel of Names",
-    "unhelpful_calc": "Unhelpful Calc",
-    "shape_gen":      "Shape Generator",
-    "metadata":       "Metadata Inspector",
-    "quickswitcher":  "Quick Switcher",
+    "dashboard": "Dashboard (home)",
+    "settings":  "Settings",
+    **_REG_LABELS,
 }
 
 MODIFIERS = ["ctrl", "alt", "shift", "ctrl+shift", "ctrl+alt", "alt+shift"]
@@ -57,6 +40,18 @@ KEYS_F     = [f"f{i}" for i in range(1, 13)]
 ALL_KEYS   = KEYS_ALPHA + KEYS_NUM + KEYS_F
 
 CONFIG_FILE_NAME = "quickswitcher.json"
+
+# Bind target types. "external" kept as the internal key (not renamed)
+# so existing saved quickswitcher.json binds from before this feature
+# keep working without a migration step.
+TARGET_TYPES = [
+    ("screen",       "In-app screen"),
+    ("external",     "File/Script (fixed)"),
+    ("quick_file",   "Quick file picker"),
+    ("app_launcher", "App launcher (search)"),
+    ("command",      "Terminal command"),
+]
+TARGET_LABEL_TO_KEY = {label: key for key, label in TARGET_TYPES}
 
 
 def _home():
@@ -77,6 +72,214 @@ def _launch_external(path):
                 subprocess.Popen(["xdg-open", path])
     except Exception as e:
         print(f"QuickSwitcher: failed to launch {path}: {e}")
+
+
+def discover_installed_apps():
+    """Best-effort cross-platform list of installed applications, for the
+    App Launcher bind type. Linux: parses .desktop files. Windows: Start
+    Menu shortcuts/exes. macOS: *.app bundles. Not exhaustive on any
+    platform, but covers the common case without extra dependencies."""
+    apps = []
+    try:
+        if sys.platform.startswith("linux"):
+            dirs = ["/usr/share/applications",
+                    "/usr/local/share/applications",
+                    os.path.join(_home(), ".local/share/applications")]
+            seen = set()
+            for d in dirs:
+                if not os.path.isdir(d):
+                    continue
+                for fn in os.listdir(d):
+                    if not fn.endswith(".desktop"):
+                        continue
+                    try:
+                        name = exec_cmd = None
+                        nodisplay = False
+                        with open(os.path.join(d, fn), encoding="utf-8",
+                                  errors="replace") as f:
+                            for line in f:
+                                line = line.strip()
+                                if line.startswith("Name=") and name is None:
+                                    name = line.split("=", 1)[1]
+                                elif line.startswith("Exec=") and exec_cmd is None:
+                                    exec_cmd = line.split("=", 1)[1]
+                                elif line.startswith("NoDisplay=true"):
+                                    nodisplay = True
+                        if name and exec_cmd and not nodisplay and name not in seen:
+                            clean = re.sub(r"%[a-zA-Z]", "", exec_cmd).strip()
+                            apps.append({"name": name, "exec": clean})
+                            seen.add(name)
+                    except Exception:
+                        continue
+        elif sys.platform.startswith("win"):
+            dirs = [
+                os.path.join(os.environ.get("ProgramData", ""), "Microsoft",
+                             "Windows", "Start Menu", "Programs"),
+                os.path.join(os.environ.get("APPDATA", ""), "Microsoft",
+                             "Windows", "Start Menu", "Programs"),
+            ]
+            seen = set()
+            for d in dirs:
+                if not d or not os.path.isdir(d):
+                    continue
+                for root, _dirs, files in os.walk(d):
+                    for fn in files:
+                        if fn.lower().endswith((".lnk", ".exe")):
+                            name = os.path.splitext(fn)[0]
+                            if name not in seen:
+                                apps.append({"name": name,
+                                            "exec": os.path.join(root, fn)})
+                                seen.add(name)
+        elif sys.platform == "darwin":
+            dirs = ["/Applications", os.path.join(_home(), "Applications")]
+            seen = set()
+            for d in dirs:
+                if not os.path.isdir(d):
+                    continue
+                for fn in os.listdir(d):
+                    if fn.endswith(".app"):
+                        name = fn[:-4]
+                        if name not in seen:
+                            apps.append({"name": name,
+                                        "exec": os.path.join(d, fn)})
+                            seen.add(name)
+    except Exception as e:
+        print(f"QuickSwitcher: app discovery error: {e}")
+    apps.sort(key=lambda a: a["name"].lower())
+    return apps
+
+
+_APPS_CACHE = {"apps": None}
+
+
+def _get_apps(force_refresh=False):
+    if force_refresh or _APPS_CACHE["apps"] is None:
+        _APPS_CACHE["apps"] = discover_installed_apps()
+    return _APPS_CACHE["apps"]
+
+
+def launch_app(app_entry):
+    try:
+        if sys.platform.startswith("win"):
+            os.startfile(app_entry["exec"])
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", app_entry["exec"]])
+        else:
+            parts = shlex.split(app_entry["exec"])
+            if parts:
+                subprocess.Popen(parts, start_new_session=True)
+    except Exception as e:
+        print(f"QuickSwitcher: failed to launch {app_entry.get('name')}: {e}")
+
+
+def open_app_launcher_popup():
+    """Spotlight/rofi-style popup: type to filter installed apps, click or
+    press Enter on the top match to launch."""
+    apps = _get_apps()
+    layout = BoxLayout(orientation="vertical", spacing=4, padding=6)
+    search = TextInput(hint_text="Search installed apps...", multiline=False,
+                       size_hint_y=None, height=dp(40), font_size=14)
+    layout.add_widget(search)
+    results_sv = ScrollView()
+    results_grid = GridLayout(cols=1, spacing=2, size_hint_y=None)
+    results_grid.bind(minimum_height=results_grid.setter("height"))
+    results_sv.add_widget(results_grid)
+    layout.add_widget(results_sv)
+    status = Label(text=(f"{len(apps)} apps found" if apps else
+                        "No apps found on this system"),
+                  size_hint_y=None, height=dp(20), font_size=11,
+                  color=(0.6, 0.6, 0.6, 1))
+    layout.add_widget(status)
+    popup = Popup(title="App Launcher", content=layout, size_hint=(0.7, 0.75))
+
+    state = {"filtered": apps[:40]}
+
+    def _render():
+        results_grid.clear_widgets()
+        for a in state["filtered"][:40]:
+            b = Button(text=a["name"], size_hint_y=None, height=dp(36),
+                      font_size=13)
+            b.bind(on_release=lambda inst, app=a: (launch_app(app),
+                                                    popup.dismiss()))
+            results_grid.add_widget(b)
+
+    def _filter(inst, txt):
+        q = txt.strip().lower()
+        state["filtered"] = ([a for a in apps if q in a["name"].lower()]
+                             if q else apps)
+        _render()
+
+    def _on_enter(inst):
+        if state["filtered"]:
+            launch_app(state["filtered"][0])
+            popup.dismiss()
+
+    search.bind(text=_filter)
+    search.bind(on_text_validate=_on_enter)
+    _render()
+    popup.open()
+    Clock.schedule_once(lambda dt: setattr(search, "focus", True), 0.15)
+
+
+def open_quick_file_popup():
+    """Browse-and-open popup for a one-off file — unlike the "File/Script
+    (fixed)" bind type, nothing is pre-chosen at config time."""
+    chooser = FileChooserIconView(path=_home(), multiselect=False)
+    btn = Button(text="Open", size_hint_y=None, height=dp(44))
+    layout = BoxLayout(orientation="vertical")
+    layout.add_widget(chooser)
+    layout.add_widget(btn)
+    popup = Popup(title="Quick Open File", content=layout,
+                  size_hint=(0.92, 0.92))
+
+    def _open(*a):
+        if chooser.selection:
+            _launch_external(chooser.selection[0])
+        popup.dismiss()
+
+    btn.bind(on_release=_open)
+    popup.open()
+
+
+def run_terminal_command(cmd, visible=False):
+    """Run a shell command. visible=True tries to open it in a terminal
+    window (best-effort, platform-dependent); otherwise runs detached in
+    the background."""
+    if not cmd:
+        return
+    try:
+        if sys.platform.startswith("win"):
+            if visible:
+                subprocess.Popen(f'start cmd /k "{cmd}"', shell=True)
+            else:
+                subprocess.Popen(cmd, shell=True)
+        elif sys.platform == "darwin":
+            if visible:
+                esc = cmd.replace("\\", "\\\\").replace('"', '\\"')
+                subprocess.Popen(["osascript", "-e",
+                                  f'tell app "Terminal" to do script "{esc}"'])
+            else:
+                subprocess.Popen(cmd, shell=True)
+        else:
+            if visible:
+                launched = False
+                for term_cmd in (
+                    ["x-terminal-emulator", "-e", "bash", "-c", f"{cmd}; exec bash"],
+                    ["gnome-terminal", "--", "bash", "-c", f"{cmd}; exec bash"],
+                    ["xterm", "-e", f"bash -c '{cmd}; exec bash'"],
+                ):
+                    try:
+                        subprocess.Popen(term_cmd)
+                        launched = True
+                        break
+                    except FileNotFoundError:
+                        continue
+                if not launched:
+                    subprocess.Popen(cmd, shell=True)
+            else:
+                subprocess.Popen(cmd, shell=True)
+    except Exception as e:
+        print(f"QuickSwitcher: command failed ({cmd}): {e}")
 
 
 def _normalize_mod(mod_str):
@@ -130,23 +333,17 @@ class QuickSwitcherScreen(Screen):
                  "Shortcuts work from any screen when Quick Switcher is enabled.",
             size_hint_y=None, height=dp(36), font_size=11, halign="left"))
 
-        # ── target type toggle ───────────────────────────────────────────
-        self._target_type = "screen"   # or "external"
+        # ── target type ───────────────────────────────────────────────────
+        self._target_type = "screen"
         type_row = BoxLayout(size_hint_y=None, height=dp(34), spacing=5)
         type_row.add_widget(Label(text="Target:", size_hint_x=None,
                                   width=dp(56), font_size=12))
-        self._type_screen_btn = ToggleButton(
-            text="In-app screen", group="target_type", state="down",
-            size_hint_x=None, width=dp(120), font_size=12)
-        self._type_ext_btn = ToggleButton(
-            text="External app/script", group="target_type",
-            size_hint_x=None, width=dp(150), font_size=12)
-        self._type_screen_btn.bind(
-            on_release=lambda *a: self._set_target_type("screen"))
-        self._type_ext_btn.bind(
-            on_release=lambda *a: self._set_target_type("external"))
-        type_row.add_widget(self._type_screen_btn)
-        type_row.add_widget(self._type_ext_btn)
+        self._type_spinner = Spinner(
+            text=TARGET_TYPES[0][1],
+            values=[label for _, label in TARGET_TYPES],
+            font_size=12)
+        self._type_spinner.bind(text=self._on_type_spinner)
+        type_row.add_widget(self._type_spinner)
         root.add_widget(type_row)
 
         # ── add bind row ──────────────────────────────────────────────────
@@ -184,6 +381,28 @@ class QuickSwitcherScreen(Screen):
         self._ext_path_lbl = Label(text="(none chosen)", font_size=10,
                                    halign="left", color=(0.7, 0.9, 0.7, 1))
         self._ext_path_lbl.bind(size=self._ext_path_lbl.setter("text_size"))
+        # Built once and reused: rebuilding a fresh wrapper BoxLayout around
+        # these persistent widgets on every _set_target_type() call would
+        # crash the 2nd time round — clear_widgets() on _dest_container only
+        # detaches the wrapper, it doesn't unparent the wrapper's own
+        # children, so re-adding self._ext_pick_btn etc. into a brand new
+        # wrapper would hit "already has a parent".
+        self._external_col = BoxLayout(orientation="vertical", spacing=2)
+        self._external_col.add_widget(self._ext_pick_btn)
+        self._external_col.add_widget(self._ext_path_lbl)
+
+        self._cmd_input = TextInput(
+            text="", multiline=False, font_size=12,
+            hint_text="e.g. code . / notepad / htop")
+        self._cmd_visible_cb = CheckBox(size_hint=(None, None), size=(dp(20), dp(20)))
+        self._command_col = BoxLayout(orientation="vertical", spacing=2)
+        self._command_col.add_widget(self._cmd_input)
+        _vis_row = BoxLayout(size_hint_y=None, height=dp(24), spacing=4)
+        _vis_row.add_widget(self._cmd_visible_cb)
+        _vis_lbl = Label(text="Show terminal window", font_size=11, halign="left")
+        _vis_lbl.bind(size=_vis_lbl.setter("text_size"))
+        _vis_row.add_widget(_vis_lbl)
+        self._command_col.add_widget(_vis_row)
 
         self._dest_container.add_widget(self._dest_sp)
 
@@ -240,17 +459,29 @@ class QuickSwitcherScreen(Screen):
         self.add_widget(root)
         self._refresh_binds_ui()
 
-    # ── target type (in-app screen vs external app/script) ─────────────────
+    # ── target type ──────────────────────────────────────────────────────
+    def _on_type_spinner(self, spinner, text):
+        self._set_target_type(TARGET_LABEL_TO_KEY.get(text, "screen"))
+
     def _set_target_type(self, kind):
         self._target_type = kind
         self._dest_container.clear_widgets()
         if kind == "screen":
             self._dest_container.add_widget(self._dest_sp)
-        else:
-            col = BoxLayout(orientation="vertical", spacing=2)
-            col.add_widget(self._ext_pick_btn)
-            col.add_widget(self._ext_path_lbl)
-            self._dest_container.add_widget(col)
+        elif kind == "external":
+            self._dest_container.add_widget(self._external_col)
+        elif kind == "quick_file":
+            self._dest_container.add_widget(Label(
+                text="Opens a file browser when triggered - nothing to "
+                     "set up here.",
+                font_size=11, halign="left", color=(0.7, 0.9, 0.7, 1)))
+        elif kind == "app_launcher":
+            self._dest_container.add_widget(Label(
+                text="Opens a searchable app launcher when triggered - "
+                     "nothing to set up here.",
+                font_size=11, halign="left", color=(0.7, 0.9, 0.7, 1)))
+        elif kind == "command":
+            self._dest_container.add_widget(self._command_col)
 
     def _pick_external(self, *a):
         chooser = FileChooserIconView(path=_home(), multiselect=False)
@@ -273,20 +504,34 @@ class QuickSwitcherScreen(Screen):
     def _add_bind(self, *a):
         mod  = _normalize_mod(self._mod_sp.text)
         key  = self._key_sp.text
+        kind = self._target_type
+        extra = {}
 
-        if self._target_type == "external":
+        if kind == "external":
             if not self._ext_path:
                 self._status.text = "Pick an app/script first."
                 return
             dest  = self._ext_path
-            btype = "external"
             label = os.path.basename(dest)
-        else:
+        elif kind == "quick_file":
+            dest  = ""
+            label = "Quick file picker"
+        elif kind == "app_launcher":
+            dest  = ""
+            label = "App launcher"
+        elif kind == "command":
+            cmd = self._cmd_input.text.strip()
+            if not cmd:
+                self._status.text = "Enter a command first."
+                return
+            dest = cmd
+            extra["visible"] = self._cmd_visible_cb.active
+            label = f"Run: {cmd[:30]}"
+        else:  # "screen"
             dest  = self._dest_sp.text
-            btype = "screen"
             label = ROUTE_LABELS.get(dest, dest)
 
-        bind = {"modifier": mod, "key": key, "dest": dest, "type": btype}
+        bind = {"modifier": mod, "key": key, "dest": dest, "type": kind, **extra}
         # check for duplicate against other binds
         for b in self._config.get("binds", []):
             if b.get("modifier") == mod and b.get("key") == key:
@@ -353,7 +598,14 @@ class QuickSwitcherScreen(Screen):
             dest  = bind.get("dest", "")
             btype = bind.get("type", "screen")
             if btype == "external":
-                target_label = f"[app] {os.path.basename(dest)}"
+                target_label = f"[file] {os.path.basename(dest)}"
+            elif btype == "quick_file":
+                target_label = "[quick open file]"
+            elif btype == "app_launcher":
+                target_label = "[app launcher]"
+            elif btype == "command":
+                vis = " (visible)" if bind.get("visible") else ""
+                target_label = f"[cmd]{vis} {dest[:40]}"
             else:
                 target_label = ROUTE_LABELS.get(dest, dest)
             row  = BoxLayout(size_hint_y=None, height=dp(30), spacing=5)
@@ -372,10 +624,15 @@ class QuickSwitcherScreen(Screen):
 
 
 # ── Global switcher installer — call this from main.py build() ───────────────
-def install_global_switcher(screen_manager):
+def install_global_switcher(screen_manager, ensure_loader=None):
     """
     Installs a global key handler on the Window that responds to quick
     switcher binds from any screen.
+
+    ensure_loader: optional callable(route) -> bool, used when lazy
+    screen loading is on and a bind targets a screen that hasn't been
+    built yet. If not provided, only already-loaded screens are reachable
+    (matches the pre-lazy-loading behaviour).
     """
     def _on_key(window, key, scancode, codepoint, modifiers):
         config = _load_config()
@@ -420,8 +677,17 @@ def install_global_switcher(screen_manager):
             if b_key == key_name and b_mod == mod_str:
                 if btype == "external":
                     _launch_external(dest)
-                elif dest in [s.name for s in screen_manager.screens]:
-                    screen_manager.current = dest
+                elif btype == "quick_file":
+                    open_quick_file_popup()
+                elif btype == "app_launcher":
+                    open_app_launcher_popup()
+                elif btype == "command":
+                    run_terminal_command(dest, visible=bind.get("visible", False))
+                else:  # "screen"
+                    if ensure_loader:
+                        ensure_loader(dest)
+                    if dest in [s.name for s in screen_manager.screens]:
+                        screen_manager.current = dest
                 return
 
     Window.bind(on_key_down=_on_key)

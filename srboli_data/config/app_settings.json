@@ -1,0 +1,24 @@
+{
+  "order": [
+    "loading_timer",
+    "text_editor",
+    "script_mode",
+    "full_editor",
+    "basic_tools",
+    "system_stats",
+    "gallery",
+    "music",
+    "random_tools",
+    "image_text",
+    "morse",
+    "backrooms",
+    "spin",
+    "unhelpful_calc",
+    "shape_gen",
+    "metadata",
+    "file_sorter",
+    "quickswitcher"
+  ],
+  "hidden": [],
+  "lazy_load": false
+}

@@ -13,6 +13,8 @@ from kivy.uix.label import Label
 from kivy.uix.filechooser import FileChooserIconView
 from kivy.uix.popup import Popup
 from kivy.uix.image import Image as KivyImage
+from kivy.uix.textinput import TextInput
+from kivy.uix.checkbox import CheckBox
 from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.core.clipboard import Clipboard
@@ -34,6 +36,26 @@ import app_data
 
 IMAGE_EXTS = {".jpg",".jpeg",".png",".bmp",".gif",".webp",".tiff",".tif"}
 VIDEO_EXTS = {".mp4",".mkv",".avi",".mov",".wmv",".flv",".webm",".m4v"}
+
+# Formats Pillow can reliably write EXIF back to. TIFF deliberately left
+# out here even though it can technically carry EXIF - it uses its own
+# tag-writing path (tiffinfo) rather than the generic exif= kwarg, and
+# getting that wrong risks silently corrupting the file, so it's not
+# worth the risk without being able to verify it thoroughly.
+EDITABLE_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
+
+# tag name -> numeric EXIF tag id, for the fields we let you edit.
+# Make/Model/Software/Artist/Copyright/DateTime live on the main IFD.
+# DateTimeOriginal lives in the Exif sub-IFD (0x8769) instead - handled
+# separately since it needs get_ifd(), and older Pillow versions can be
+# unreliable writing to it, so that one field degrades gracefully.
+EDITABLE_TAGS = {
+    "Make": 271, "Model": 272, "Software": 305,
+    "Artist": 315, "Copyright": 33432, "DateTime": 306,
+}
+EXIF_IFD_TAG = 0x8769          # sub-IFD holding DateTimeOriginal etc.
+DATETIME_ORIGINAL_TAG = 36867
+GPS_IFD_TAG = 0x8825
 
 # ── AI indicator rules ────────────────────────────────────────────────────────
 # Each rule: (field, pattern, flag_level, reason)
@@ -302,7 +324,7 @@ class MetadataScreen(Screen):
 
         # ── preview ────────────────────────────────────────────────────────
         self._preview_img = KivyImage(
-            size_hint_y=0.20, allow_stretch=True, keep_ratio=True)
+            size_hint_y=0.20, fit_mode="contain")
         root.add_widget(self._preview_img)
 
         # ── verdict banner ─────────────────────────────────────────────────
@@ -333,6 +355,10 @@ class MetadataScreen(Screen):
                             font_size=12)
         export_btn.bind(on_release=self._export_json)
         meta_hdr.add_widget(export_btn)
+        self._edit_btn = Button(text="Edit Metadata...", size_hint_x=None,
+                                width=dp(116), font_size=12, disabled=True)
+        self._edit_btn.bind(on_release=self._open_edit_popup)
+        meta_hdr.add_widget(self._edit_btn)
         root.add_widget(meta_hdr)
 
         sv_meta = ScrollView(size_hint=(1, 0.42))
@@ -381,6 +407,7 @@ class MetadataScreen(Screen):
         self._meta_grid.clear_widgets()
 
         ext = os.path.splitext(path)[1].lower()
+        self._edit_btn.disabled = not (HAS_PIL and ext in EDITABLE_EXTS)
         if ext in IMAGE_EXTS:
             # images can be shown straight away, no extraction needed
             self._preview_img.source = path
@@ -484,3 +511,161 @@ class MetadataScreen(Screen):
         except Exception as e:
             Popup(title="Error", content=Label(text=str(e)),
                   size_hint=(0.65, 0.3)).open()
+
+    # ── editing ──────────────────────────────────────────────────────────
+    def _open_edit_popup(self, *a):
+        if not self._path or self._edit_btn.disabled:
+            return
+
+        layout = BoxLayout(orientation="vertical", padding=8, spacing=6)
+        layout.add_widget(Label(
+            text="Editing only writes back the fields below - values are "
+                 "read from the file's current EXIF where present.",
+            font_size=10, size_hint_y=None, height=dp(30),
+            halign="left", color=(0.6, 0.6, 0.6, 1)))
+
+        inputs = {}
+        for label in ("Make", "Model", "Software", "Artist", "Copyright",
+                     "DateTime", "DateTimeOriginal"):
+            row = BoxLayout(size_hint_y=None, height=dp(34), spacing=6)
+            row.add_widget(Label(text=label, size_hint_x=None, width=dp(120),
+                                 font_size=12, halign="left"))
+            current = self._meta.get(label, "")
+            ti = TextInput(text=current, multiline=False, font_size=12)
+            inputs[label] = ti
+            row.add_widget(ti)
+            layout.add_widget(row)
+
+        gps_row = BoxLayout(size_hint_y=None, height=dp(34), spacing=6)
+        strip_gps_cb = CheckBox(
+            active=("GPSInfo" in self._meta), size_hint=(None, None),
+            size=(dp(24), dp(24)))
+        gps_row.add_widget(strip_gps_cb)
+        gps_row.add_widget(Label(text="Strip GPS data", font_size=12,
+                                 halign="left"))
+        layout.add_widget(gps_row)
+
+        status = Label(text="", size_hint_y=None, height=dp(22), font_size=11,
+                      color=(0.6, 0.8, 1, 1))
+        layout.add_widget(status)
+
+        btn_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=6)
+        save_btn = Button(text="Save Changes")
+        strip_btn = Button(text="Strip ALL metadata",
+                           background_color=(0.5, 0.2, 0.2, 1))
+        cancel_btn = Button(text="Cancel")
+        btn_row.add_widget(save_btn)
+        btn_row.add_widget(strip_btn)
+        btn_row.add_widget(cancel_btn)
+        layout.add_widget(btn_row)
+
+        popup = Popup(title=f"Edit Metadata - {os.path.basename(self._path)}",
+                      content=layout, size_hint=(0.85, 0.85))
+        cancel_btn.bind(on_release=lambda *a: popup.dismiss())
+
+        def _do_save(*a):
+            values = {k: ti.text.strip() for k, ti in inputs.items()}
+            save_btn.disabled = True
+            status.text = "Saving..."
+            self._save_metadata_edits(
+                self._path, values, strip_gps_cb.active,
+                lambda ok, err: self._on_edit_saved(popup, status, ok, err))
+
+        def _do_strip_all(*a):
+            self._confirm_strip_all(popup)
+
+        save_btn.bind(on_release=_do_save)
+        strip_btn.bind(on_release=_do_strip_all)
+        popup.open()
+
+    def _confirm_strip_all(self, edit_popup):
+        layout = BoxLayout(orientation="vertical", padding=10, spacing=10)
+        layout.add_widget(Label(
+            text="This permanently removes ALL metadata (EXIF, ICC "
+                 "profile, everything) from this file. There is no undo.",
+            halign="center"))
+        row = BoxLayout(size_hint_y=None, height=dp(44), spacing=6)
+        yes = Button(text="Strip everything", background_color=(0.5,0.2,0.2,1))
+        no = Button(text="Cancel")
+        row.add_widget(yes)
+        row.add_widget(no)
+        layout.add_widget(row)
+        confirm = Popup(title="Are you sure?", content=layout,
+                        size_hint=(0.7, 0.4))
+        no.bind(on_release=lambda *a: confirm.dismiss())
+
+        def _yes(*a):
+            confirm.dismiss()
+            self._strip_all_metadata(
+                self._path,
+                lambda ok, err: self._on_edit_saved(edit_popup, None, ok, err))
+
+        yes.bind(on_release=_yes)
+        confirm.open()
+
+    def _save_metadata_edits(self, path, values, strip_gps, callback):
+        def worker():
+            try:
+                img = PILImage.open(path)
+                exif = img.getexif()
+
+                for name, tag_id in EDITABLE_TAGS.items():
+                    val = values.get(name, "")
+                    if val:
+                        exif[tag_id] = val
+                    elif tag_id in exif:
+                        del exif[tag_id]
+
+                # DateTimeOriginal lives in the Exif sub-IFD - best effort,
+                # skip quietly if this Pillow version won't round-trip it
+                dto = values.get("DateTimeOriginal", "")
+                try:
+                    sub_ifd = exif.get_ifd(EXIF_IFD_TAG)
+                    if dto:
+                        sub_ifd[DATETIME_ORIGINAL_TAG] = dto
+                    elif DATETIME_ORIGINAL_TAG in sub_ifd:
+                        del sub_ifd[DATETIME_ORIGINAL_TAG]
+                except Exception:
+                    pass
+
+                if strip_gps and GPS_IFD_TAG in exif:
+                    del exif[GPS_IFD_TAG]
+
+                img.save(path, exif=exif)
+                Clock.schedule_once(lambda dt: callback(True, None))
+            except Exception as e:
+                Clock.schedule_once(lambda dt: callback(False, str(e)))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _strip_all_metadata(self, path, callback):
+        def worker():
+            try:
+                img = PILImage.open(path)
+                img.load()
+                # Rebuilding the image from raw pixel bytes (rather than
+                # re-saving the original) drops EXIF, ICC profile, XMP -
+                # everything, not just the fields this screen knows about.
+                clean = PILImage.frombytes(img.mode, img.size, img.tobytes())
+                clean.save(path)
+                Clock.schedule_once(lambda dt: callback(True, None))
+            except Exception as e:
+                Clock.schedule_once(lambda dt: callback(False, str(e)))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _on_edit_saved(self, popup, status_lbl, ok, err):
+        if ok:
+            if status_lbl:
+                status_lbl.text = "Saved."
+            popup.dismiss()
+            Popup(title="Saved", content=Label(text="Metadata updated."),
+                  size_hint=(0.6, 0.3)).open()
+            if self._path:
+                self._analyse(self._path)   # refresh the displayed metadata
+        else:
+            if status_lbl:
+                status_lbl.text = f"Failed: {err}"
+            else:
+                Popup(title="Error", content=Label(text=str(err)),
+                      size_hint=(0.7, 0.35)).open()

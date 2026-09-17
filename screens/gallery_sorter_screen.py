@@ -164,7 +164,7 @@ class VideoPlayerPopup(Popup):
 
             self._vid = KivyVideo(
                 source=path, state="play",
-                allow_stretch=True, keep_ratio=True,
+                fit_mode="contain",
                 size_hint=(1, 1), pos_hint={"x": 0, "y": 0}
             )
             self._vf.add_widget(self._vid)
@@ -378,7 +378,7 @@ class FrameStripPopup(Popup):
         self._img_row.clear_widgets()
         p = self._frame_paths[idx]
         if p and os.path.exists(p):
-            img = KivyImage(source=p, allow_stretch=True, keep_ratio=True)
+            img = KivyImage(source=p, fit_mode="contain")
             self._img_row.add_widget(img)
         else:
             self._img_row.add_widget(Label(text="Frame unavailable"))
@@ -445,7 +445,7 @@ class GallerySorterScreen(Screen):
         # float for image + play overlay
         self._pf = FloatLayout(size_hint_y=0.78)
         self._preview_img = KivyImage(
-            allow_stretch=True, keep_ratio=True,
+            fit_mode="contain",
             size_hint=(1, 1), pos_hint={"x": 0, "y": 0})
         self._pf.add_widget(self._preview_img)
 
@@ -796,7 +796,7 @@ class GallerySorterScreen(Screen):
         else:
             # Full-screen image
             layout = BoxLayout(orientation="vertical")
-            img = KivyImage(source=path, allow_stretch=True, keep_ratio=True)
+            img = KivyImage(source=path, fit_mode="contain")
             layout.add_widget(img)
             cls = Button(text="Close", size_hint_y=None, height=dp(40))
             layout.add_widget(cls)

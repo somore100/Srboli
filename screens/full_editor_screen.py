@@ -455,7 +455,7 @@ class SlidesPanel(BoxLayout):
                                     color=fcol))
             if img and os.path.exists(img):
                 layout.add_widget(KivyImage(source=img, size_hint_y=0.45,
-                                            allow_stretch=True))
+                                            fit_mode="contain"))
             layout.add_widget(Label(text=body, font_size=18, color=fcol,
                                     halign="left", valign="top"))
 

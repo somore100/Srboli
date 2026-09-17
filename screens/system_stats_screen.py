@@ -23,17 +23,7 @@ try:
 except ImportError:
     HAS_PSUTIL = False
 
-try:
-    import GPUtil
-    HAS_GPUTIL = True
-except ImportError:
-    HAS_GPUTIL = False
-
-try:
-    from ping3 import ping as ping3_ping
-    HAS_PING3 = True
-except ImportError:
-    HAS_PING3 = False
+from screens.sys_info import gpu_info_lines as _gpu_info_lines, do_ping as _do_ping
 
 HISTORY = 60
 PING_HOST_DEFAULT = "8.8.8.8"
@@ -89,75 +79,6 @@ class GraphWidget(BoxLayout):
                         ga.y + (min(v, self.max_val)/self.max_val)*h]
             if len(pts) >= 4:
                 Line(points=pts, width=1.4)
-
-
-def _do_ping(host) -> float:
-    if HAS_PING3:
-        try:
-            r = ping3_ping(host, timeout=2, unit="ms")
-            if r is not None and r is not False:
-                return float(r)
-        except Exception:
-            pass
-    try:
-        cmd = (["ping", "-n", "1", "-w", "2000", host]
-               if sys.platform.startswith("win")
-               else ["ping", "-c", "1", "-W", "2", host])
-        out = subprocess.check_output(
-            cmd, stderr=subprocess.DEVNULL, timeout=4
-        ).decode(errors="replace")
-        m = re.search(r"time[=<](\d+\.?\d*)\s*ms", out)
-        if m:
-            return float(m.group(1))
-    except Exception:
-        pass
-    return -1.0
-
-
-def _gpu_info_lines():
-    lines = []
-    if HAS_GPUTIL:
-        try:
-            for g in GPUtil.getGPUs():
-                lines += [f"[b]{g.name}[/b]",
-                           f"  Load: {g.load*100:.1f}%",
-                           f"  VRAM: {g.memoryUsed:.0f}/{g.memoryTotal:.0f} MB",
-                           f"  Temp: {g.temperature} C"]
-            return lines
-        except Exception:
-            pass
-    try:
-        out = subprocess.check_output(
-            ["nvidia-smi",
-             "--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu",
-             "--format=csv,noheader,nounits"],
-            timeout=3, stderr=subprocess.DEVNULL
-        ).decode(errors="replace").strip()
-        for row in out.splitlines():
-            p = [x.strip() for x in row.split(",")]
-            if len(p) >= 5:
-                lines += [f"[b]{p[0]}[/b]",
-                           f"  Load: {p[1]}%",
-                           f"  VRAM: {p[2]}/{p[3]} MB",
-                           f"  Temp: {p[4]} C"]
-        if lines:
-            return lines
-    except Exception:
-        pass
-    if sys.platform.startswith("linux"):
-        try:
-            drm = "/sys/class/drm"
-            for card in sorted(os.listdir(drm)):
-                gp = os.path.join(drm, card, "device", "gpu_busy_percent")
-                if os.path.exists(gp):
-                    util = open(gp).read().strip()
-                    lines += [f"[b]{card}[/b]", f"  Load: {util}%"]
-            if lines:
-                return lines
-        except Exception:
-            pass
-    lines.append("GPU info not available")
-    return lines
 
 
 class SystemStatsScreen(Screen):
@@ -267,6 +188,16 @@ class SystemStatsScreen(Screen):
                  "You can move, resize, and minimise it independently.",
             font_size=11, size_hint_y=None, height=dp(40),
             halign="left", color=(0.6, 0.6, 0.6, 1)))
+
+        fps_note = Label(
+            text="FPS in the overlay is the overlay window's own render "
+                 "rate, not this app's - it's a separate lightweight "
+                 "process, so treat it as a rough reference, not an exact "
+                 "measurement of Srboli's main-window framerate.",
+            font_size=11, size_hint_y=None, height=dp(56),
+            halign="left", valign="top", color=(0.75, 0.6, 0.3, 1))
+        fps_note.bind(size=fps_note.setter("text_size"))
+        layout.add_widget(fps_note)
 
         tab.add_widget(layout)
         return tab
@@ -389,20 +320,6 @@ class SystemStatsScreen(Screen):
             self._ping_graph.push(0, label_override="timeout")
         else:
             self._ping_graph.push(min(ms, 300), label_override=f"{ms:.1f} ms")
-
-        # Write shared data for overlay subprocess
-        _shared = os.path.abspath(os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "..", ".srboli_overlay_data.json"))
-        try:
-            import json as _json
-            with open(_shared, "w", encoding="utf-8") as f:
-                _json.dump({"fps": round(fps, 1),
-                            "ping": round(ms, 1),
-                            "host": self._ping_host,
-                            "ts": time.time()}, f)
-        except Exception:
-            pass
 
     def _start_ping_thread(self):
         if self._ping_thread_running:

@@ -160,6 +160,7 @@ class SpinScreen(Screen):
     def __init__(self, **kw):
         super().__init__(**kw)
         self._history = collections.deque(maxlen=30)
+        self._spinning = False
 
         root = BoxLayout(orientation="vertical", padding=6, spacing=5)
 
@@ -228,10 +229,10 @@ class SpinScreen(Screen):
 
         # ── spin + result ──
         bottom = BoxLayout(size_hint_y=None, height=dp(52), spacing=8)
-        spin_btn = Button(text="Spin!", font_size=17)
-        spin_btn.bind(on_release=self._spin)
+        self._spin_btn = Button(text="Spin!", font_size=17)
+        self._spin_btn.bind(on_release=self._spin)
         self._result_label = Label(text="", font_size=14)
-        bottom.add_widget(spin_btn)
+        bottom.add_widget(self._spin_btn)
         bottom.add_widget(self._result_label)
         root.add_widget(bottom)
 
@@ -281,6 +282,7 @@ class SpinScreen(Screen):
             w = float(self._weight_input.text) if self._weight_input.text.strip() else 1.0
         except ValueError:
             w = 1.0
+        w = max(w, 0.01)   # zero/negative weights broke the weighted pick
         if name:
             self.wheel.add_item(name, w)
             self._name_input.text = ""
@@ -330,6 +332,11 @@ class SpinScreen(Screen):
 
     # ── spin ─────────────────────────────────────────────────────────────────
     def _spin(self, *a):
+        if self._spinning:
+            return  # ignore rapid double-clicks - was letting two Animations
+                    # race on the same rotation_angle property, so the
+                    # displayed "winner" could disagree with where the
+                    # wheel visually landed
         items = self.wheel.items
         if not items:
             Popup(title="Empty", content=Label(text="Add items first."),
@@ -362,6 +369,8 @@ class SpinScreen(Screen):
 
         self.wheel.highlight_index = None
         self._result_label.text    = "Spinning…"
+        self._spinning              = True
+        self._spin_btn.disabled     = True
 
         def on_done():
             idx  = self.wheel.get_selected_index()
@@ -370,6 +379,8 @@ class SpinScreen(Screen):
             name = items[idx]["name"] if idx is not None else "?"
             self._result_label.text = f"Winner: {name}"
             self._history.appendleft(name)
+            self._spinning          = False
+            self._spin_btn.disabled = False
             Popup(title="Result!",
                   content=Label(text=name, font_size=22, halign="center"),
                   size_hint=(0.55, 0.38)).open()
