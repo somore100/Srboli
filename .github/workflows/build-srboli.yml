@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements-desktop.txt
           pip install pyinstaller
       - name: Build EXE
         env:
@@ -51,7 +51,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y fuse libfuse2 xvfb
-          pip install -r requirements.txt
+          pip install -r requirements-desktop.txt
           pip install pyinstaller
       - name: Build
         run: |
@@ -94,7 +94,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements-desktop.txt
           pip install pyinstaller
       - name: Build
         run: |
@@ -124,9 +124,9 @@ jobs:
           path: |
             .buildozer
             .buildozer_global
-          key: buildozer-${{ hashFiles('buildozer.spec') }}
+          key: buildozer-py311-${{ hashFiles('buildozer.spec') }}
           restore-keys: |
-            buildozer-
+            buildozer-py311-
 
       - name: Build APK (buildozer docker image)
         run: |
