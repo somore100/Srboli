@@ -12,10 +12,7 @@ source.exclude_patterns = *.pyc,*.spec,*.egg-info,build.txt,license.txt,README.m
 
 version = 2.4
 
-# ── requirements ─────────────────────────────────────────────────────────
-# Kept minimal for Android base build. Excludes heavy/complex C-extensions
-# (opencv, pygame, ffpyplayer) for fast compilation.
-# ── requirements ─────────────────────────────────────────────────────────
+# Core dependencies only
 requirements = python3,kivy==2.3.1,pillow,plyer
 
 orientation = portrait
@@ -33,10 +30,10 @@ android.accept_sdk_license = True
 android.allow_backup = True
 android.enable_androidx = True
 
-# Target Python 3.11 for Android
+# Target Python 3.11 runtime inside the APK
 p4a.python_version = 3.11
 
-# Force pip to build charset-normalizer from source (sdist) instead of grabbing a cp314 wheel
+# Force pip to build charset-normalizer from source (sdist) rather than grabbing the cp314 binary wheel
 p4a.extra_args = --no-binary charset-normalizer
 
 [buildozer]
