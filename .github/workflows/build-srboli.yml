@@ -50,10 +50,13 @@ jobs:
       - name: Install system packages
         run: |
           sudo apt update
-          sudo apt install -y fuse libfuse2 xvfb
+          sudo apt install -y fuse libfuse2 xvfb libmtdev1 libgl1-mesa-dev
           pip install -r requirements-desktop.txt
           pip install pyinstaller
       - name: Build
+        env:
+          KIVY_NO_ARGS: "1"
+          KIVY_NO_CONSOLELOG: "1"
         run: |
           xvfb-run -a pyinstaller srboli.spec
       - name: Prepare AppImage
@@ -113,6 +116,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Purge stray requirements files
+        run: |
+          # Failsafe to ensure python-for-android doesn't auto-detect these during build
+          find . -name "requirements.txt" -type f -delete
+          
       - name: Prepare build directories
         run: |
           mkdir -p .buildozer .buildozer_global bin
@@ -124,9 +132,8 @@ jobs:
           path: |
             .buildozer
             .buildozer_global
-          key: buildozer-py314-${{ hashFiles('buildozer.spec') }}
-          restore-keys: |
-            buildozer-py314-
+          key: buildozer-nuke-v1-${{ hashFiles('buildozer.spec') }}
+          # Removed restore-keys to prevent pulling the poisoned environment
 
       - name: Build APK (buildozer docker image)
         run: |
