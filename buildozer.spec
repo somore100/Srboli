@@ -23,7 +23,7 @@ version = 2.4
 # — those three routes just show "not available" instead of crashing.
 # Add them back one at a time (`pip install python-for-android` recipe
 # names: opencv, pygame, ffpyplayer) once the base APK is confirmed working.
-requirements = python3,kivy==2.3.1,pillow,psutil,plyer
+requirements = python3,kivy==2.3.1,pillow,plyer
 
 orientation = portrait
 fullscreen = 0
