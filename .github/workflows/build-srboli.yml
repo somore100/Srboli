@@ -131,7 +131,7 @@ jobs:
           path: |
             .buildozer
             .buildozer_global
-          key: buildozer-nuke-v2-${{ hashFiles('buildozer.spec') }}
+          key: buildozer-nuke-v3-${{ hashFiles('buildozer.spec') }}
 
       - name: Build APK (buildozer docker image)
         run: |
