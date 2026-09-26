@@ -118,9 +118,8 @@ jobs:
 
       - name: Purge stray requirements files
         run: |
-          # Failsafe to ensure python-for-android doesn't auto-detect these during build
           find . -name "requirements.txt" -type f -delete
-          
+
       - name: Prepare build directories
         run: |
           mkdir -p .buildozer .buildozer_global bin
@@ -132,8 +131,7 @@ jobs:
           path: |
             .buildozer
             .buildozer_global
-          key: buildozer-nuke-v1-${{ hashFiles('buildozer.spec') }}
-          # Removed restore-keys to prevent pulling the poisoned environment
+          key: buildozer-nuke-v2-${{ hashFiles('buildozer.spec') }}
 
       - name: Build APK (buildozer docker image)
         run: |
