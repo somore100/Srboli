@@ -124,9 +124,9 @@ jobs:
           path: |
             .buildozer
             .buildozer_global
-          key: buildozer-py311-${{ hashFiles('buildozer.spec') }}
+          key: buildozer-py314-${{ hashFiles('buildozer.spec') }}
           restore-keys: |
-            buildozer-py311-
+            buildozer-py314-
 
       - name: Build APK (buildozer docker image)
         run: |
