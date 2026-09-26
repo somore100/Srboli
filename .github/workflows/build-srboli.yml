@@ -4,8 +4,10 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+
 env:
   PYTHON_VERSION: "3.10"
+
 jobs:
   windows:
     name: Windows EXE
@@ -33,6 +35,7 @@ jobs:
         with:
           name: Srboli-Windows
           path: dist/
+
   linux:
     name: Linux AppImage
     runs-on: ubuntu-latest
@@ -76,6 +79,7 @@ jobs:
         with:
           name: Srboli-Linux-AppImage
           path: Srboli.AppImage
+
   macos:
     name: macOS App
     runs-on: macos-latest
@@ -100,3 +104,40 @@ jobs:
         with:
           name: Srboli-macOS
           path: dist/
+
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare build directories
+        run: |
+          mkdir -p .buildozer .buildozer_global bin
+          chmod -R 777 .buildozer .buildozer_global bin
+
+      - name: Cache buildozer state
+        uses: actions/cache@v4
+        with:
+          path: |
+            .buildozer
+            .buildozer_global
+          key: buildozer-${{ hashFiles('buildozer.spec') }}
+          restore-keys: |
+            buildozer-
+
+      - name: Build APK (buildozer docker image)
+        run: |
+          docker run --rm \
+            -e BUILDOZER_ALLOW_KIVY_GLOBAL=1 \
+            -v "${{ github.workspace }}":/home/user/hostcwd \
+            -v "${{ github.workspace }}/.buildozer_global":/home/user/.buildozer \
+            kivy/buildozer android debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Srboli-Android-APK
+          path: bin/*.apk
