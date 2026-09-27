@@ -36,14 +36,22 @@ android.accept_sdk_license = True
 android.allow_backup = True
 
 # p4a.python_version is NOT a real buildozer.spec key (buildozer silently
-# ignores unknown keys, which is why setting it did nothing last run).
-# The actual lever is which p4a branch gets cloned. Left unset, buildozer's
-# default currently resolves to python-for-android's `master` branch, which
-# has moved to building CPython 3.14 as its host/target Python and a newer
-# pip-wheel mechanism for pure-Python deps (source of the charset_normalizer
-# failure). `stable` is p4a's other maintained branch and predates that
-# migration, so pin to it explicitly instead of fighting master's defaults.
-p4a.branch = stable
+# ignores unknown keys). The actual lever is which p4a branch/tag gets
+# cloned.
+#
+# History of getting this pin right:
+#   - unset / master -> currently mid-migration to building CPython 3.14 as
+#     host/target Python, which breaks on packages like charset_normalizer
+#     that don't yet have wheels for that Android platform tag.
+#   - stable -> the opposite problem: it predates p4a's AAB (Android App
+#     Bundle) support entirely (added Aug 2021), so this buildozer version
+#     refuses to use it ("requires a python-for-android version with AAB
+#     support").
+# 2026.5.9 is p4a's actual latest tagged PyPI release (10 May 2026) — long
+# after AAB support existed, and from before the still-unreleased CPython
+# 3.14 migration currently sitting on master. Pinning to the tag by name
+# gives a fixed, reproducible checkout instead of riding either branch.
+p4a.branch = 2026.5.9
 
 [buildozer]
 log_level = 2
