@@ -47,11 +47,13 @@ android.allow_backup = True
 #     Bundle) support entirely (added Aug 2021), so this buildozer version
 #     refuses to use it ("requires a python-for-android version with AAB
 #     support").
-# 2026.5.9 is p4a's actual latest tagged PyPI release (10 May 2026) — long
+# 2026.05.09 is p4a's actual latest tagged PyPI release (10 May 2026) — long
 # after AAB support existed, and from before the still-unreleased CPython
 # 3.14 migration currently sitting on master. Pinning to the tag by name
 # gives a fixed, reproducible checkout instead of riding either branch.
-p4a.branch = 2026.5.9
+# Note: the git tag itself is v-prefixed and zero-padded (v2026.05.09),
+# unlike the bare "2026.5.9" PyPI displays for the same release.
+p4a.branch = v2026.05.09
 
 [buildozer]
 log_level = 2
