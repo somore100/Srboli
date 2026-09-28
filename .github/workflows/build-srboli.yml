@@ -110,7 +110,11 @@ jobs:
 
   android:
     name: Android APK
-    runs-on: ubuntu-latest
+    # Pinned OS: the kivy/buildozer "latest" Docker image moved to Ubuntu 26.04
+    # (CMake 4.x, which rejects libjpeg-turbo 2.0.1's cmake_minimum_required),
+    # and p4a v2024.01.21 predates that toolchain. Building directly on a
+    # pinned runner with pinned tools keeps this reproducible.
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
       - name: Checkout
@@ -120,26 +124,53 @@ jobs:
         run: |
           find . -name "requirements.txt" -type f -delete
 
-      - name: Prepare build directories
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install system packages
         run: |
-          mkdir -p .buildozer .buildozer_global bin
-          chmod -R 777 .buildozer .buildozer_global bin
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            autoconf automake build-essential ccache gettext git libffi-dev \
+            libltdl-dev libssl-dev libtool patch pkg-config unzip zip zlib1g-dev
+
+      - name: Install buildozer and pinned CMake
+        run: |
+          python -m pip install --upgrade pip wheel
+          pip install "Cython<3.0" buildozer
+          # CMake 4.x removed compatibility with cmake_minimum_required < 3.5,
+          # which old recipes (jpeg 2.0.1) still use.
+          pip install "cmake<4"
+          cmake --version
+          which cmake
 
       - name: Cache buildozer state
         uses: actions/cache@v4
         with:
           path: |
             .buildozer
-            .buildozer_global
-          key: buildozer-nuke-v4-${{ hashFiles('buildozer.spec') }}
+            ~/.buildozer
+          key: buildozer-v5-${{ hashFiles('buildozer.spec') }}
 
-      - name: Build APK (buildozer docker image)
+      - name: Build APK
         run: |
-          docker run --rm \
-            -e BUILDOZER_ALLOW_KIVY_GLOBAL=1 \
-            -v "${{ github.workspace }}":/home/user/hostcwd \
-            -v "${{ github.workspace }}/.buildozer_global":/home/user/.buildozer \
-            kivy/buildozer android debug
+          set -o pipefail
+          buildozer -v android debug 2>&1 | tee buildozer-full.log
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: buildozer-log
+          path: buildozer-full.log
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
