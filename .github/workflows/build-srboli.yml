@@ -163,7 +163,19 @@ jobs:
       - name: Build APK
         run: |
           set -o pipefail
-          buildozer -v android debug 2>&1 | tee buildozer-full.log
+          # Source downloads (python.org, GitHub, etc.) occasionally return
+          # transient 5xx errors. Retry; already-downloaded/built pieces
+          # under .buildozer are reused, so retries are cheap.
+          : > buildozer-full.log
+          for attempt in 1 2 3; do
+            echo "=== buildozer attempt $attempt ===" | tee -a buildozer-full.log
+            if buildozer -v android debug 2>&1 | tee -a buildozer-full.log; then
+              exit 0
+            fi
+            echo "=== attempt $attempt failed ===" | tee -a buildozer-full.log
+            sleep 30
+          done
+          exit 1
 
       - name: Upload build log
         if: always()
