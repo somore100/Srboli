@@ -40,20 +40,21 @@ android.allow_backup = True
 # cloned.
 #
 # History of getting this pin right:
-#   - unset / master -> currently mid-migration to building CPython 3.14 as
-#     host/target Python, which breaks on packages like charset_normalizer
-#     that don't yet have wheels for that Android platform tag.
-#   - stable -> the opposite problem: it predates p4a's AAB (Android App
-#     Bundle) support entirely (added Aug 2021), so this buildozer version
-#     refuses to use it ("requires a python-for-android version with AAB
-#     support").
-# 2026.05.09 is p4a's actual latest tagged PyPI release (10 May 2026) — long
-# after AAB support existed, and from before the still-unreleased CPython
-# 3.14 migration currently sitting on master. Pinning to the tag by name
-# gives a fixed, reproducible checkout instead of riding either branch.
-# Note: the git tag itself is v-prefixed and zero-padded (v2026.05.09),
-# unlike the bare "2026.5.9" PyPI displays for the same release.
-p4a.branch = v2026.05.09
+#   - unset / master -> mid-migration to CPython 3.14; broke on
+#     charset_normalizer ("not a supported wheel on this platform").
+#   - stable -> predates AAB support; buildozer refuses it.
+#   - v2026.05.09 -> clones fine and compiles Kivy, but hits the same
+#     charset_normalizer error. Root cause: commit 2f107b15 ("Add support
+#     for prebuilt wheels", #3280) made run_pymodules_install do a dry-run
+#     resolve WITH --platform flags, then a real install WITHOUT them, so
+#     pip rejects the Android-tagged wheel. Triggered by the Kivy recipe's
+#     own python_depends (certifi, chardet, idna, requests, urllib3,
+#     filetype), not by anything in this project's requirements.
+# v2024.01.21 is the last tag BEFORE that commit (verified with
+# `git tag --contains 2f107b15` -> only v2026.05.09). It uses the older
+# single-step pip install, builds CPython 3.11.5, and is well after AAB
+# support. Note the git tag is v-prefixed and zero-padded.
+p4a.branch = v2024.01.21
 
 [buildozer]
 log_level = 2
