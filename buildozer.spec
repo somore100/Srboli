@@ -20,7 +20,7 @@ version = 2.4
 # backs System Stats and the desktop overlay app — both gracefully show
 # "not available" via main.py's try_import()+Placeholder instead of
 # crashing the build or the app.
-requirements = python3,kivy==2.3.1,pillow
+requirements = python3,kivy==2.3.1,pillow,filetype
 
 orientation = portrait
 fullscreen = 0
