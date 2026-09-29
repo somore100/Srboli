@@ -2,6 +2,8 @@
 
 **A pocket swiss-army knife desktop app** — 16 tools in one window, built with Python + Kivy.
 
+Even if you don't see a use for every feature at first, odds are at least one will be useful — and you might even end up using several.
+
 ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows-lightgrey)
 
 <p align="center">
@@ -9,7 +11,7 @@
   <img width="49%" alt="Srboli tool screen" src="https://github.com/user-attachments/assets/22bde96b-28af-4b57-97bf-23872f33dfc3" />
 </p>
 
-From a countdown timer to a metadata inspector, Srboli bundles the small utilities you'd otherwise hunt down as separate apps into one lightweight desktop tool, with global shortcuts to jump between them instantly.
+From a countdown timer to a metadata inspector, Srboli bundles the small utilities you'd otherwise hunt down as separate apps into one lightweight desktop tool, with global shortcuts to jump between them.
 
 ## Features
 
