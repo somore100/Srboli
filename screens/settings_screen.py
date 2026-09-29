@@ -15,7 +15,7 @@
 # hiding a screen from silently breaking any keybind someone already set
 # up for it.
 
-import os, json
+import os, json, threading, time
 
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
@@ -27,10 +27,13 @@ from kivy.uix.checkbox import CheckBox
 from kivy.uix.widget import Widget
 from kivy.graphics import Color, Rectangle
 from kivy.core.window import Window
+from kivy.clock import Clock
 from kivy.metrics import dp
 
 import app_data
 from screens.registry import SCREENS, LABELS, default_route_order
+from core.daemon_ipc import send_command, daemon_launch_cmd, spawn_detached
+import core.autostart as autostart
 
 CONFIG_FILE_NAME = "app_settings.json"
 
@@ -118,6 +121,20 @@ class _Row(BoxLayout):
         return super().on_touch_down(touch)
 
 
+def _fmt_uptime(seconds):
+    seconds = int(max(0, seconds))
+    if seconds < 60:
+        return f"{seconds}s"
+    minutes, seconds = divmod(seconds, 60)
+    if minutes < 60:
+        return f"{minutes}m {seconds}s"
+    hours, minutes = divmod(minutes, 60)
+    if hours < 24:
+        return f"{hours}h {minutes}m"
+    days, hours = divmod(hours, 24)
+    return f"{days}d {hours}h"
+
+
 class SettingsScreen(Screen):
     def __init__(self, **kw):
         super().__init__(**kw)
@@ -177,6 +194,57 @@ class SettingsScreen(Screen):
         lazy_lbl.bind(size=lazy_lbl.setter("text_size"))
         lazy_row.add_widget(lazy_lbl)
         root.add_widget(lazy_row)
+
+        # ── background service ──────────────────────────────────────────
+        root.add_widget(Label(text="[b]Background service[/b]", markup=True,
+                              font_size=15, size_hint_y=None, height=dp(26)))
+        svc_desc = Label(
+            text="A small process that can run reminders, watch folders, "
+                 "and answer hotkeys even when Srboli's window is closed. "
+                 "Off by default — nothing runs in the background unless "
+                 "you start it here.",
+            font_size=11, halign="left", valign="top",
+            size_hint_y=None, height=dp(46), color=(0.7, 0.7, 0.7, 1))
+        svc_desc.bind(size=svc_desc.setter("text_size"))
+        root.add_widget(svc_desc)
+
+        svc_row = BoxLayout(size_hint_y=None, height=dp(40), spacing=6)
+        self._daemon_status_lbl = Label(text="Checking...", font_size=12,
+                                        halign="left", valign="middle")
+        self._daemon_status_lbl.bind(
+            size=self._daemon_status_lbl.setter("text_size"))
+        svc_row.add_widget(self._daemon_status_lbl)
+        self._daemon_refresh_btn = Button(text="Refresh", size_hint_x=None,
+                                          width=dp(72), font_size=11)
+        self._daemon_start_btn = Button(text="Start", size_hint_x=None,
+                                        width=dp(72), font_size=12,
+                                        background_color=(0.2, 0.55, 0.2, 1))
+        self._daemon_stop_btn = Button(text="Stop", size_hint_x=None,
+                                       width=dp(72), font_size=12,
+                                       background_color=(0.55, 0.2, 0.2, 1))
+        self._daemon_refresh_btn.bind(
+            on_release=lambda *a: self._refresh_daemon_status())
+        self._daemon_start_btn.bind(on_release=self._start_daemon)
+        self._daemon_stop_btn.bind(on_release=self._stop_daemon)
+        svc_row.add_widget(self._daemon_refresh_btn)
+        svc_row.add_widget(self._daemon_start_btn)
+        svc_row.add_widget(self._daemon_stop_btn)
+        root.add_widget(svc_row)
+
+        if autostart.is_supported():
+            auto_row = BoxLayout(size_hint_y=None, height=dp(40), spacing=6)
+            self._autostart_cb = CheckBox(size_hint=(None, None),
+                                          size=(dp(26), dp(26)))
+            self._autostart_cb.bind(active=self._toggle_autostart)
+            auto_row.add_widget(self._autostart_cb)
+            auto_lbl = Label(
+                text="Start the background service automatically when I log in",
+                font_size=12, halign="left", valign="middle")
+            auto_lbl.bind(size=auto_lbl.setter("text_size"))
+            auto_row.add_widget(auto_lbl)
+            root.add_widget(auto_row)
+        else:
+            self._autostart_cb = None
 
         self._status = Label(text="", size_hint_y=None, height=dp(22),
                              font_size=11, color=(0.4, 1, 0.4, 1))
@@ -252,9 +320,92 @@ class SettingsScreen(Screen):
     # ── keyboard reorder (Up/Down while this screen is active) ─────────────
     def on_enter(self, *a):
         Window.bind(on_key_down=self._on_key)
+        self._refresh_daemon_status()
+        if self._autostart_cb is not None:
+            self._autostart_syncing = True
+            self._autostart_cb.active = autostart.is_enabled()
+            self._autostart_syncing = False
 
     def on_leave(self, *a):
         Window.unbind(on_key_down=self._on_key)
+
+    # ── background service ──────────────────────────────────────────────
+    def _refresh_daemon_status(self):
+        self._daemon_status_lbl.text = "Checking..."
+        self._daemon_status_lbl.color = (0.7, 0.7, 0.7, 1)
+
+        def worker():
+            resp = send_command("status", timeout=1.5)
+            Clock.schedule_once(lambda dt: self._apply_daemon_status(resp))
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _apply_daemon_status(self, resp):
+        if resp and resp.get("ok"):
+            uptime = _fmt_uptime(resp.get("uptime", 0))
+            self._daemon_status_lbl.text = f"Running  (pid {resp.get('pid')}, up {uptime})"
+            self._daemon_status_lbl.color = (0.45, 0.85, 0.45, 1)
+            self._daemon_start_btn.disabled = True
+            self._daemon_stop_btn.disabled = False
+        else:
+            self._daemon_status_lbl.text = "Not running"
+            self._daemon_status_lbl.color = (0.75, 0.75, 0.75, 1)
+            self._daemon_start_btn.disabled = False
+            self._daemon_stop_btn.disabled = True
+
+    def _start_daemon(self, *a):
+        self._daemon_start_btn.disabled = True
+        self._daemon_status_lbl.text = "Starting..."
+        self._daemon_status_lbl.color = (0.7, 0.7, 0.7, 1)
+
+        def worker():
+            try:
+                spawn_detached(daemon_launch_cmd())
+            except Exception as e:
+                msg = str(e)
+                def fail(dt, msg=msg):
+                    self._daemon_status_lbl.text = f"Couldn't start: {msg}"
+                    self._daemon_start_btn.disabled = False
+                Clock.schedule_once(fail)
+                return
+            # give the new process a moment to bind its socket, then
+            # confirm over IPC rather than just trusting Popen succeeded
+            resp = None
+            for _ in range(10):
+                time.sleep(0.3)
+                resp = send_command("ping", timeout=1.0)
+                if resp:
+                    break
+            Clock.schedule_once(lambda dt: self._apply_daemon_status(resp))
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _stop_daemon(self, *a):
+        self._daemon_stop_btn.disabled = True
+        self._daemon_status_lbl.text = "Stopping..."
+        self._daemon_status_lbl.color = (0.7, 0.7, 0.7, 1)
+
+        def worker():
+            send_command("stop", timeout=1.5)
+            resp = None
+            for _ in range(10):
+                time.sleep(0.2)
+                resp = send_command("ping", timeout=0.5)
+                if resp is None:
+                    break
+            Clock.schedule_once(lambda dt: self._apply_daemon_status(resp))
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _toggle_autostart(self, checkbox, active):
+        if getattr(self, "_autostart_syncing", False):
+            return          # programmatic set from on_enter, not a user click
+        if active:
+            ok, err = autostart.enable(daemon_launch_cmd())
+        else:
+            ok, err = autostart.disable()
+        if not ok:
+            self._autostart_syncing = True
+            checkbox.active = not active     # revert the visual toggle
+            self._autostart_syncing = False
+            self._status.text = f"Couldn't update autostart: {err}"
 
     def _on_key(self, window, key, scancode, codepoint, modifiers):
         if key == 273:      # Up arrow

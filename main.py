@@ -19,6 +19,15 @@ if len(sys.argv) > 1 and sys.argv[1] == "--overlay":
     import _overlay_app  # noqa: F401 — runs OverlayApp().run() itself
     sys.exit(0)
 
+# ── daemon dispatch ──────────────────────────────────────────────────────────
+# Unlike --overlay above, this path never touches Kivy at all — core/daemon.py
+# and everything it imports is plain stdlib + app_data. It must stay that way:
+# the whole point of the daemon is to run with no window and no Kivy import,
+# so it can sit in the background without a GPU context or a display.
+if len(sys.argv) > 1 and sys.argv[1] == "--daemon":
+    import core.daemon
+    sys.exit(core.daemon.run())
+
 from kivy.config import Config
 Config.set("input", "mouse", "mouse,disable_multitouch")
 Config.set("kivy", "exit_on_escape", "0")

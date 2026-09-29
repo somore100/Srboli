@@ -1,0 +1,113 @@
+import sys, time
+sys.path.insert(0, __import__("os").path.join(__import__("os").path.dirname(__import__("os").path.abspath(__file__)), ".."))
+from screens.md_parse import parse_markdown as P, inline_to_markup as I
+
+fails = 0
+def check(name, got, want):
+    global fails
+    if got != want:
+        fails += 1
+        print(f"FAIL {name}\n  got : {got!r}\n  want: {want!r}")
+    else:
+        print(f"ok   {name}")
+
+# ---- blocks
+check("h1", P("# Hello"), [{"type":"heading","level":1,"text":"Hello"}])
+check("h3 closing hashes", P("### Hi ###")[0]["text"], "Hi")
+check("no-space ## stays text", P("##THIS IS HEADER")[0]["type"], "para")
+check("hashtag stays text", P("#todo buy milk")[0]["type"], "para")
+check("hr", [b["type"] for b in P("a\n\n---\n\nb")], ["para","hr","para"])
+check("setext h1", P("Title\n=====")[0], {"type":"heading","level":1,"text":"Title"})
+check("setext h2", P("Title\n---")[0]["level"], 2)
+b = P("```python\nprint('x')\n\nprint('y')\n```")
+check("fence", (b[0]["type"], b[0]["lang"], b[0]["text"]), ("code","python","print('x')\n\nprint('y')"))
+b = P("```\nunclosed\ncode")
+check("unclosed fence to EOF", b[0]["text"], "unclosed\ncode")
+b = P("````\n```\ninner\n```\n````")
+check("longer fence contains shorter", b[0]["text"], "```\ninner\n```")
+b = P("> quote line\n> second\n>\n> - item")
+check("quote nested list", [x["type"] for x in b[0]["blocks"]], ["para","list"])
+b = P("- a\n- b\n  - c\n  - d\n- e")
+items = b[0]["items"]
+check("nested bullets", (len(items), [x["type"] for x in items[1]["blocks"]]), (3, ["para","list"]))
+check("nested count", len(items[1]["blocks"][1]["items"]), 2)
+b = P("1. one\n2. two\n3. three")
+check("ordered", (b[0]["ordered"], b[0]["start"], len(b[0]["items"])), (True, 1, 3))
+b = P("3. x\n4. y")
+check("ordered start", b[0]["start"], 3)
+b = P("1. a\n  - sub under 2sp")
+check("lenient 2sp nesting under ordered", b[0]["items"][0]["blocks"][1]["type"], "list")
+b = P("- [ ] todo\n- [x] done\n- [X] Done2\n- plain")
+check("tasks", [i["task"] for i in b[0]["items"]], [False, True, True, None])
+check("task text stripped", b[0]["items"][0]["blocks"][0]["text"], "todo")
+b = P("- a\n\n- b\n\npara")
+check("loose list then para", [x["type"] for x in b], ["list","para"])
+check("loose list items", len(b[0]["items"]), 2)
+b = P("- a\n```\ncode\n```")
+check("fence after list at col0 ends list", [x["type"] for x in b], ["list","code"])
+b = P("- item\n  ```\n  code in item\n  ```")
+check("fence inside item", [x["type"] for x in b[0]["items"][0]["blocks"]], ["para","code"])
+b = P("* a\n1. b")
+check("bullet then ordered = two lists", [x["type"] for x in b], ["list","list"])
+b = P("text right before\n- list")
+check("list interrupts para", [x["type"] for x in b], ["para","list"])
+b = P("| a | b |\n|---|:-:|\n| 1 | 2 |\n| 3 | 4 |")
+t = b[0]
+check("table", (t["type"], t["header"], t["aligns"], t["rows"]), ("table",["a","b"],["left","center"],[["1","2"],["3","4"]]))
+b = P("a | b\n--- | ---\nx | y")
+check("table no outer pipes", b[0]["type"], "table")
+b = P("| a | b |\n|---|---|\n| only |")
+check("short row padded", b[0]["rows"], [["only",""]])
+b = P("| esc \\| pipe | b |\n|---|---|\n| 1 | 2 |")
+check("escaped pipe", b[0]["header"][0], "esc | pipe")
+b = P("![logo](logo.png)")
+check("standalone image", (b[0]["type"], b[0]["url"]), ("image","logo.png"))
+b = P("line1\nline2\n\nnew para")
+check("para keeps newline", b[0]["text"], "line1\nline2")
+check("empty", P(""), [])
+check("crlf", P("# a\r\n\r\nb")[0]["text"], "a")
+
+# ---- inline
+check("bold", I("**hi**"), "[b]hi[/b]")
+check("italic star", I("*hi*"), "[i]hi[/i]")
+check("italic under", I("_hi_"), "[i]hi[/i]")
+check("snake_case untouched", I("my_var_name"), "my_var_name")
+check("math stars untouched", I("2 * 3 * 4"), "2 * 3 * 4")
+check("bold+italic", I("***x***"), "[b][i]x[/i][/b]")
+check("strike", I("~~x~~"), "[s]x[/s]")
+check("nested", I("**bold *it* bold**"), "[b]bold [i]it[/i] bold[/b]")
+check("code", I("a `b*c*` d"), "a [font=RobotoMono-Regular][color=ffb86c]b*c*[/color][/font] d")
+check("code brackets escaped", "&bl;" in I("`[x]`"), True)
+check("double backtick code", "a`b" in I("``a`b``"), True)
+check("escape star", I("\\*no\\*"), "*no*")
+check("brackets escaped", I("[not a link] & more"), "&bl;not a link&br; &amp; more")
+check("link", I("[go](https://x.com)"), "[ref=https://x.com][color=5aa9ff][u]go[/u][/color][/ref]")
+check("link w/ emphasis", "[b]go[/b]" in I("[**go**](https://x.com)"), True)
+check("js link dropped to text", I("[x](javascript:alert(1))"), "x")
+check("bare url", "[ref=https://a.com/p]" in I("see https://a.com/p."), True)
+check("bare url trailing period kept outside", I("https://a.com.").endswith("[/ref]."), True)
+check("autolink", "[ref=https://a.com]" in I("<https://a.com>"), True)
+check("image inline", "image: cat" in I("![cat](c.png)"), True)
+check("color tag hex", I("[color=#FF0000]hi[/color]"), "[color=ff0000]hi[/color]")
+check("color tag 3hex", I("[color=#f00]hi[/color]"), "[color=ff0000]hi[/color]")
+check("color named", I("[color=red]x[/color]"), "[color=ff4d4d]x[/color]")
+check("color unknown dropped", I("[color=zzz]x[/color]"), "x")
+check("color unmatched opener dropped", I("[color=#ff0000]oops"), "oops")
+check("color unmatched closer dropped", I("oops[/color]"), "oops")
+check("color inside bold", I("**[color=#0f0]g[/color]**"), "[b][color=00ff00]g[/color][/b]")
+check("markup injection neutralised", I("[b]x[/b]"), "&bl;b&br;x&bl;/b&br;")
+check("ref injection neutralised", "[ref=" not in I("[ref=file:///etc/passwd]x[/ref]"), True)
+
+check("paren url", "[ref=https://en.wikipedia.org/wiki/Foo_(bar)]" in I("[w](https://en.wikipedia.org/wiki/Foo_(bar))"), True)
+check("link then text after", I("[a](https://x.com) and (b)").endswith("[/ref] and (b)"), True)
+check("link with title", "[ref=https://x.com]" in I('[a](https://x.com "T")'), True)
+check("paren url in image block", P("![a](img_(1).png)")[0]["type"], "image")
+# ---- perf
+big = ("# Title\n\nSome **bold** and `code` and [link](https://x.com) text.\n\n"
+       "- a\n- b\n  - c\n\n> quote\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n```\ncode\n```\n\n") * 1000
+t0 = time.time(); blocks = P(big); dt = time.time() - t0
+print(f"perf: {len(big.splitlines())} lines -> {len(blocks)} blocks in {dt*1000:.0f} ms")
+check("perf under 2s", dt < 2.0, True)
+
+print("\nFAILURES:", fails)
+sys.exit(1 if fails else 0)

@@ -1,5 +1,6 @@
 # screens/text_editor_screen.py
-# Text editor with: color wheel, autosave, rotation, script mode link
+# Text editor with: color wheel, autosave, rotation, script mode link,
+# and a Raw / Styled view toggle (Markdown-style rendering, like GitHub)
 # Draw tab REMOVED (txt can't store drawings)
 # Saves internally (app data) AND can export to chosen location
 
@@ -26,7 +27,14 @@ from kivy.core.clipboard import Clipboard
 
 import app_data
 
+try:
+    from screens.md_view import MarkdownView
+except Exception as _e:          # renderer optional; Raw view still works
+    print(f"Styled view unavailable: {_e}")
+    MarkdownView = None
+
 AUTOSAVE_INTERVAL = 20
+STYLED_REFRESH_DELAY = 0.25     # debounce while typing/zooming
 
 
 def _home():
@@ -204,8 +212,12 @@ class TextEditorScreen(Screen):
         self._autosave_ev = None
         self._last_saved  = ""
         self._landscape   = False
+        self._styled      = False   # False = Raw view, True = Styled view
+        self._md          = None    # MarkdownView, built on first use
+        self._md_ev       = None    # debounced refresh event
 
         root = BoxLayout(orientation="vertical", padding=4, spacing=4)
+        self._root = root
 
         # ── export format selector ────────────────────────────────────────────
         fmt_sel_row = BoxLayout(size_hint_y=None, height=dp(54), spacing=6,
@@ -249,7 +261,19 @@ class TextEditorScreen(Screen):
                           size_hint_x=None, width=dp(78))
         copy_btn.bind(on_release=lambda *a: Clipboard.copy(self._ed.text))
         bar.add_widget(copy_btn)
-        self._status = Label(text="New file", font_size=10, halign="left")
+
+        # Raw / Styled view toggle (like GitHub's Code | Preview)
+        self._raw_btn = ToggleButton(text="Raw", group="te_view", state="down",
+                                     allow_no_selection=False,
+                                     size_hint_x=None, width=dp(54), font_size=12)
+        self._sty_btn = ToggleButton(text="Styled", group="te_view",
+                                     allow_no_selection=False,
+                                     size_hint_x=None, width=dp(64), font_size=12)
+        self._sty_btn.bind(state=lambda i, st: self._set_view(st == "down"))
+        bar.add_widget(self._raw_btn)
+        bar.add_widget(self._sty_btn)
+        self._status = Label(text="New file", font_size=10, halign="left",
+                             shorten=True, shorten_from="right", max_lines=1)
         self._status.bind(size=self._status.setter("text_size"))
         bar.add_widget(self._status)
         root.add_widget(bar)
@@ -264,9 +288,7 @@ class TextEditorScreen(Screen):
                                size_hint_x=None, width=dp(100))
         self._font_lbl = Label(text="100%", size_hint_x=None,
                                width=dp(40), font_size=12)
-        self._font_sl.bind(value=lambda s, v: (
-            setattr(self._ed, "font_size", int(self._base_font_size * v / 100)),
-            setattr(self._font_lbl, "text", f"{int(v)}%")))
+        self._font_sl.bind(value=self._on_zoom)
         fmt.add_widget(self._font_sl)
         fmt.add_widget(self._font_lbl)
 
@@ -275,6 +297,7 @@ class TextEditorScreen(Screen):
                          font_size=12)
         col_btn.bind(on_release=lambda *a: _color_wheel_popup(
             self._insert_color_tag))
+        self._col_btn = col_btn
         fmt.add_widget(col_btn)
 
         # autosave
@@ -330,6 +353,72 @@ class TextEditorScreen(Screen):
         # disable colour button for txt/md since they can't store it
         # (colour wheel stays — useful to insert tags for html mode)
 
+    # ── Raw / Styled view ────────────────────────────────────────────────────
+    def _on_zoom(self, slider, v):
+        self._ed.font_size = int(self._base_font_size * v / 100)
+        self._font_lbl.text = f"{int(v)}%"
+        if self._styled:
+            self._schedule_styled_refresh(keep_scroll=True)
+
+    def _md_status(self, msg):
+        self._status.text = msg
+
+    def _base_dir(self):
+        return os.path.dirname(self._file) if self._file else None
+
+    def _refresh_styled(self, keep_scroll=False):
+        self._md_ev = None
+        if self._md is None:
+            return
+        self._md.set_scale(self._font_sl.value / 100)
+        self._md.set_markdown(self._ed.text, base_dir=self._base_dir(),
+                              keep_scroll=keep_scroll,
+                              width_hint=self._ed.width or self._root.width)
+
+    def _schedule_styled_refresh(self, keep_scroll=False):
+        if self._md_ev:
+            self._md_ev.cancel()
+        self._md_ev = Clock.schedule_once(
+            lambda dt: self._refresh_styled(keep_scroll),
+            STYLED_REFRESH_DELAY)
+
+    def _restore_status(self):
+        name = os.path.basename(self._file) if self._file else "unsaved"
+        self._status.text = f"*{name}" if self._dirty else (
+            name if self._file else "New file")
+
+    def _set_view(self, styled):
+        if styled == self._styled:
+            return
+        if styled:
+            if MarkdownView is None:
+                self._raw_btn.state = "down"
+                self._popup("Styled view unavailable",
+                            "screens/md_view.py failed to load - "
+                            "check the console output.")
+                return
+            if self._md is None:
+                self._md = MarkdownView(base_font=self._base_font_size,
+                                        on_status=self._md_status)
+            self._refresh_styled()
+            idx = self._root.children.index(self._ed)
+            self._root.remove_widget(self._ed)
+            self._root.add_widget(self._md, index=idx)
+            self._col_btn.disabled = True       # colour tags are inserted in Raw
+            self._styled = True
+            self._status.text = "Styled (read-only)"
+        else:
+            if self._md_ev:
+                self._md_ev.cancel()
+                self._md_ev = None
+            idx = self._root.children.index(self._md)
+            self._root.remove_widget(self._md)
+            self._root.add_widget(self._ed, index=idx)
+            self._col_btn.disabled = False
+            self._styled = False
+            self._restore_status()
+            Clock.schedule_once(lambda dt: setattr(self._ed, "focus", True), 0)
+
     # ── colour tag ───────────────────────────────────────────────────────────
     def _insert_color_tag(self, hex_str):
         self._ed.insert_text(f"[color={hex_str}]text[/color]")
@@ -346,6 +435,8 @@ class TextEditorScreen(Screen):
         self._dirty = True
         name = os.path.basename(self._file) if self._file else "unsaved"
         self._status.text = f"*{name}"
+        if self._styled:
+            self._schedule_styled_refresh()
 
     def _new(self, *a):
         if self._dirty:

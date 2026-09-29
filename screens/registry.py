@@ -28,6 +28,7 @@ SCREENS = [
     ("shape_gen",      "screens.shape_generator_screen",  "ShapeGeneratorScreen"),
     ("metadata",       "screens.metadata_screen",         "MetadataScreen"),
     ("file_sorter",    "screens.file_sorter_screen",      "FileSorterScreen"),
+    ("reminders",      "screens.reminders_screen",        "RemindersScreen"),
     ("fast_transfer",  "screens.fast_transfer_screen",    "FastTransferScreen"),
     ("quickswitcher",  "screens.quickswitcher_screen",    "QuickSwitcherScreen"),
 ]
@@ -50,6 +51,7 @@ LABELS = {
     "shape_gen":      "Shape Generator",
     "metadata":       "Metadata Inspector",
     "file_sorter":    "File Sorter",
+    "reminders":      "Reminders",
     "fast_transfer":  "Fast File Transfer",
     "quickswitcher":  "Quick Switcher",
 }
