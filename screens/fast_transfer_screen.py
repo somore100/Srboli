@@ -28,6 +28,8 @@
 # is always user-editable.
 
 import os, shutil, threading, time, platform
+
+from core.android_storage import shared_storage_root
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from kivy.uix.screenmanager import Screen
@@ -391,7 +393,7 @@ class FastTransferScreen(Screen):
 
     # ── folder picking ──────────────────────────────────────────────────
     def _pick_folder(self, which):
-        chooser = FileChooserIconView(path=os.path.expanduser("~"),
+        chooser = FileChooserIconView(path=shared_storage_root(),
                                       dirselect=True)
         popup = Popup(title="Choose a folder", content=chooser,
                       size_hint=(0.9, 0.9))

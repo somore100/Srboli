@@ -44,12 +44,13 @@ except ImportError:
     HAS_CV2 = False
 
 import app_data
+from core.android_storage import shared_storage_root
 
 IMAGE_EXTS = {".jpg",".jpeg",".png",".bmp",".gif",".webp",".tiff",".tif"}
 VIDEO_EXTS = {".mp4",".mkv",".avi",".mov",".wmv",".flv",".webm",".m4v"}
 MEDIA_EXTS = IMAGE_EXTS | VIDEO_EXTS
 
-def _home(): return os.path.expanduser("~")
+def _home(): return shared_storage_root()
 def _is_video(p): return os.path.splitext(p)[1].lower() in VIDEO_EXTS
 def _is_image(p): return os.path.splitext(p)[1].lower() in IMAGE_EXTS
 def _is_media(p): return os.path.splitext(p)[1].lower() in MEDIA_EXTS

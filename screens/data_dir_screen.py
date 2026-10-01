@@ -17,6 +17,7 @@ from kivy.uix.togglebutton import ToggleButton
 from kivy.metrics import dp
 
 import app_data
+from core.android_storage import shared_storage_root
 
 
 def _fmt_bytes(b):
@@ -124,7 +125,7 @@ class DataDirScreen(Screen):
     # ── actions ──────────────────────────────────────────────────────────────
     def _pick_folder(self, *a):
         chooser = FileChooserIconView(
-            path=os.path.expanduser("~"),
+            path=shared_storage_root(),
             dirselect=True, multiselect=False,
         )
         btn = Button(text="Select this folder", size_hint_y=None, height=dp(44))

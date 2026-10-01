@@ -60,6 +60,12 @@ class ScriptModeScreen(Screen):
             values=("Enter (blank line)", "Lines", "Characters",
                     "Sentences", "Paragraphs"),
             size_hint_x=None, width=dp(170), font_size=12)
+        # See main.py's Window.softinput_mode comment: if the text input
+        # above still has focus (and the keyboard is up), the very tap
+        # that opens this dropdown can double as the tap that closes it.
+        # Force focus away first so there's no keyboard-dismiss touch for
+        # the dropdown to misread.
+        self._split_mode.bind(on_touch_down=self._defocus_input)
         opt.add_widget(self._split_mode)
         opt.add_widget(Label(text="Size:", size_hint_x=None,
                              width=dp(38), font_size=12))
@@ -138,6 +144,13 @@ class ScriptModeScreen(Screen):
         Window.bind(on_key_down=self._on_key)
 
     # ── split ──────────────────────────────────────────────────────────────
+    def _defocus_input(self, widget, touch):
+        # Only care about a touch that's actually landing on this widget;
+        # let it continue propagating normally either way.
+        if widget.collide_point(*touch.pos):
+            self._input.focus = False
+        return False
+
     def _do_split(self, *a):
         text = self._input.text
         if not text.strip():
