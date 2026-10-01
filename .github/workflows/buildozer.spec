@@ -20,14 +20,14 @@ version = 2.4
 # backs System Stats and the desktop overlay app — both gracefully show
 # "not available" via main.py's try_import()+Placeholder instead of
 # crashing the build or the app.
-requirements = python3,kivy==2.3.1,pillow,filetype
+requirements = python3,kivy==2.3.1,pillow
 
 orientation = portrait
 fullscreen = 0
 icon.filename = %(source.dir)s/logo.png
 
 # Android specifics
-android.permissions = READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE
+android.permissions = READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE,MANAGE_EXTERNAL_STORAGE
 
 android.api = 34
 android.minapi = 24
