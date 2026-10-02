@@ -7,6 +7,8 @@
 # tests can check exactly what would have been run without needing the
 # real notifier installed.
 
+import os
+import time
 import platform
 import subprocess
 
@@ -58,6 +60,38 @@ _COMMAND_BUILDERS = {
 }
 
 
+def _is_android():
+    return "ANDROID_ARGUMENT" in os.environ
+
+
+def _android_notify(title, message):
+    """Post a notification through Android's NotificationManager (pyjnius).
+    Needs the POST_NOTIFICATIONS permission on Android 13+."""
+    try:
+        from jnius import autoclass
+        PythonActivity = autoclass("org.kivy.android.PythonActivity")
+        Context = autoclass("android.content.Context")
+        Build = autoclass("android.os.Build$VERSION")
+        NotificationManager = autoclass("android.app.NotificationManager")
+        NotificationChannel = autoclass("android.app.NotificationChannel")
+        Builder = autoclass("android.app.Notification$Builder")
+        ctx = PythonActivity.mActivity
+        nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE)
+        chan_id = "srboli_reminders"
+        nm.createNotificationChannel(NotificationChannel(
+            chan_id, "Reminders", NotificationManager.IMPORTANCE_HIGH))
+        b = Builder(ctx, chan_id)
+        b.setContentTitle(str(title))
+        b.setContentText(str(message))
+        b.setSmallIcon(ctx.getApplicationInfo().icon)
+        b.setAutoCancel(True)
+        nm.notify(int(time.time()) & 0x7FFFFFFF, b.build())
+        return True
+    except Exception as e:
+        print(f"Srboli notify (android): failed ({e})")
+        return False
+
+
 def send_notification(title, message, runner=None, system=None):
     """Show `title`/`message` as a native notification. Returns True if
     the notifier command ran without error, False otherwise (missing
@@ -68,6 +102,8 @@ def send_notification(title, message, runner=None, system=None):
     `system` defaults to platform.system(); tests override it to
     exercise all three OS branches from one machine.
     """
+    if runner is None and system is None and _is_android():
+        return _android_notify(title, message)
     runner = runner or subprocess.run
     system = system or platform.system()
     build = _COMMAND_BUILDERS.get(system)

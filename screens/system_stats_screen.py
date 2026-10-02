@@ -21,7 +21,13 @@ try:
     import psutil
     HAS_PSUTIL = True
 except ImportError:
-    HAS_PSUTIL = False
+    # Android: psutil can't be installed (no recipe). Fall back to a small
+    # /proc-based stand-in with the same calls.
+    try:
+        from core import psutil_lite as psutil
+        HAS_PSUTIL = True
+    except Exception:
+        HAS_PSUTIL = False
 
 from screens.sys_info import gpu_info_lines as _gpu_info_lines, do_ping as _do_ping
 
@@ -345,7 +351,7 @@ class SystemStatsScreen(Screen):
         if not HAS_PSUTIL:
             for lbl in self._sys_labels.values():
                 lbl.text = ("psutil not installed\n"
-                           "Run: python3 -m pip install psutil")
+                           "(desktop: python3 -m pip install psutil)")
             return
         try:
             freq = psutil.cpu_freq()

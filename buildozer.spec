@@ -27,7 +27,7 @@ fullscreen = 0
 icon.filename = %(source.dir)s/logo.png
 
 # Android specifics
-android.permissions = READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE
+android.permissions = INTERNET,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE,MANAGE_EXTERNAL_STORAGE,POST_NOTIFICATIONS
 
 android.api = 34
 android.minapi = 24

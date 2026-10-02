@@ -241,13 +241,17 @@ class TextEditorScreen(Screen):
             text="Plain text — colour not preserved. Zoom is just for "
                  "editing, it isn't saved to the file.",
             font_size=11, size_hint_y=None, height=dp(20),
-            halign="left", color=(0.6, 0.8, 1, 1))
+            halign="left", color=(0.6, 0.8, 1, 1),
+            shorten=True, shorten_from="right", max_lines=1)
         self._fmt_hint.bind(size=self._fmt_hint.setter("text_size"))
         root.add_widget(self._fmt_hint)
 
 
         # ── toolbar ──────────────────────────────────────────────────────────
-        bar = BoxLayout(size_hint_y=None, height=dp(40), spacing=4)
+        # Rows are wider than a phone screen, so they sit in a horizontal
+        # ScrollView (swipe sideways) instead of being clipped.
+        bar = BoxLayout(size_hint=(None, 1), spacing=4)
+        bar.bind(minimum_width=bar.setter("width"))
         for lbl, cb in [("New",    self._new),
                          ("Open",   self._open),
                          ("Save",   self._save_internal),
@@ -273,17 +277,26 @@ class TextEditorScreen(Screen):
         bar.add_widget(self._raw_btn)
         bar.add_widget(self._sty_btn)
         self._status = Label(text="New file", font_size=10, halign="left",
-                             shorten=True, shorten_from="right", max_lines=1)
+                             shorten=True, shorten_from="right", max_lines=1,
+                             size_hint_x=None, width=dp(140))
         self._status.bind(size=self._status.setter("text_size"))
         bar.add_widget(self._status)
-        root.add_widget(bar)
+        bar_sv = ScrollView(size_hint_y=None, height=dp(44), do_scroll_x=True,
+                            do_scroll_y=False, bar_width=dp(2))
+        bar_sv.add_widget(bar)
+        root.add_widget(bar_sv)
 
         # ── format row ───────────────────────────────────────────────────────
-        fmt = BoxLayout(size_hint_y=None, height=dp(36), spacing=5)
+        fmt = BoxLayout(size_hint=(None, 1), spacing=5)
+        fmt.bind(minimum_width=fmt.setter("width"))
 
         fmt.add_widget(Label(text="Zoom:", size_hint_x=None,
                              width=dp(42), font_size=12))
-        self._base_font_size = 15
+        # font_size ints are px in Kivy; main.py scales them by density on
+        # Android, so the zoom base has to be scaled the same way.
+        from kivy.utils import platform as _plat
+        from kivy.metrics import Metrics as _M
+        self._base_font_size = 15 * (_M.density if _plat == "android" else 1)
         self._font_sl = Slider(min=50, max=250, value=100,
                                size_hint_x=None, width=dp(100))
         self._font_lbl = Label(text="100%", size_hint_x=None,
@@ -320,7 +333,10 @@ class TextEditorScreen(Screen):
             self.manager, "current", "script_mode"))
         fmt.add_widget(script_btn)
 
-        root.add_widget(fmt)
+        fmt_sv = ScrollView(size_hint_y=None, height=dp(40), do_scroll_x=True,
+                            do_scroll_y=False, bar_width=dp(2))
+        fmt_sv.add_widget(fmt)
+        root.add_widget(fmt_sv)
 
         # ── editor ───────────────────────────────────────────────────────────
         self._ed = TextInput(

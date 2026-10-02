@@ -11,6 +11,7 @@ from kivy.uix.label import Label
 from kivy.core.clipboard import Clipboard
 from kivy.metrics import dp
 import collections
+import re
 
 MORSE = {
     'A': '.-',    'B': '-...',  'C': '-.-.',  'D': '-..',
@@ -50,11 +51,25 @@ class MorseScreen(Screen):
                               size_hint_y=None, height=dp(22), font_size=13))
         self.input = TextInput(
             hint_text="Type here…",
-            size_hint_y=None, height=dp(100),
+            size_hint_y=None, height=dp(80),
             background_color=(0.12, 0.12, 0.14, 1),
             foreground_color=(0.9, 0.9, 0.9, 1),
         )
         root.add_widget(self.input)
+
+        # ── morse typer keypad ──
+        # Taps insert straight into the input box, so you can tap out
+        # morse without a keyboard: dot, dash, letter gap, word gap.
+        keys = BoxLayout(size_hint_y=None, height=dp(52), spacing=6)
+        for label, ins in (("•  dot", "."), ("—  dash", "-"),
+                           ("letter ␣", " "), ("word /", " / ")):
+            kb = Button(text=label, font_size=13)
+            kb.bind(on_release=lambda w, t=ins: self._type(t))
+            keys.add_widget(kb)
+        bs = Button(text="⌫", size_hint_x=None, width=dp(48), font_size=16)
+        bs.bind(on_release=lambda *a: self.input.do_backspace())
+        keys.add_widget(bs)
+        root.add_widget(keys)
 
         # ── buttons ──
         btn_row = BoxLayout(size_hint_y=None, height=dp(46), spacing=8)
@@ -77,13 +92,13 @@ class MorseScreen(Screen):
                               size_hint_y=None, height=dp(22), font_size=13))
         self.output = TextInput(
             text="", readonly=True,
-            size_hint_y=None, height=dp(100),
+            size_hint_y=None, height=dp(80),
             background_color=(0.10, 0.10, 0.12, 1),
             foreground_color=(0.85, 0.95, 0.85, 1),
         )
         root.add_widget(self.output)
 
-        copy_btn = Button(text="Copy Copy Output", size_hint_y=None, height=dp(40))
+        copy_btn = Button(text="Copy Output", size_hint_y=None, height=dp(40))
         copy_btn.bind(on_release=lambda *a: Clipboard.copy(self.output.text))
         root.add_widget(copy_btn)
 
@@ -101,6 +116,10 @@ class MorseScreen(Screen):
         root.add_widget(back)
 
         self.add_widget(root)
+
+    def _type(self, text):
+        self.input.insert_text(text)
+        self.input.focus = False   # keep the on-screen keyboard out of the way
 
     # ── conversion ──────────────────────────────────────────────────────────
     def _text_to_morse(self, *a):
@@ -123,7 +142,7 @@ class MorseScreen(Screen):
     def _morse_to_text(self, *a):
         raw = self.input.text.strip()
         # words are separated by " / ", letters by " "
-        words = raw.split(" / ")
+        words = re.split(r"\s*/\s*", raw)
         decoded_words = []
         for word in words:
             letters = word.strip().split()

@@ -32,6 +32,39 @@ from kivy.config import Config
 Config.set("input", "mouse", "mouse,disable_multitouch")
 Config.set("kivy", "exit_on_escape", "0")
 
+from kivy.core.window import Window
+# Fixes a Kivy/Android interaction bug: when a TextInput has focus and the
+# on-screen keyboard is up, tapping a Spinner (e.g. Script Mode's "Split
+# by:") first dismisses the keyboard. The window resize that follows can
+# get read as a "touch outside" by the DropDown that just opened, closing
+# it before you can pick anything. "below_target" keeps the window from
+# resizing under the focused widget, which avoids that resize-triggered
+# dismiss. See screens/script_mode_screen.py for the matching defocus fix.
+Window.softinput_mode = "below_target"
+
+# Kivy treats plain-int font_size as pixels, so on a high-density phone the
+# app's font_size=12/14 text is tiny (and rows look cramped/cut off). The
+# code sizes widgets in dp(), so scale ints by screen density on Android to
+# match. Must run before any screen module creates widgets.
+from kivy.utils import platform as _platform
+if _platform == "android":
+    from kivy.metrics import Metrics as _Metrics
+    from kivy.uix.label import Label as _Label
+    from kivy.uix.textinput import TextInput as _TextInput
+
+    def _scale_font_ints(cls):
+        _orig = cls.__init__
+
+        def __init__(self, *a, **kw):
+            fs = kw.get("font_size")
+            if isinstance(fs, (int, float)):
+                kw["font_size"] = fs * _Metrics.density
+            _orig(self, *a, **kw)
+        cls.__init__ = __init__
+
+    _scale_font_ints(_Label)
+    _scale_font_ints(_TextInput)
+
 from kivy.core.text import LabelBase
 # Register NotoColorEmoji so emoji render properly
 _EMOJI_FONT = "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf"
@@ -107,15 +140,15 @@ class Dashboard(Screen):
         self.clear_widgets()
         root = BoxLayout(orientation="vertical", padding=10, spacing=8)
 
-        hdr = BoxLayout(size_hint_y=None, height=70)
+        hdr = BoxLayout(size_hint_y=None, height=dp(70))
         title_col = BoxLayout(orientation="vertical")
         title_col.add_widget(Label(text="[b]Srboli[/b]", markup=True,
-                             font_size=32, size_hint_y=None, height=48))
+                             font_size=30, size_hint_y=None, height=dp(48)))
         title_col.add_widget(Label(text="your pocket swiss-knife",
-                             font_size=11, size_hint_y=None, height=18))
+                             font_size=11, size_hint_y=None, height=dp(18)))
         hdr.add_widget(title_col)
         gear = Button(text="\u2699 Settings", size_hint=(None, None),
-                     width=100, height=40, font_size=12,
+                     width=dp(100), height=dp(40), font_size=12,
                      pos_hint={"center_y": 0.5})
         gear.bind(on_release=lambda *a: setattr(self.manager, "current", "settings"))
         hdr.add_widget(gear)
@@ -137,14 +170,14 @@ class Dashboard(Screen):
         grid = GridLayout(cols=1, spacing=5, size_hint_y=None, padding=(6,6))
         grid.bind(minimum_height=grid.setter("height"))
         for route, label in effective_menu_order():
-            btn = Button(text=label, size_hint_y=None, height=50, font_size=14)
+            btn = Button(text=label, size_hint_y=None, height=dp(52), font_size=14)
             btn.bind(on_release=lambda inst, r=route: self._goto(r))
             grid.add_widget(btn)
         sv.add_widget(grid)
         root.add_widget(sv)
 
         root.add_widget(Label(text="Srboli v2.4", font_size=9,
-                              size_hint_y=None, height=18))
+                              size_hint_y=None, height=dp(18)))
         self.add_widget(root)
 
     def _goto(self, route):
@@ -157,8 +190,9 @@ class Dashboard(Screen):
         self._build()
 
     def _change_dir(self, *a):
+        from core.android_storage import shared_storage_root
         chooser = FileChooserIconView(
-            path=os.path.expanduser("~"), dirselect=True)
+            path=shared_storage_root(), dirselect=True)
         name_lbl = Label(
             text=f"Current: {app_data.get_data_dir()}",
             size_hint_y=None, height=dp(22), font_size=11,
@@ -211,6 +245,24 @@ class Dashboard(Screen):
 
 
 class SrboliApp(App):
+    def _android_reminder_tick(self, dt):
+        try:
+            import datetime
+            import core.reminders_core as rc
+            from core import notify
+            reminders = rc.load_reminders()
+            state = rc.load_state()
+            now = datetime.datetime.now()
+            due = rc.scan_due(reminders, state, now)
+            for r in due:
+                notify.send_notification(r["title"], r.get("notes") or "Reminder")
+                rc.mark_fired(r, state, now)
+            if due:
+                rc.prune_state(reminders, state)
+                rc.save_state(state)
+        except Exception as e:
+            print(f"Reminder tick failed: {e}")
+
     def build(self):
         self.title = "Srboli"
         sm = ScreenManager(transition=NoTransition())
@@ -232,6 +284,34 @@ class SrboliApp(App):
             for route, mod, cls_name in SCREENS:
                 sm.add_widget(try_import(mod, cls_name)(name=route))
         sm.current = "dashboard"
+
+        # Ask for real filesystem access (Fast Transfer, Gallery Sorter,
+        # File Sorter, and the data-dir picker all need this). No-op off
+        # Android, and no-op if already granted. This opens a one-time
+        # system settings screen rather than a normal popup — see
+        # core/android_storage.py for why.
+        try:
+            from core.android_storage import (
+                request_basic_permissions, request_full_storage_access,
+                has_full_storage_access,
+            )
+            request_basic_permissions()
+            if not has_full_storage_access():
+                request_full_storage_access()
+        except Exception as e:
+            print(f"Storage permission request skipped: {e}")
+
+        # Android has no background daemon, so check for due reminders from
+        # inside the app (works while the app is open or still alive in the
+        # background; not after Android kills the process).
+        if _platform == "android":
+            try:
+                from kivy.clock import Clock
+                from core.android_storage import request_notification_permission
+                request_notification_permission()
+                Clock.schedule_interval(self._android_reminder_tick, 20)
+            except Exception as e:
+                print(f"Android reminder ticker not started: {e}")
 
         # Install global quick switcher (works from any screen)
         try:

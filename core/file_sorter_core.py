@@ -104,7 +104,9 @@ HAS_META = HAS_PIL
 
 
 def _home():
-    return os.path.expanduser("~")
+    # Real shared storage on Android; ~ everywhere else.
+    from core.android_storage import shared_storage_root
+    return shared_storage_root()
 
 
 def _rulesets_dir():

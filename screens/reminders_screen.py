@@ -11,6 +11,7 @@
 # (fired once, even if overdue) the next time the daemon starts.
 
 import datetime
+import random
 
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
@@ -138,33 +139,37 @@ class ReminderEditPopup(Popup):
             except ValueError:
                 pass
 
-        root = BoxLayout(orientation="vertical", spacing=6, padding=8)
+        # Scrollable form: on a phone (or with the keyboard up) the fields are
+        # taller than the popup, so they scroll; Cancel/Save stay pinned.
+        form = BoxLayout(orientation="vertical", spacing=6, padding=4,
+                         size_hint_y=None)
+        form.bind(minimum_height=form.setter("height"))
 
-        root.add_widget(Label(text="Title", size_hint_y=None, height=dp(20),
+        form.add_widget(Label(text="Title", size_hint_y=None, height=dp(20),
                               halign="left", font_size=12))
         self.title_in = TextInput(text=(existing or {}).get("title", ""),
                                   multiline=False, size_hint_y=None,
-                                  height=dp(36), font_size=14)
-        root.add_widget(self.title_in)
+                                  height=dp(44), font_size=14)
+        form.add_widget(self.title_in)
 
-        root.add_widget(Label(text="Notes (optional — shown in the notification)",
+        form.add_widget(Label(text="Notes (optional — shown in the notification)",
                               size_hint_y=None, height=dp(20), halign="left",
                               font_size=12))
         self.notes_in = TextInput(text=(existing or {}).get("notes", ""),
                                   multiline=True, size_hint_y=None,
                                   height=dp(56), font_size=13)
-        root.add_widget(self.notes_in)
+        form.add_widget(self.notes_in)
 
-        due_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=6)
+        due_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=6)
         self.due_cb = CheckBox(active=due_dt is not None,
                                size_hint=(None, None), size=(dp(28), dp(28)))
         self.due_cb.bind(active=self._on_due_toggle)
         due_row.add_widget(self.due_cb)
         due_row.add_widget(Label(text="Remind me at a specific time",
                                  font_size=12, halign="left"))
-        root.add_widget(due_row)
+        form.add_widget(due_row)
 
-        self.datetime_box = BoxLayout(size_hint_y=None, height=dp(36), spacing=4)
+        self.datetime_box = BoxLayout(size_hint_y=None, height=dp(44), spacing=4)
         self.date_in = TextInput(
             text=(due_dt or now).strftime("%Y-%m-%d"), multiline=False,
             size_hint_x=0.4, font_size=13, hint_text="YYYY-MM-DD")
@@ -182,9 +187,19 @@ class ReminderEditPopup(Popup):
         self.datetime_box.add_widget(self.time_in)
         self.datetime_box.add_widget(today_btn)
         self.datetime_box.add_widget(tmr_btn)
-        root.add_widget(self.datetime_box)
+        form.add_widget(self.datetime_box)
 
-        repeat_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=6)
+        rnd_row = BoxLayout(size_hint_y=None, height=dp(40), spacing=6)
+        self.rnd_sp = Spinner(text="within 3 h", size_hint_x=0.38, font_size=12,
+                              values=("within 1 h", "within 3 h",
+                                      "within 12 h", "within 24 h"))
+        rnd_btn = Button(text="Remind me at a random time", font_size=12)
+        rnd_btn.bind(on_release=self._pick_random)
+        rnd_row.add_widget(rnd_btn)
+        rnd_row.add_widget(self.rnd_sp)
+        form.add_widget(rnd_row)
+
+        repeat_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=6)
         repeat_row.add_widget(Label(text="Repeat", size_hint_x=None,
                                     width=dp(60), font_size=12))
         self.repeat_sp = Spinner(
@@ -193,9 +208,9 @@ class ReminderEditPopup(Popup):
             values=("Never", "Daily", "Weekly"), font_size=12)
         self.repeat_sp.bind(text=self._on_repeat_change)
         repeat_row.add_widget(self.repeat_sp)
-        root.add_widget(repeat_row)
+        form.add_widget(repeat_row)
 
-        self.weekday_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=4)
+        self.weekday_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=4)
         existing_days = set((existing or {}).get("weekdays", []) or [due_dt.weekday()] if due_dt else [])
         self.day_buttons = []
         for i, lbl in enumerate(_WEEKDAY_LABELS):
@@ -203,14 +218,13 @@ class ReminderEditPopup(Popup):
                              state="down" if i in existing_days else "normal")
             self.day_buttons.append(b)
             self.weekday_row.add_widget(b)
-        root.add_widget(self.weekday_row)
+        form.add_widget(self.weekday_row)
 
         self.error_lbl = Label(text="", font_size=12, color=(1, 0.5, 0.5, 1),
                                size_hint_y=None, height=dp(20))
-        root.add_widget(self.error_lbl)
+        form.add_widget(self.error_lbl)
 
-        root.add_widget(Widget())  # spacer
-
+        
         btn_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=8)
         cancel_btn = Button(text="Cancel", font_size=13)
         save_btn = Button(text="Save", font_size=13,
@@ -219,11 +233,38 @@ class ReminderEditPopup(Popup):
         save_btn.bind(on_release=self._save)
         btn_row.add_widget(cancel_btn)
         btn_row.add_widget(save_btn)
-        root.add_widget(btn_row)
+        outer = BoxLayout(orientation="vertical", spacing=6, padding=8)
+        sv = ScrollView(do_scroll_x=False)
+        sv.add_widget(form)
+        outer.add_widget(sv)
+        outer.add_widget(btn_row)
 
-        self.content = root
+
+        # Same fix as Script Mode: tapping a Spinner while a TextInput holds
+        # focus lets the keyboard-dismiss resize close the dropdown. Drop
+        # focus first.
+        def _defocus(widget, touch):
+            if widget.collide_point(*touch.pos):
+                for ti in (self.title_in, self.notes_in, self.date_in, self.time_in):
+                    ti.focus = False
+            return False
+        self.repeat_sp.bind(on_touch_down=_defocus)
+        self.rnd_sp.bind(on_touch_down=_defocus)
+
+        self.content = outer
         self._on_due_toggle(self.due_cb, self.due_cb.active)
         self._on_repeat_change(self.repeat_sp, self.repeat_sp.text)
+
+    def _pick_random(self, *a):
+        """Fill the date/time with a random moment in the chosen window and
+        switch 'remind at a specific time' on."""
+        hours = int(self.rnd_sp.text.split()[1])
+        when = (datetime.datetime.now()
+                + datetime.timedelta(minutes=random.randint(1, hours * 60)))
+        self.due_cb.active = True
+        self.date_in.text = when.strftime("%Y-%m-%d")
+        self.time_in.text = when.strftime("%H:%M")
+        self.error_lbl.text = f"Random time picked: {when.strftime('%H:%M')}"
 
     def _on_due_toggle(self, cb, active):
         self.datetime_box.disabled = not active
@@ -283,7 +324,7 @@ class RemindersScreen(Screen):
         self._reminders = []
 
         root = BoxLayout(orientation="vertical", padding=10, spacing=8)
-        header = BoxLayout(size_hint_y=None, height=dp(36))
+        header = BoxLayout(size_hint_y=None, height=dp(44))
         header.add_widget(Label(text="[b]Reminders[/b]", markup=True,
                                 font_size=20, halign="left", valign="middle"))
         new_btn = Button(text="+ New", size_hint_x=None, width=dp(76), font_size=13,
@@ -294,8 +335,9 @@ class RemindersScreen(Screen):
 
         self._empty_lbl = Label(
             text="Nothing here yet. \"+ New\" adds a to-do, or a reminder "
-                 "with a time — the background service (see Settings) will "
-                 "notify you even if Srboli's window is closed.",
+                 "with a time. On desktop the background service (see Settings) "
+                 "notifies you even if Srboli is closed; on Android reminders "
+                 "fire while the app is open or running in the background.",
             font_size=12, color=(0.6, 0.6, 0.6, 1), halign="center",
             valign="middle")
         root.add_widget(self._empty_lbl)
