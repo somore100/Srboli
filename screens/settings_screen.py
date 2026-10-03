@@ -340,6 +340,18 @@ class SettingsScreen(Screen):
         threading.Thread(target=worker, daemon=True).start()
 
     def _apply_daemon_status(self, resp):
+        from kivy.utils import platform as _plat
+        if _plat == "android":
+            # The detached-process daemon is a desktop feature (Android has
+            # no way to spawn it this way). Reminders are checked from inside
+            # the app instead.
+            self._daemon_status_lbl.text = ("Desktop only - on Android, "
+                                            "reminders fire while Srboli is open")
+            self._daemon_status_lbl.color = (0.75, 0.75, 0.75, 1)
+            self._daemon_start_btn.disabled = True
+            self._daemon_stop_btn.disabled = True
+            self._daemon_refresh_btn.disabled = True
+            return
         if resp and resp.get("ok"):
             uptime = _fmt_uptime(resp.get("uptime", 0))
             self._daemon_status_lbl.text = f"Running  (pid {resp.get('pid')}, up {uptime})"
