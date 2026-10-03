@@ -125,9 +125,9 @@ class WheelWidget(Widget):
             ly = cy + (R * 0.62) * math.sin(mid_ang)
             name = item["name"]
             short = name if len(name) <= 10 else name[:9] + "…"
-            lbl = Label(text=short, size_hint=(None, None), size=(88, 22),
+            lbl = Label(text=short, size_hint=(None, None), size=(dp(88), dp(22)),
                         font_size=11, bold=True, color=(1, 1, 1, 1))
-            lbl.pos = (lx - 44, ly - 11)
+            lbl.pos = (lx - dp(44), ly - dp(11))
             self.add_widget(lbl)
             self._label_cache.append(lbl)
 
@@ -181,28 +181,34 @@ class SpinScreen(Screen):
         root.add_widget(mode_row)
 
         # ── add / numbers row (swaps with mode) ──
-        self._add_row = BoxLayout(size_hint_y=None, height=dp(40), spacing=5)
-        self._name_input   = TextInput(hint_text="Name", multiline=False)
+        # Two rows: on a phone the old single row needed ~370dp of fixed
+        # widths and squeezed the Name box down to nothing.
+        self._add_row = BoxLayout(orientation="vertical", size_hint_y=None,
+                                  height=dp(92), spacing=5)
+        self._name_input   = TextInput(hint_text="Name", multiline=False,
+                                       size_hint_y=None, height=dp(42))
         self._weight_input = TextInput(hint_text="Weight (1.0)",
-                                       size_hint_x=None, width=dp(110),
-                                       multiline=False, input_filter="float")
-        add_btn    = Button(text="Add",        size_hint_x=None, width=dp(60))
-        import_btn = Button(text="Import .txt",size_hint_x=None, width=dp(110))
-        clear_btn  = Button(text="Clear all",  size_hint_x=None, width=dp(90))
+                                       size_hint_x=0.3, multiline=False,
+                                       input_filter="float")
+        add_btn    = Button(text="Add",         size_hint_x=0.2)
+        import_btn = Button(text="Import .txt", size_hint_x=0.3)
+        clear_btn  = Button(text="Clear all",   size_hint_x=0.25)
         add_btn.bind(on_release=self._add_name)
         import_btn.bind(on_release=self._import_txt)
         clear_btn.bind(on_release=lambda *a: (self.wheel.clear(),
                                                self._refresh_list()))
-        for w in (self._name_input, self._weight_input,
-                  add_btn, import_btn, clear_btn):
-            self._add_row.add_widget(w)
+        self._add_row.add_widget(self._name_input)
+        row2 = BoxLayout(spacing=5, size_hint_y=None, height=dp(42))
+        for w in (self._weight_input, add_btn, import_btn, clear_btn):
+            row2.add_widget(w)
+        self._add_row.add_widget(row2)
         root.add_widget(self._add_row)
 
         # ── numbers row (hidden initially) ──
         self._num_row = BoxLayout(size_hint_y=None, height=dp(40),
                                   spacing=5)
         self._num_row.add_widget(Label(text="Min:", size_hint_x=None,
-                                        width=dp(36), font_size=13))
+                                        width=dp(40), font_size=13))
         self._num_min = TextInput(text="1", multiline=False,
                                    input_filter="int")
         self._num_row.add_widget(self._num_min)

@@ -338,6 +338,37 @@ class TextEditorScreen(Screen):
         fmt_sv.add_widget(fmt)
         root.add_widget(fmt_sv)
 
+        # ── formatting bar (Markdown / HTML only) ────────────────────────────
+        # Select text, tap a button: the markers are wrapped around it
+        # (Raw view shows **bold**; Styled view shows the result).
+        self._fmt_buttons = []
+        fb = BoxLayout(size_hint=(None, 1), spacing=4)
+        fb.bind(minimum_width=fb.setter("width"))
+        for label, kind, a, b2 in [
+                ("B", "wrap", "**", "**"), ("I", "wrap", "*", "*"),
+                ("S", "wrap", "~~", "~~"), ("Code", "wrap", "`", "`"),
+                ("H1", "line", "# ", ""), ("H2", "line", "## ", ""),
+                ("H3", "line", "### ", ""), ("Quote", "line", "> ", ""),
+                ("List", "line", "- ", ""), ("1.", "line", "1. ", ""),
+                ("Link", "wrap", "[", "](https://)"),
+                ("Image", "wrap", "![", "](image.jpg)"),
+                ("Line", "block", "\n---\n", "")]:
+            w = dp(40) if len(label) <= 2 else dp(58)
+            btn = Button(text=label, size_hint_x=None, width=w, font_size=13,
+                         bold=(label == "B"), italic=(label == "I"),
+                         strikethrough=(label == "S"))
+            btn.bind(on_release=lambda i, k=kind, x=a, y=b2: self._apply_fmt(k, x, y))
+            fb.add_widget(btn)
+            self._fmt_buttons.append(btn)
+        help_btn = Button(text="?", size_hint_x=None, width=dp(40), font_size=14)
+        help_btn.bind(on_release=lambda *a: self._show_syntax_help())
+        fb.add_widget(help_btn)
+        self._fmt_bar_sv = ScrollView(size_hint_y=None, height=dp(40),
+                                      do_scroll_x=True, do_scroll_y=False,
+                                      bar_width=dp(2))
+        self._fmt_bar_sv.add_widget(fb)
+        root.add_widget(self._fmt_bar_sv)
+
         # ── editor ───────────────────────────────────────────────────────────
         self._ed = TextInput(
             text="", multiline=True, font_size=15,
@@ -353,7 +384,67 @@ class TextEditorScreen(Screen):
         root.add_widget(back)
 
         self.add_widget(root)
+        self._update_fmt_ui()
 
+
+    # ── formatting helpers ───────────────────────────────────────────────────
+    def _fmt_key(self):
+        return self._export_fmt.text.split(" ")[0]
+
+    def _apply_fmt(self, kind, a, b):
+        ed = self._ed
+        if self._styled:
+            self._popup("Switch to Raw", "Formatting buttons edit the text - "
+                        "switch to the Raw view first.")
+            return
+        sel = ed.selection_text
+        if kind == "wrap":
+            if sel:
+                ed.delete_selection()
+                ed.insert_text(f"{a}{sel}{b}")
+            else:
+                ed.insert_text(f"{a}text{b}")
+        elif kind == "line":
+            # put the marker at the start of the current line
+            col, row = ed.cursor
+            lines = ed.text.split("\n")
+            if row < len(lines):
+                lines[row] = a + lines[row]
+                ed.text = "\n".join(lines)
+                ed.cursor = (col + len(a), row)
+        else:  # block
+            ed.insert_text(a)
+        ed.focus = True
+
+    def _show_syntax_help(self):
+        rows = [("# Heading", "big heading (## and ### smaller)"),
+                ("**bold**", "bold"), ("*italic*", "italic"),
+                ("~~strike~~", "strikethrough"), ("`code`", "code"),
+                ("> quote", "quote"), ("- item", "bullet"),
+                ("1. item", "numbered"), ("[text](url)", "link"),
+                ("---", "divider line"), ("![alt](image.jpg)", "image")]
+        grid = GridLayout(cols=2, size_hint_y=None, spacing=4, padding=6)
+        grid.bind(minimum_height=grid.setter("height"))
+        for l, r in rows:
+            for t in (l, r):
+                lb = Label(text=t, size_hint_y=None, height=dp(30),
+                           font_size=13, halign="left", valign="middle")
+                lb.bind(size=lb.setter("text_size"))
+                grid.add_widget(lb)
+        sv = ScrollView()
+        sv.add_widget(grid)
+        Popup(title="Markdown syntax", content=sv, size_hint=(0.92, 0.7)).open()
+
+    def _update_fmt_ui(self):
+        """.txt = plain (no formatting, no colour); .md = Markdown buttons;
+        .html = Markdown buttons + colour."""
+        k = self._fmt_key()
+        fmt_on = k in (".md", ".html")
+        for b in self._fmt_buttons:
+            b.disabled = not fmt_on
+        self._fmt_bar_sv.opacity = 1 if fmt_on else 0.35
+        if not self._styled:
+            self._col_btn.disabled = (k != ".html")
 
     def _on_fmt_change(self, spinner, text):
         hints = {
@@ -361,11 +452,12 @@ class TextEditorScreen(Screen):
                     "editing, it isn't saved to the file.",
             ".html": "HTML export — colour [color=hex]tags[/color] rendered. "
                      "Zoom is just for editing, it isn't saved to the file.",
-            ".md": "Markdown — basic formatting, no colour. Zoom is just "
+            ".md": "Markdown — use the B / I / H1... buttons. No colour. Zoom is just "
                    "for editing, it isn't saved to the file.",
         }
         key = text.split(" ")[0]
         self._fmt_hint.text = hints.get(key, "")
+        self._update_fmt_ui()
         # disable colour button for txt/md since they can't store it
         # (colour wheel stays — useful to insert tags for html mode)
 
@@ -430,7 +522,7 @@ class TextEditorScreen(Screen):
             idx = self._root.children.index(self._md)
             self._root.remove_widget(self._md)
             self._root.add_widget(self._ed, index=idx)
-            self._col_btn.disabled = False
+            self._col_btn.disabled = (self._fmt_key() != ".html")
             self._styled = False
             self._restore_status()
             Clock.schedule_once(lambda dt: setattr(self._ed, "focus", True), 0)

@@ -588,10 +588,14 @@ class GallerySorterScreen(Screen):
         self._files = []
         for src in self._sources:
             if os.path.isdir(src):
-                for fn in sorted(os.listdir(src)):
-                    p = os.path.join(src, fn)
-                    if os.path.isfile(p) and _is_media(p):
-                        self._files.append(p)
+                # Recursive: DCIM itself holds only subfolders (Camera,
+                # Screenshots, ...), so a top-level-only scan found 0 files.
+                for root_dir, dirs, names in os.walk(src):
+                    dirs[:] = sorted(d for d in dirs if not d.startswith("."))
+                    for fn in sorted(names):
+                        p = os.path.join(root_dir, fn)
+                        if not fn.startswith(".") and _is_media(p):
+                            self._files.append(p)
         self._index = 0
         self._src_lbl.text = (f"{len(self._sources)} src, "
                               f"{len(self._files)} files")

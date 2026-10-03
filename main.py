@@ -65,6 +65,27 @@ if _platform == "android":
     _scale_font_ints(_Label)
     _scale_font_ints(_TextInput)
 
+    # Kivy shows the Select All / Paste bubble after a 0.5 s hold, which a
+    # normal tap on a phone often exceeds. Require ~1 s instead.
+    from kivy.clock import Clock as _Clock
+    _orig_long = _TextInput.long_touch
+    _orig_cancel = _TextInput.cancel_long_touch_event
+
+    def _long_touch(self, dt):
+        if not getattr(self, "_lt_second", False):
+            self._lt_second = True
+            self._long_touch_ev = _Clock.schedule_once(self.long_touch, 0.55)
+            return
+        self._lt_second = False
+        _orig_long(self, dt)
+
+    def _cancel_long(self):
+        self._lt_second = False
+        _orig_cancel(self)
+
+    _TextInput.long_touch = _long_touch
+    _TextInput.cancel_long_touch_event = _cancel_long
+
 from kivy.core.text import LabelBase
 # Register NotoColorEmoji so emoji render properly
 _EMOJI_FONT = "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf"
