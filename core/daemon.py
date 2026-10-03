@@ -24,6 +24,7 @@ import threading
 from core.daemon_ipc import DaemonServer, try_connect, ui_launch_cmd, spawn_detached
 import core.reminders_core as reminders_core
 import core.notify as notify
+import core.file_sorter_watch as file_sorter_watch
 
 START_GRACE = 0.15   # let a "stopping" reply actually reach the client
                      # before the listener socket goes away underneath it
@@ -34,9 +35,11 @@ class Daemon:
         self.pid = os.getpid()
         self.start_time = time.time()
         self.server = DaemonServer(self._handle)
+        self._watch_wake = threading.Event()
         self._wake = threading.Event()          # lets "reload" skip the wait
         self._scheduler_stop = threading.Event()
         self._scheduler_thread = None
+        self._watch_thread = None
 
     # -- commands ---------------------------------------------------------
     def _handle(self, request):
@@ -55,6 +58,7 @@ class Daemon:
             # saving a reminder for one second from now) is felt right
             # away rather than up to SCHEDULE_INTERVAL seconds later.
             self._wake.set()
+            self._watch_wake.set()
             return {"ok": True, "reloaded": True}
         if cmd == "show_ui":
             try:
@@ -91,6 +95,18 @@ class Daemon:
             # the whole daemon down — log it and try again next tick.
             print(f"Srboli daemon: reminder scan failed: {e}")
 
+    def _watch_loop(self):
+        # Separate thread: waiting for a big download to finish must never
+        # delay reminders.
+        while not self._scheduler_stop.is_set():
+            try:
+                file_sorter_watch.scan_once(
+                    stop_check=self._scheduler_stop.is_set)
+            except Exception as e:
+                print(f"Srboli daemon: folder watch failed: {e}")
+            self._watch_wake.wait(timeout=file_sorter_watch.POLL_SECONDS)
+            self._watch_wake.clear()
+
     def _scheduler_loop(self):
         while not self._scheduler_stop.is_set():
             self._scan_reminders_once()
@@ -113,10 +129,14 @@ class Daemon:
         self._scheduler_thread = threading.Thread(
             target=self._scheduler_loop, daemon=True)
         self._scheduler_thread.start()
+        self._watch_thread = threading.Thread(
+            target=self._watch_loop, daemon=True)
+        self._watch_thread.start()
 
         self.server.serve_forever()
         self._scheduler_stop.set()
         self._wake.set()
+        self._watch_wake.set()
         print("Srboli daemon: stopped.")
         return 0
 
@@ -124,6 +144,7 @@ class Daemon:
         def _on_signal(signum, frame):
             self._scheduler_stop.set()
             self._wake.set()
+            self._watch_wake.set()
             self.server.stop()
         for sig in ("SIGTERM", "SIGINT"):
             handler = getattr(signal, sig, None)

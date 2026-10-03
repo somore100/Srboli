@@ -36,6 +36,7 @@ from kivy.uix.filechooser import FileChooserIconView
 from kivy.uix.popup import Popup
 from kivy.clock import Clock
 from kivy.metrics import dp
+from kivy.utils import platform as _platform
 
 # The engine (rule matching, plan building, applying an action to a file)
 # lives in core/file_sorter_core.py, Kivy-free, so the headless --daemon
@@ -453,6 +454,20 @@ class FileSorterScreen(Screen):
                                  halign="left"))
         root.add_widget(rec_row)
 
+        # Background watching (desktop): the Background service applies the
+        # saved rules to this folder every ~20 s, even with the app closed.
+        self._watch_syncing = False
+        self._watch_cb = CheckBox(active=False, size_hint=(None, None),
+                                  size=(dp(24), dp(24)))
+        self._watch_cb.bind(active=self._on_watch_toggle)
+        if _platform != "android":
+            watch_row = BoxLayout(size_hint_y=None, height=dp(30), spacing=6)
+            watch_row.add_widget(self._watch_cb)
+            watch_row.add_widget(Label(
+                text="Auto-apply in background (needs Background service)",
+                font_size=12, halign="left"))
+            root.add_widget(watch_row)
+
         # ruleset save/load - one "Rulesets..." button opens a popup with
         # its own save-as-new / overwrite-existing / load-existing
         # options, instead of an always-visible name field + two buttons
@@ -827,8 +842,43 @@ class FileSorterScreen(Screen):
         import_btn.bind(on_release=_do_import)
         popup.open()
 
+    def _sync_watch_cfg(self):
+        try:
+            from core import file_sorter_watch as fsw
+            fsw.save_config({"enabled": bool(self._watch_cb.active),
+                             "source_folder": self._source_folder,
+                             "recursive": self._recursive_cb.active,
+                             "ruleset": LAST_USED_KEY})
+        except Exception as e:
+            print(f"FileSorter: watch config save failed: {e}")
+
+    def _on_watch_toggle(self, cb, active):
+        if self._watch_syncing:
+            return
+        if active and (not self._source_folder or not self._rules):
+            self._watch_syncing = True
+            cb.active = False
+            self._watch_syncing = False
+            self._status.text = "Pick a source folder and add rules first."
+            return
+        self._autosave_last_used()      # also writes the watch config
+        try:
+            from core.daemon_ipc import send_command
+            threading.Thread(target=lambda: send_command("reload"),
+                             daemon=True).start()
+        except Exception:
+            pass
+        if active:
+            self._status.text = ("Background watching ON - rules run on this "
+                                 "folder every ~20 s while the Background "
+                                 "service is running (Settings). Existing "
+                                 "matching files are sorted too.")
+        else:
+            self._status.text = "Background watching OFF."
+
     def _autosave_last_used(self):
         save_ruleset(LAST_USED_KEY, self._rules)
+        self._sync_watch_cfg()
         cfg_path = os.path.join(_rulesets_dir(), f"{LAST_USED_KEY}_folder.json")
         try:
             with open(cfg_path, "w", encoding="utf-8") as f:
@@ -865,6 +915,14 @@ class FileSorterScreen(Screen):
         if self._source_folder:
             self._src_lbl.text = self._source_folder
         self._recursive_cb.active = cfg.get("recursive", True)
+        try:
+            from core import file_sorter_watch as fsw
+            self._watch_syncing = True
+            self._watch_cb.active = fsw.load_config()["enabled"]
+        except Exception:
+            pass
+        finally:
+            self._watch_syncing = False
 
     # ── preview ──────────────────────────────────────────────────────────
     def _collect_files(self):
