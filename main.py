@@ -72,7 +72,10 @@ if _platform == "android":
         _orig_long = _TextInput.long_touch
         _orig_cancel = _TextInput.cancel_long_touch_event
 
-        def _long_touch(self, dt):
+        # NOTE: Kivy's Clock stores callbacks by function __name__ and looks
+        # them up on the object later (WeakMethod), so these replacements MUST
+        # be named exactly like the methods they replace.
+        def long_touch(self, dt):
             if not getattr(self, "_lt_second", False):
                 self._lt_second = True
                 self._long_touch_ev = _Clock.schedule_once(self.long_touch, 0.55)
@@ -80,12 +83,12 @@ if _platform == "android":
             self._lt_second = False
             _orig_long(self, dt)
 
-        def _cancel_long(self):
+        def cancel_long_touch_event(self):
             self._lt_second = False
             _orig_cancel(self)
 
-        _TextInput.long_touch = _long_touch
-        _TextInput.cancel_long_touch_event = _cancel_long
+        _TextInput.long_touch = long_touch
+        _TextInput.cancel_long_touch_event = cancel_long_touch_event
     except Exception as _e:
         print(f'long-press patch skipped: {_e}')
 
