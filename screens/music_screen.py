@@ -29,12 +29,35 @@ except Exception:
     HAS_PYGAME = False
 
 AUDIO_EXTS     = (".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aac")
-PLAYLISTS_DIR  = os.path.join(os.path.expanduser("~"), ".srboli_playlists")
-os.makedirs(PLAYLISTS_DIR, exist_ok=True)
+def _playlists_dir():
+    # Android: "~" isn't writable (PermissionError at import time), so use
+    # the app's own data folder there. Desktop keeps the old location so
+    # existing playlists are still found.
+    try:
+        from kivy.utils import platform as _plat
+        if _plat == "android":
+            import app_data
+            return app_data.subdir("playlists")
+    except Exception:
+        pass
+    path = os.path.join(os.path.expanduser("~"), ".srboli_playlists")
+    try:
+        os.makedirs(path, exist_ok=True)
+    except OSError:
+        import tempfile
+        path = tempfile.mkdtemp(prefix="srboli_playlists_")
+    return path
+
+
+PLAYLISTS_DIR  = _playlists_dir()
 
 
 def _home():
-    return os.path.expanduser("~")
+    try:
+        from core.android_storage import shared_storage_root
+        return shared_storage_root()
+    except Exception:
+        return os.path.expanduser("~")
 
 
 def _open_external(path):

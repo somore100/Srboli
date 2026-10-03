@@ -585,9 +585,33 @@ class GallerySorterScreen(Screen):
         btn.bind(on_release=_sel); popup.open()
 
     def _reload_files(self):
+        # Scan on a worker thread: a big folder (e.g. DCIM, ~1700 files)
+        # used to freeze the UI. Shows live progress instead.
+        from kivy.clock import Clock
+        self._scan_token = getattr(self, "_scan_token", 0) + 1
+        token = self._scan_token
+        sources = list(self._sources)
         self._files = []
-        for src in self._sources:
-            if os.path.isdir(src):
+        self._src_lbl.text = "Scanning..."
+
+        def progress(n):
+            if token == self._scan_token:
+                self._src_lbl.text = f"Scanning... {n} files found"
+
+        def done(found):
+            if token != self._scan_token:
+                return
+            self._files = found
+            self._index = 0
+            self._src_lbl.text = (f"{len(self._sources)} src, "
+                                  f"{len(self._files)} files")
+            self._show_current()
+
+        def worker():
+            found = []
+            for src in sources:
+                if not os.path.isdir(src):
+                    continue
                 # Recursive: DCIM itself holds only subfolders (Camera,
                 # Screenshots, ...), so a top-level-only scan found 0 files.
                 for root_dir, dirs, names in os.walk(src):
@@ -595,11 +619,13 @@ class GallerySorterScreen(Screen):
                     for fn in sorted(names):
                         p = os.path.join(root_dir, fn)
                         if not fn.startswith(".") and _is_media(p):
-                            self._files.append(p)
-        self._index = 0
-        self._src_lbl.text = (f"{len(self._sources)} src, "
-                              f"{len(self._files)} files")
-        self._show_current()
+                            found.append(p)
+                            if len(found) % 100 == 0:
+                                Clock.schedule_once(
+                                    lambda dt, n=len(found): progress(n))
+            Clock.schedule_once(lambda dt: done(found))
+
+        threading.Thread(target=worker, daemon=True).start()
 
     # ── destinations ──────────────────────────────────────────────────────
     def _add_dest_pick(self, *a):

@@ -40,7 +40,7 @@ from kivy.core.window import Window
 # it before you can pick anything. "below_target" keeps the window from
 # resizing under the focused widget, which avoids that resize-triggered
 # dismiss. See screens/script_mode_screen.py for the matching defocus fix.
-Window.softinput_mode = "below_target"
+# (softinput_mode left at Kivy default - see global Spinner fix below)
 
 # Kivy treats plain-int font_size as pixels, so on a high-density phone the
 # app's font_size=12/14 text is tiny (and rows look cramped/cut off). The
@@ -58,33 +58,80 @@ if _platform == "android":
         def __init__(self, *a, **kw):
             fs = kw.get("font_size")
             if isinstance(fs, (int, float)):
-                kw["font_size"] = fs * _Metrics.density
+                kw["font_size"] = int(round(fs * _Metrics.density))
             _orig(self, *a, **kw)
         cls.__init__ = __init__
 
     _scale_font_ints(_Label)
     _scale_font_ints(_TextInput)
 
-    # Kivy shows the Select All / Paste bubble after a 0.5 s hold, which a
-    # normal tap on a phone often exceeds. Require ~1 s instead.
-    from kivy.clock import Clock as _Clock
-    _orig_long = _TextInput.long_touch
-    _orig_cancel = _TextInput.cancel_long_touch_event
+    try:
+        # Kivy shows the Select All / Paste bubble after a 0.5 s hold, which a
+        # normal tap on a phone often exceeds. Require ~1 s instead.
+        from kivy.clock import Clock as _Clock
+        _orig_long = _TextInput.long_touch
+        _orig_cancel = _TextInput.cancel_long_touch_event
 
-    def _long_touch(self, dt):
-        if not getattr(self, "_lt_second", False):
-            self._lt_second = True
-            self._long_touch_ev = _Clock.schedule_once(self.long_touch, 0.55)
-            return
-        self._lt_second = False
-        _orig_long(self, dt)
+        def _long_touch(self, dt):
+            if not getattr(self, "_lt_second", False):
+                self._lt_second = True
+                self._long_touch_ev = _Clock.schedule_once(self.long_touch, 0.55)
+                return
+            self._lt_second = False
+            _orig_long(self, dt)
 
-    def _cancel_long(self):
-        self._lt_second = False
-        _orig_cancel(self)
+        def _cancel_long(self):
+            self._lt_second = False
+            _orig_cancel(self)
 
-    _TextInput.long_touch = _long_touch
-    _TextInput.cancel_long_touch_event = _cancel_long
+        _TextInput.long_touch = _long_touch
+        _TextInput.cancel_long_touch_event = _cancel_long
+    except Exception as _e:
+        print(f'long-press patch skipped: {_e}')
+
+    # Any Spinner tapped while a TextInput has focus: drop focus first, so
+    # the keyboard dismissal doesn't close the just-opened dropdown.
+    try:
+        from kivy.uix.spinner import Spinner as _Spinner
+        from kivy.core.window import Window as _W
+        _orig_sp_touch = _Spinner.on_touch_down
+
+        def _sp_touch(self, touch):
+            if self.collide_point(*touch.pos):
+                try:
+                    from kivy.uix.textinput import TextInput as _TI
+                    for top in list(_W.children):
+                        for w in top.walk():
+                            if isinstance(w, _TI) and w.focus:
+                                w.focus = False
+                except Exception:
+                    pass
+            return _orig_sp_touch(self, touch)
+        _Spinner.on_touch_down = _sp_touch
+    except Exception as _e:
+        print(f'spinner patch skipped: {_e}')
+
+    # Crash log + keep the app alive on Python exceptions in UI callbacks.
+    try:
+        from kivy.base import ExceptionHandler, ExceptionManager
+        import traceback as _tb, datetime as _dt
+
+        class _CrashLogger(ExceptionHandler):
+            def handle_exception(self, inst):
+                try:
+                    from core.android_storage import shared_storage_root
+                    path = os.path.join(shared_storage_root(),
+                                        "Srboli_crash.log")
+                    with open(path, "a", encoding="utf-8") as f:
+                        f.write(f"\n--- {_dt.datetime.now()} ---\n")
+                        f.write("".join(_tb.format_exception(
+                            type(inst), inst, inst.__traceback__)))
+                except Exception:
+                    pass
+                return ExceptionManager.PASS
+        ExceptionManager.add_handler(_CrashLogger())
+    except Exception as _e:
+        print(f'crash logger skipped: {_e}')
 
 from kivy.core.text import LabelBase
 # Register NotoColorEmoji so emoji render properly

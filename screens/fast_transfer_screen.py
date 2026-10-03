@@ -395,7 +395,7 @@ class FastTransferScreen(Screen):
     def _pick_folder(self, which):
         chooser = FileChooserIconView(path=shared_storage_root(),
                                       dirselect=True)
-        popup = Popup(title="Choose a folder", content=chooser,
+        popup = Popup(title="Choose a folder", content=BoxLayout(),
                       size_hint=(0.9, 0.9))
 
         def _use(*a):
