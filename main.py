@@ -114,6 +114,55 @@ if _platform == "android":
     except Exception as _e:
         print(f'spinner patch skipped: {_e}')
 
+    # Kivy's DropDown opens and vanishes immediately on this phone (every
+    # Spinner: Export format, Split by, File Sorter fields...). Popups opened
+    # from the same kind of tap work fine, so on Android a Spinner shows its
+    # options in a ModalView list instead. Setting .text is exactly what the
+    # DropDown path does, so all existing bind(text=...) callbacks still fire.
+    try:
+        from kivy.uix.spinner import Spinner as _Spinner2
+        from kivy.uix.modalview import ModalView as _MV
+        from kivy.uix.scrollview import ScrollView as _SV
+        from kivy.uix.boxlayout import BoxLayout as _BL
+        from kivy.uix.button import Button as _Btn
+        from kivy.metrics import dp as _dp
+
+        def _spinner_pick_list(self, *a):
+            values = list(self.values or [])
+            if not values:
+                return
+            row_h = _dp(52)
+            box = _BL(orientation="vertical", size_hint_y=None, spacing=2)
+            box.bind(minimum_height=box.setter("height"))
+            view = _MV(size_hint=(0.86, None), auto_dismiss=True,
+                       background_color=(0, 0, 0, 0.75))
+            view.height = min(row_h * len(values) + _dp(8), Window.height * 0.7)
+
+            def _choose(v):
+                def _do(*_):
+                    self.text = v
+                    view.dismiss()
+                return _do
+
+            for v in values:
+                b = _Btn(text=str(v), size_hint_y=None, height=row_h,
+                         font_size=14, halign="left", valign="middle",
+                         background_color=((0.2, 0.55, 0.8, 1)
+                                           if v == self.text
+                                           else (0.25, 0.25, 0.25, 1)))
+                b.bind(width=lambda inst, w: setattr(
+                    inst, "text_size", (w - _dp(16), None)))
+                b.bind(on_release=_choose(v))
+                box.add_widget(b)
+            sv = _SV(do_scroll_x=False)
+            sv.add_widget(box)
+            view.add_widget(sv)
+            view.open()
+
+        _Spinner2._toggle_dropdown = _spinner_pick_list
+    except Exception as _e:
+        print(f'spinner picker skipped: {_e}')
+
     # Crash log + keep the app alive on Python exceptions in UI callbacks.
     try:
         from kivy.base import ExceptionHandler, ExceptionManager
@@ -250,15 +299,23 @@ class Dashboard(Screen):
         root.add_widget(Label(text="Srboli v2.4", font_size=9,
                               size_hint_y=None, height=dp(18)))
         self.add_widget(root)
+        self._sig = self._signature()
 
     def _goto(self, route):
         ensure_screen_loaded(self.manager, route)
         self.manager.current = route
 
+    def _signature(self):
+        return (tuple(effective_menu_order()), app_data.get_data_dir())
+
     def on_enter(self, *a):
-        # rebuild fully so screen-list reorders/hides made in Settings
-        # show up immediately on returning to the dashboard
-        self._build()
+        # Rebuild only when something the dashboard shows has changed
+        # (screen order/hidden list from Settings, or the data dir).
+        # Rebuilding on every return tore down and recreated every button,
+        # which showed up as a visible flash when pressing Back.
+        sig = self._signature()
+        if sig != getattr(self, "_sig", None):
+            self._build()
 
     def _change_dir(self, *a):
         from core.android_storage import shared_storage_root
@@ -342,7 +399,7 @@ class SrboliApp(App):
             name=SETTINGS_ROUTE[0]))
 
         settings_cfg = load_settings()
-        lazy = settings_cfg.get("lazy_load", False)
+        lazy = settings_cfg.get("lazy_load", True)
         if lazy:
             # Only "quickswitcher" is eager-loaded besides dashboard/settings
             # (it needs to exist for its own config-editing screen; the
@@ -355,6 +412,29 @@ class SrboliApp(App):
             for route, mod, cls_name in SCREENS:
                 sm.add_widget(try_import(mod, cls_name)(name=route))
         sm.current = "dashboard"
+
+        # Show the dashboard first, then build the remaining screens one at
+        # a time in idle time (Kivy widgets must be built on the main thread,
+        # so this is spread over frames rather than done in one long freeze).
+        # Opening a screen that isn't built yet still builds it on demand.
+        if lazy and settings_cfg.get("preload_bg", True):
+            from kivy.clock import Clock as _PClock
+            _pending = [r for r, _m, _c in SCREENS]
+
+            def _preload_step(dt):
+                while _pending and sm.has_screen(_pending[0]):
+                    _pending.pop(0)
+                if not _pending:
+                    return False
+                route = _pending.pop(0)
+                try:
+                    ensure_screen_loaded(sm, route)
+                except Exception as e:
+                    print(f"Preload of {route} failed: {e}")
+                return bool(_pending)
+
+            _PClock.schedule_once(
+                lambda dt: _PClock.schedule_interval(_preload_step, 0.25), 1.5)
 
         # Ask for real filesystem access (Fast Transfer, Gallery Sorter,
         # File Sorter, and the data-dir picker all need this). No-op off

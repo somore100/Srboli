@@ -55,7 +55,12 @@ TARGET_LABEL_TO_KEY = {label: key for key, label in TARGET_TYPES}
 
 
 def _home():
-    return os.path.expanduser("~")
+    # Android: "~" resolves to "/" (read-only, empty). Start in shared storage.
+    try:
+        from core.android_storage import shared_storage_root
+        return shared_storage_root()
+    except Exception:
+        return os.path.expanduser("~")
 
 
 def _launch_external(path):

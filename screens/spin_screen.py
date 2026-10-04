@@ -23,6 +23,15 @@ from kivy.clock import Clock
 from kivy.animation import Animation
 from kivy.metrics import dp
 
+
+def _start_dir():
+    """File-picker start folder: shared storage on Android ("~" is "/" there)."""
+    try:
+        from core.android_storage import shared_storage_root
+        return shared_storage_root()
+    except Exception:
+        return os.path.expanduser("~")
+
 PALETTE = [
     (0.92, 0.26, 0.26), (0.95, 0.61, 0.07), (0.18, 0.80, 0.44),
     (0.20, 0.60, 0.95), (0.73, 0.33, 0.83), (0.95, 0.34, 0.74),
@@ -84,12 +93,19 @@ class WheelWidget(Widget):
                     r = min(r + 0.18, 1); g = min(g + 0.18, 1)
                     b = min(b + 0.18, 1)
                 Color(r, g, b, 1)
+                # Segment i covers math angles [start, start + seg]
+                # (CCW from 3 o'clock) - the same convention the divider
+                # lines, labels and winner lookup use. Kivy's Ellipse
+                # measures angles CLOCKWISE from 12 o'clock, so convert:
+                # kivy = 90 - math. Without this the colours spin the
+                # opposite way to the lines/labels and only line up when
+                # 90 deg is a multiple of the segment size.
                 start = self.rotation_angle + i * seg
                 Ellipse(
                     pos=(cx - R, cy - R),
                     size=(R * 2, R * 2),
-                    angle_start=start,
-                    angle_end=start + seg,
+                    angle_start=90.0 - (start + seg),
+                    angle_end=90.0 - start,
                 )
 
             # divider lines between segments
@@ -296,7 +312,7 @@ class SpinScreen(Screen):
             self._refresh_list()
 
     def _import_txt(self, *a):
-        chooser = FileChooserIconView(path=os.path.expanduser("~"),
+        chooser = FileChooserIconView(path=_start_dir(),
                                        filters=["*.txt"], multiselect=False)
         btn = Button(text="Import", size_hint_y=None, height=dp(44))
         layout = BoxLayout(orientation="vertical")

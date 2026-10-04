@@ -34,6 +34,15 @@ except ImportError:
 
 import app_data
 
+
+def _start_dir():
+    """File-picker start folder: shared storage on Android ("~" is "/" there)."""
+    try:
+        from core.android_storage import shared_storage_root
+        return shared_storage_root()
+    except Exception:
+        return os.path.expanduser("~")
+
 IMAGE_EXTS = {".jpg",".jpeg",".png",".bmp",".gif",".webp",".tiff",".tif"}
 VIDEO_EXTS = {".mp4",".mkv",".avi",".mov",".wmv",".flv",".webm",".m4v"}
 
@@ -378,7 +387,7 @@ class MetadataScreen(Screen):
     # ── file picker ───────────────────────────────────────────────────────
     def _pick_file(self, *a):
         chooser = FileChooserIconView(
-            path=os.path.expanduser("~"), multiselect=False)
+            path=_start_dir(), multiselect=False)
         btn = Button(text="Inspect this file", size_hint_y=None, height=dp(44))
         layout = BoxLayout(orientation="vertical")
         layout.add_widget(chooser); layout.add_widget(btn)

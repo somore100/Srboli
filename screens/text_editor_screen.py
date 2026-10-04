@@ -38,7 +38,12 @@ STYLED_REFRESH_DELAY = 0.25     # debounce while typing/zooming
 
 
 def _home():
-    return os.path.expanduser("~")
+    # Android: "~" resolves to "/" (read-only, empty). Start in shared storage.
+    try:
+        from core.android_storage import shared_storage_root
+        return shared_storage_root()
+    except Exception:
+        return os.path.expanduser("~")
 
 
 # ── Colour wheel widget ───────────────────────────────────────────────────────

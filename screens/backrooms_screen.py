@@ -14,6 +14,15 @@ from kivy.uix.filechooser import FileChooserIconView
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.gridlayout import GridLayout
 
+
+def _start_dir():
+    """File-picker start folder: shared storage on Android ("~" is "/" there)."""
+    try:
+        from core.android_storage import shared_storage_root
+        return shared_storage_root()
+    except Exception:
+        return os.path.expanduser("~")
+
 POSSIBLE_FILENAMES = ("backrooms_data.json", "backrooms_levels.json")
 PATH_SAVE = os.path.join(os.path.expanduser("~"), ".srboli_backrooms_path.txt")
 
@@ -110,7 +119,7 @@ class BackroomsScreen(Screen):
 
     def open_file_chooser(self, *a):
         chooser = FileChooserIconView(
-            path=os.path.expanduser("~"),
+            path=_start_dir(),
             filters=["*.json"],
             multiselect=False,
         )

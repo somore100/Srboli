@@ -61,6 +61,7 @@ def load_settings():
     data["order"]      = order
     data["hidden"]     = hidden
     data["lazy_load"]  = bool(data.get("lazy_load", True))
+    data["preload_bg"] = bool(data.get("preload_bg", True))
     return data
 
 
@@ -195,6 +196,20 @@ class SettingsScreen(Screen):
         lazy_row.add_widget(lazy_lbl)
         root.add_widget(lazy_row)
 
+        pre_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=8)
+        self._pre_cb = CheckBox(active=self._cfg.get("preload_bg", True),
+                                size_hint=(None, None), size=(dp(24), dp(24)))
+        self._pre_cb.bind(active=self._toggle_preload)
+        pre_row.add_widget(self._pre_cb)
+        pre_lbl = Label(
+            text="Preload screens in the background (show the dashboard "
+                 "first, then build the other screens one by one while "
+                 "idle). Needs lazy-loading on. Applies after a restart.",
+            font_size=11, halign="left", valign="middle")
+        pre_lbl.bind(size=pre_lbl.setter("text_size"))
+        pre_row.add_widget(pre_lbl)
+        root.add_widget(pre_row)
+
         # ── background service ──────────────────────────────────────────
         root.add_widget(Label(text="[b]Background service[/b]", markup=True,
                               font_size=15, size_hint_y=None, height=dp(26)))
@@ -316,6 +331,13 @@ class SettingsScreen(Screen):
         self._status.text = ("Lazy loading ON — restart Srboli to apply."
                              if active else
                              "Lazy loading OFF — restart Srboli to apply.")
+
+    def _toggle_preload(self, inst, active):
+        self._cfg["preload_bg"] = active
+        save_settings(self._cfg)
+        self._status.text = ("Background preload ON — restart Srboli to apply."
+                             if active else
+                             "Background preload OFF — restart Srboli to apply.")
 
     # ── keyboard reorder (Up/Down while this screen is active) ─────────────
     def on_enter(self, *a):
