@@ -160,6 +160,21 @@ jobs:
             ~/.buildozer
           key: buildozer-v5-${{ hashFiles('buildozer.spec') }}
 
+      - name: Restore stable debug signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_DEBUG_KEYSTORE_B64 }}
+        run: |
+          # Without a fixed key every CI run signs with a fresh random debug
+          # key, so Android refuses to install an update over the old app.
+          mkdir -p ~/.android
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
+            echo "Signing with stored debug keystore. Fingerprint:"
+            keytool -list -keystore ~/.android/debug.keystore -storepass android | tail -2
+          else
+            echo "::warning::ANDROID_DEBUG_KEYSTORE_B64 secret not set - APK gets a random key and cannot update over older installs"
+          fi
+
       - name: Build APK
         run: |
           set -o pipefail
