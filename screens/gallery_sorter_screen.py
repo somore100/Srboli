@@ -45,6 +45,12 @@ except ImportError:
 
 import app_data
 from core.android_storage import shared_storage_root
+from kivy.utils import platform as _plat
+ANDROID = (_plat == "android")
+if ANDROID:
+    from core import android_media as _am
+# Thumbnails/info for video: OpenCV on desktop, Android's own decoder on phone.
+CAN_VIDEO_THUMB = HAS_CV2 or ANDROID
 
 IMAGE_EXTS = {".jpg",".jpeg",".png",".bmp",".gif",".webp",".tiff",".tif"}
 VIDEO_EXTS = {".mp4",".mkv",".avi",".mov",".wmv",".flv",".webm",".m4v"}
@@ -57,7 +63,9 @@ def _is_media(p): return os.path.splitext(p)[1].lower() in MEDIA_EXTS
 
 def _open_ext(path):
     try:
-        if sys.platform.startswith("win"):   os.startfile(path)
+        if ANDROID:
+            _am.view_file(path)
+        elif sys.platform.startswith("win"):   os.startfile(path)
         elif sys.platform == "darwin":       subprocess.Popen(["open", path])
         else:                                subprocess.Popen(["xdg-open", path])
     except Exception: pass
@@ -76,6 +84,11 @@ def _fmt_dur(seconds):
 
 def _video_info(path):
     """Returns (duration_str, width_str, height_str)."""
+    if ANDROID:
+        m = _am.video_meta(path)
+        if m:
+            return _fmt_dur(m[0]), str(m[1]), str(m[2])
+        return "?", "?", "?"
     if not HAS_CV2:
         return "?", "?", "?"
     try:
@@ -99,11 +112,21 @@ def _make_thumb(path, offset_pct=0.05):
     if os.path.exists(thumb):
         return thumb
     try:
-        if _is_image(path) and HAS_PIL:
-            img = PILImage.open(path).convert("RGB")
-            img.thumbnail((640, 480))
-            img.save(thumb, "JPEG", quality=82)
-            return thumb
+        if _is_image(path):
+            if HAS_PIL:
+                try:
+                    img = PILImage.open(path).convert("RGB")
+                    img.thumbnail((640, 480))
+                    img.save(thumb, "JPEG", quality=82)
+                    return thumb
+                except Exception as e:
+                    print("Pillow thumb failed, using original:", e)
+            # Kivy can load jpg/png itself - show the original file.
+            return path
+        if _is_video(path) and ANDROID:
+            if _am.video_frame_jpeg(path, thumb, offset_pct):
+                return thumb
+            return None
         if _is_video(path) and HAS_CV2:
             cap   = cv2.VideoCapture(path)
             total = cap.get(cv2.CAP_PROP_FRAME_COUNT)
@@ -125,9 +148,17 @@ def _make_thumb(path, offset_pct=0.05):
 def _make_strip_thumbs(path, n=10):
     """Generate n thumbnail paths at even intervals through a video."""
     results = []
-    if not (HAS_CV2 and HAS_PIL and _is_video(path)):
+    if not (_is_video(path) and (ANDROID or (HAS_CV2 and HAS_PIL))):
         return results
     cache = app_data.subdir("gallery_cache")
+    if ANDROID:
+        for i in range(n):
+            p = os.path.join(cache, f"strip_{abs(hash(path))}_{i}.jpg")
+            if not os.path.exists(p):
+                if not _am.video_frame_jpeg(path, p, i / max(n - 1, 1), 65):
+                    p = ""
+            results.append(p)
+        return results
     try:
         cap   = cv2.VideoCapture(path)
         total = cap.get(cv2.CAP_PROP_FRAME_COUNT)
@@ -510,7 +541,10 @@ class GallerySorterScreen(Screen):
         cb2 = Button(text="Create", size_hint_x=None, width=dp(64), font_size=10)
         pb.bind(on_release=self._add_dest_pick)
         cb2.bind(on_release=self._add_dest_create)
+        ab = Button(text="Albums", size_hint_x=None, width=dp(62), font_size=10)
+        ab.bind(on_release=self._add_albums)
         da.add_widget(self._dest_in); da.add_widget(pb); da.add_widget(cb2)
+        da.add_widget(ab)
         dpan.add_widget(da)
         sv_d = ScrollView()
         self._dest_grid = GridLayout(cols=1, spacing=2, size_hint_y=None)
@@ -648,6 +682,57 @@ class GallerySorterScreen(Screen):
             self._refresh_dests()
             popup.dismiss()
         btn.bind(on_release=_sel); popup.open()
+
+    def _add_albums(self, *a):
+        """List every folder under DCIM / Pictures / Movies / Download (and
+        under the added source folders) so existing albums can be picked as
+        destinations in one go instead of browsing for each."""
+        roots = [os.path.join(_home(), d)
+                 for d in ("DCIM", "Pictures", "Movies", "Download")]
+        roots += [x for x in self._sources if x not in roots]
+        found = []
+        for r in roots:
+            try:
+                for name in sorted(os.listdir(r)):
+                    p = os.path.join(r, name)
+                    if os.path.isdir(p) and not name.startswith("."):
+                        found.append((f"{os.path.basename(r)}/{name}", p))
+            except Exception:
+                pass
+        known = {d["path"] for d in self._dest_tree}
+        found = [(l, p) for l, p in found if p not in known]
+        if not found:
+            self._popup("Albums", "No new album folders found.\n"
+                        "(Already added, or storage access is missing.)")
+            return
+        picked = set()
+        box = BoxLayout(orientation="vertical", size_hint_y=None, spacing=2)
+        box.bind(minimum_height=box.setter("height"))
+        def _toggle(btn, path):
+            if path in picked:
+                picked.discard(path); btn.background_color = (0.25, 0.25, 0.25, 1)
+            else:
+                picked.add(path); btn.background_color = (0.2, 0.55, 0.8, 1)
+        for label, path in found:
+            b = Button(text=label, size_hint_y=None, height=dp(44), font_size=13,
+                       background_color=(0.25, 0.25, 0.25, 1))
+            b.bind(on_release=lambda inst, pp=path: _toggle(inst, pp))
+            box.add_widget(b)
+        sv = ScrollView(); sv.add_widget(box)
+        add = Button(text="Add selected", size_hint_y=None, height=dp(46))
+        layout = BoxLayout(orientation="vertical", spacing=4)
+        layout.add_widget(sv); layout.add_widget(add)
+        popup = Popup(title="Pick albums", content=layout, size_hint=(0.92, 0.9))
+        def _do(*_):
+            for label, path in found:
+                if path in picked:
+                    self._dest_tree.append({"label": os.path.basename(path),
+                                            "path": path,
+                                            "subs": self._read_subs(path)})
+            self._refresh_dests()
+            popup.dismiss()
+        add.bind(on_release=_do)
+        popup.open()
 
     def _add_dest_create(self, *a):
         label = self._dest_in.text.strip()
@@ -823,7 +908,10 @@ class GallerySorterScreen(Screen):
         if not self._files or self._index >= len(self._files): return
         path = self._files[self._index]
         if _is_video(path):
-            VideoPlayerPopup(path).open()
+            if ANDROID:
+                _open_ext(path)   # Kivy's Video widget has no backend here
+            else:
+                VideoPlayerPopup(path).open()
         else:
             # Full-screen image
             layout = BoxLayout(orientation="vertical")
@@ -861,7 +949,7 @@ class GallerySorterScreen(Screen):
 
         vid = _is_video(path)
         self._play_btn.opacity  = 1 if vid else 0
-        self._strip_btn.opacity = 1 if (vid and HAS_CV2) else 0
+        self._strip_btn.opacity = 1 if (vid and CAN_VIDEO_THUMB) else 0
 
         # file info in background
         def _get_info(p):
@@ -889,9 +977,9 @@ class GallerySorterScreen(Screen):
         threading.Thread(target=_get_info, args=(path,), daemon=True).start()
 
         # thumbnail
-        if vid and not HAS_CV2:
+        if vid and not CAN_VIDEO_THUMB:
             self._preview_img.source = ""
-            self._status.text = "Video: install opencv-python for thumbnails"
+            self._status.text = "Video thumbnails need opencv-python (desktop)"
         else:
             def _load(p):
                 thumb = _make_thumb(p)

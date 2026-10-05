@@ -163,6 +163,69 @@ if _platform == "android":
     except Exception as _e:
         print(f'spinner picker skipped: {_e}')
 
+    # Popups (Popup/ModalView) fade in/out via Kivy Animation, and are only
+    # removed from the window when that animation reaches its last frame. A
+    # popup that "stays after the button was tapped" is consistent with that
+    # final step not happening. Skip the animation so open/dismiss take effect
+    # immediately. NOTE: replacement functions keep the ORIGINAL method names
+    # (Kivy's Clock/bind look callbacks up by __name__).
+    try:
+        from kivy.uix.modalview import ModalView as _MVx
+        _orig_mv_open = _MVx.open
+        _orig_mv_dismiss = _MVx.dismiss
+
+        def open(self, *a, **kw):
+            kw.setdefault("animation", False)
+            return _orig_mv_open(self, *a, **kw)
+
+        def dismiss(self, *a, **kw):
+            kw.setdefault("animation", False)
+            return _orig_mv_dismiss(self, *a, **kw)
+
+        _MVx.open = open
+        _MVx.dismiss = dismiss
+    except Exception as _e:
+        print(f"modal patch skipped: {_e}")
+
+    # Opt-in touch trace for the "needs two taps" bug. Create an EMPTY file
+    # named Srboli_debug_touch in the phone's storage root, restart the app,
+    # reproduce, then send Srboli_touch.log. No file = no logging, no cost.
+    try:
+        from core.android_storage import shared_storage_root as _ssr2
+        _root2 = _ssr2()
+        if os.path.exists(os.path.join(_root2, "Srboli_debug_touch")):
+            import time as _t
+            _tl = open(os.path.join(_root2, "Srboli_touch.log"), "a", buffering=1)
+            _tl.write("\n=== touch trace start ===\n")
+
+            def _mk(kind):
+                def _h(win, touch, *a):
+                    try:
+                        _tl.write(f"{_t.time():.3f} {kind} id={touch.uid} "
+                                  f"pos=({touch.x:.0f},{touch.y:.0f}) "
+                                  f"prof={','.join(touch.profile)}\n")
+                    except Exception:
+                        pass
+                return _h
+            Window.bind(on_touch_down=_mk("DOWN"), on_touch_up=_mk("UP"))
+
+            from kivy.uix.behaviors.button import ButtonBehavior as _BB
+            _o_press, _o_rel = _BB._do_press, _BB._do_release
+
+            def _do_press(self, *a):
+                _tl.write(f"{_t.time():.3f} PRESS {type(self).__name__} "
+                          f"{getattr(self, 'text', '')!r}\n")
+                return _o_press(self, *a)
+
+            def _do_release(self, *a):
+                _tl.write(f"{_t.time():.3f} RELEASE {type(self).__name__} "
+                          f"{getattr(self, 'text', '')!r}\n")
+                return _o_release(self, *a)
+            _o_release = _o_rel
+            _BB._do_press, _BB._do_release = _do_press, _do_release
+    except Exception as _e:
+        print(f"touch trace skipped: {_e}")
+
     # Crash log + keep the app alive on Python exceptions in UI callbacks.
     try:
         from kivy.base import ExceptionHandler, ExceptionManager
