@@ -320,8 +320,9 @@ def stroke_to_piecewise(world_stroke, y_jump):
         return []
 
     # adaptive floor: real discontinuities dwarf the typical |dy| step
-    dys = sorted(abs(world_stroke[i][1] - world_stroke[i - 1][1])
-                 for i in range(1, len(world_stroke)))
+    dys = [abs(world_stroke[i][1] - world_stroke[i - 1][1])
+           for i in range(1, len(world_stroke))]
+    dys.sort()
     median_dy = dys[len(dys) // 2] if dys else 0.0
     adaptive_min = max(y_jump, median_dy * 5.0)
 
@@ -446,7 +447,7 @@ class GraphCanvas(Widget):
         self.on_warp_end = None
         self.on_warp_radius = None
         self._warp_active = False
-        self._warp_hit_px = dp(14)
+        self._warp_hit_px = 12
         self._warp_touches = {}
         self._warp_primary_uid = None
         self._pinch_last_dist = None
@@ -466,7 +467,7 @@ class GraphCanvas(Widget):
         self._point_pan_anchor = None
         self._point_candidate_px = None
         self._point_moved = False
-        # dp, not raw px - the same physical tolerance on every device
+        # dp, not raw px — the same physical tolerance on every device
         self._point_move_threshold = dp(8)
         self._point_prev_dist = None
         self.on_points_changed = None
@@ -562,10 +563,10 @@ class GraphCanvas(Widget):
                 Line(points=pts, width=1.2)
                 pct = self.warp_visual.get("pct")
                 if pct is not None:
+                    cx_px, _ = self._w2s(gx, gy)
                     _, py_above = self._w2s(gx, gy + r)
                     self._text(f"r = {pct}%",
-                               self._w2s(gx, gy)[0] + 6,
-                               py_above + 4,
+                               cx_px + 6, py_above + 4,
                                (1.0, 0.75, 0.35, 1), 11)
 
             if (self.mode == "point"
@@ -2285,16 +2286,7 @@ class FunctionPlotterScreen(Screen):
     # ── PNG export ─────────────────────────────────────────────────────
 
     def _export_png(self):
-        try:
-            from kivy.utils import platform as _plat
-            if _plat == "android":
-                from core.android_storage import shared_storage_root
-                out_dir = os.path.join(shared_storage_root(), "Pictures",
-                                       "Srboli")
-            else:
-                out_dir = os.path.join(app_data.get_data_dir(), "exports")
-        except Exception:
-            out_dir = os.path.join(app_data.get_data_dir(), "exports")
+        out_dir = os.path.join(app_data.get_data_dir(), "exports")
         try:
             os.makedirs(out_dir, exist_ok=True)
         except Exception as e:
