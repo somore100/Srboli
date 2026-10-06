@@ -5,3 +5,4 @@ psutil>=5.9.0
 opencv-python
 ffpyplayer
 Send2Trash>=1.8.0
+pynput>=1.7.6

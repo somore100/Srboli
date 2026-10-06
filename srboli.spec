@@ -21,6 +21,11 @@ hiddenimports = [
     'pygame',
     'pygame.mixer',
     'send2trash',
+    'tkinter',
+    'pynput',
+    'pynput.keyboard',
+    'pynput.keyboard._xorg',
+    'pynput.keyboard._win32',
 ]
 a = Analysis(
     ['main.py'],
@@ -32,7 +37,6 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        'tkinter',
         'pytest',
         'kivy.tests',
     ],

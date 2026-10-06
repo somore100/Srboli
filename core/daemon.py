@@ -25,6 +25,7 @@ from core.daemon_ipc import DaemonServer, try_connect, ui_launch_cmd, spawn_deta
 import core.reminders_core as reminders_core
 import core.notify as notify
 import core.file_sorter_watch as file_sorter_watch
+import core.cover_core as cover_core
 
 START_GRACE = 0.15   # let a "stopping" reply actually reach the client
                      # before the listener socket goes away underneath it
@@ -59,6 +60,7 @@ class Daemon:
             # away rather than up to SCHEDULE_INTERVAL seconds later.
             self._wake.set()
             self._watch_wake.set()
+            self._sync_cover()
             return {"ok": True, "reloaded": True}
         if cmd == "show_ui":
             try:
@@ -71,8 +73,31 @@ class Daemon:
             return {"ok": True, "stopping": True}
         return {"ok": False, "error": f"unknown command: {cmd!r}"}
 
+    # -- cover (privacy boxes) service ---------------------------------------
+    def _sync_cover(self):
+        """If "run Cover with the background service" is on, make sure the
+        cover process (`Srboli --cover`, tkinter, desktop only) is up. We
+        never kill a cover that was started by hand just because the
+        setting is off."""
+        try:
+            if (cover_core.is_desktop()
+                    and cover_core.load_config().get("service_enabled")
+                    and not cover_core.is_running()):
+                if cover_core.start_cover():
+                    print("Srboli daemon: started cover process.")
+        except Exception as e:
+            print(f"Srboli daemon: cover start failed: {e}")
+
+    def _stop_cover(self):
+        try:
+            if cover_core.load_config().get("service_enabled"):
+                cover_core.send_cover_command("quit")
+        except Exception:
+            pass
+
     def _delayed_stop(self):
         time.sleep(START_GRACE)
+        self._stop_cover()
         self._scheduler_stop.set()
         self._wake.set()
         self.server.stop()
@@ -126,6 +151,7 @@ class Daemon:
 
         print(f"Srboli daemon: listening (pid {self.pid}).")
         self._install_signal_handlers()
+        self._sync_cover()
         self._scheduler_thread = threading.Thread(
             target=self._scheduler_loop, daemon=True)
         self._scheduler_thread.start()
@@ -142,6 +168,7 @@ class Daemon:
 
     def _install_signal_handlers(self):
         def _on_signal(signum, frame):
+            self._stop_cover()
             self._scheduler_stop.set()
             self._wake.set()
             self._watch_wake.set()

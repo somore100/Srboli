@@ -19,6 +19,19 @@ if len(sys.argv) > 1 and sys.argv[1] == "--overlay":
     import _overlay_app  # noqa: F401 — runs OverlayApp().run() itself
     sys.exit(0)
 
+# ── cover dispatch ───────────────────────────────────────────────────────────
+# `--cover` is the privacy-box / blackout process (tkinter, not Kivy — it
+# needs several frameless windows). `--cover-cmd <cmd>` sends one command to
+# it (toggle, blackout, ...) and exits; handy as a system keyboard shortcut
+# on Wayland where apps cannot register global hotkeys. Neither path may
+# import Kivy.
+if len(sys.argv) > 1 and sys.argv[1] == "--cover":
+    import core.cover_app
+    sys.exit(core.cover_app.run())
+if len(sys.argv) > 1 and sys.argv[1] == "--cover-cmd":
+    import core.cover_app
+    sys.exit(core.cover_app.run_cmd(sys.argv[2:]))
+
 # ── daemon dispatch ──────────────────────────────────────────────────────────
 # Unlike --overlay above, this path never touches Kivy at all — core/daemon.py
 # and everything it imports is plain stdlib + app_data. It must stay that way:
