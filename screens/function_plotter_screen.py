@@ -67,6 +67,19 @@ _FUNCS = {
 _CONSTS = {"pi": math.pi, "e": math.e, "tau": math.tau}
 
 
+class _DarkInput(TextInput):
+    """Expression fields. Row code colours valid text white (errors red),
+    which is invisible on Kivy's default white TextInput - give them a dark
+    background so the text is readable."""
+
+    def __init__(self, **kw):
+        kw.setdefault("background_color", (0.12, 0.13, 0.17, 1))
+        kw.setdefault("foreground_color", (1, 1, 1, 1))
+        kw.setdefault("hint_text_color", (0.55, 0.55, 0.6, 1))
+        kw.setdefault("cursor_color", (0.6, 0.85, 1, 1))
+        super().__init__(**kw)
+
+
 class ExprError(ValueError):
     pass
 
@@ -447,7 +460,7 @@ class GraphCanvas(Widget):
         self.on_warp_end = None
         self.on_warp_radius = None
         self._warp_active = False
-        self._warp_hit_px = 12
+        self._warp_hit_px = dp(18)
         self._warp_touches = {}
         self._warp_primary_uid = None
         self._pinch_last_dist = None
@@ -541,14 +554,14 @@ class GraphCanvas(Widget):
                 for px, py in self._stroke_px:
                     flat.extend([px, py])
                 if len(flat) >= 4:
-                    Line(points=flat, width=2)
+                    Line(points=flat, width=dp(2))
 
             if self.warp_preview and len(self.warp_preview) >= 2:
                 Color(1.0, 0.62, 0.22, 0.95)
                 flat = []
                 for wx, wy in self.warp_preview:
                     flat.extend(self._w2s(wx, wy))
-                Line(points=flat, width=2.2)
+                Line(points=flat, width=dp(2.2))
 
             if self.warp_visual:
                 gx, gy = self.warp_visual["grab"]
@@ -560,7 +573,7 @@ class GraphCanvas(Widget):
                                          gy + r * math.sin(a)))
                 pts.extend(pts[:2])
                 Color(1.0, 0.62, 0.22, 0.28)
-                Line(points=pts, width=1.2)
+                Line(points=pts, width=dp(1.2))
                 pct = self.warp_visual.get("pct")
                 if pct is not None:
                     cx_px, _ = self._w2s(gx, gy)
@@ -575,9 +588,9 @@ class GraphCanvas(Widget):
                     and not self._point_multi):
                 px, py = self._point_candidate_px
                 Color(1, 0.9, 0.3, 0.55)
-                Line(circle=(px, py, 6), width=1.4)
+                Line(circle=(px, py, dp(6)), width=dp(1.4))
                 Color(1, 0.9, 0.3, 1)
-                Line(circle=(px, py, 2), width=1.0)
+                Line(circle=(px, py, dp(2)), width=dp(1.0))
 
     def _nice_step(self, span):
         if span <= 0:
@@ -603,10 +616,10 @@ class GraphCanvas(Widget):
         Color(0.16, 0.18, 0.23, 1)
         for x in self._iter_ticks(self.x_min, self.x_max, self._step_x):
             px, _ = self._w2s(x, 0)
-            Line(points=[px, self.y, px, self.top], width=1)
+            Line(points=[px, self.y, px, self.top], width=dp(1))
         for y in self._iter_ticks(self.y_min, self.y_max, self._step_y):
             _, py = self._w2s(0, y)
-            Line(points=[self.x, py, self.right, py], width=1)
+            Line(points=[self.x, py, self.right, py], width=dp(1))
 
     def _draw_axes(self):
         Color(0.75, 0.78, 0.85, 1)
@@ -615,9 +628,9 @@ class GraphCanvas(Widget):
         axis_py = self._w2s(0, 0)[1] if has_x_axis else self.y
         axis_px = self._w2s(0, 0)[0] if has_y_axis else self.x
         if has_x_axis:
-            Line(points=[self.x, axis_py, self.right, axis_py], width=1.6)
+            Line(points=[self.x, axis_py, self.right, axis_py], width=dp(1.6))
         if has_y_axis:
-            Line(points=[axis_px, self.y, axis_px, self.top], width=1.6)
+            Line(points=[axis_px, self.y, axis_px, self.top], width=dp(1.6))
 
         for x in self._iter_ticks(self.x_min, self.x_max, self._step_x):
             if abs(x) < 1e-9:
@@ -669,7 +682,7 @@ class GraphCanvas(Widget):
             ok = isinstance(wy, (int, float)) and math.isfinite(wy)
             if not ok:
                 if len(seg) >= 4:
-                    Line(points=seg, width=width)
+                    Line(points=seg, width=dp(width))
                 seg = []
                 prev_py = None
                 px += 2
@@ -677,13 +690,13 @@ class GraphCanvas(Widget):
             _, py = self._w2s(0, wy)
             if prev_py is not None and abs(py - prev_py) > max_jump:
                 if len(seg) >= 4:
-                    Line(points=seg, width=width)
+                    Line(points=seg, width=dp(width))
                 seg = []
             seg.extend([px, py])
             prev_py = py
             px += 2
         if len(seg) >= 4:
-            Line(points=seg, width=width)
+            Line(points=seg, width=dp(width))
 
     def _draw_parametric(self, fn_x, fn_y, t_lo, t_hi, color, width=1.5):
         if self.width < 4:
@@ -701,7 +714,7 @@ class GraphCanvas(Widget):
                 wy = fn_y(t)
             except Exception:
                 if len(seg) >= 4:
-                    Line(points=seg, width=width)
+                    Line(points=seg, width=dp(width))
                 seg = []
                 prev = None
                 continue
@@ -709,7 +722,7 @@ class GraphCanvas(Widget):
                     and isinstance(wy, (int, float))
                     and math.isfinite(wx) and math.isfinite(wy)):
                 if len(seg) >= 4:
-                    Line(points=seg, width=width)
+                    Line(points=seg, width=dp(width))
                 seg = []
                 prev = None
                 continue
@@ -718,12 +731,12 @@ class GraphCanvas(Widget):
                 if (abs(px - prev[0]) > jump_x
                         or abs(py - prev[1]) > jump_y):
                     if len(seg) >= 4:
-                        Line(points=seg, width=width)
+                        Line(points=seg, width=dp(width))
                     seg = []
             seg.extend([px, py])
             prev = (px, py)
         if len(seg) >= 4:
-            Line(points=seg, width=width)
+            Line(points=seg, width=dp(width))
 
     def _draw_polar(self, fn_r, t_lo, t_hi, color, width=1.5):
         if self.width < 4:
@@ -742,7 +755,7 @@ class GraphCanvas(Widget):
                 r = None
             if not (isinstance(r, (int, float)) and math.isfinite(r)):
                 if len(seg) >= 4:
-                    Line(points=seg, width=width)
+                    Line(points=seg, width=dp(width))
                 seg = []
                 prev = None
                 continue
@@ -753,12 +766,12 @@ class GraphCanvas(Widget):
                 if (abs(px - prev[0]) > jump_x
                         or abs(py - prev[1]) > jump_y):
                     if len(seg) >= 4:
-                        Line(points=seg, width=width)
+                        Line(points=seg, width=dp(width))
                     seg = []
             seg.extend([px, py])
             prev = (px, py)
         if len(seg) >= 4:
-            Line(points=seg, width=width)
+            Line(points=seg, width=dp(width))
 
     def _draw_points(self):
         if not self.points:
@@ -768,7 +781,7 @@ class GraphCanvas(Widget):
             px, py = self._w2s(wx, wy)
             if not (self.x <= px <= self.right and self.y <= py <= self.top):
                 continue
-            Line(circle=(px, py, 5), width=1.6)
+            Line(circle=(px, py, dp(5)), width=dp(1.6))
 
     def _draw_fill(self):
         if not self.fill:
@@ -1181,7 +1194,7 @@ class FunctionRow(BoxLayout):
 
     def __init__(self, color, on_change, on_delete, **kw):
         super().__init__(orientation="horizontal", size_hint_y=None,
-                         height=dp(42), spacing=dp(4), **kw)
+                         height=dp(46), spacing=dp(4), **kw)
         self.color = color
         self.on_change = on_change
         self.mode = "y"
@@ -1198,7 +1211,7 @@ class FunctionRow(BoxLayout):
         self._build_body()
 
         self.add_widget(ColorDot(color))
-        del_btn = Button(text="\u2715", size_hint_x=None, width=dp(30),
+        del_btn = Button(text="X", size_hint_x=None, width=dp(30),
                          font_size=13, background_color=(0.55, 0.12, 0.12, 1))
         del_btn.bind(on_release=lambda *a: on_delete(self))
         self.add_widget(del_btn)
@@ -1218,24 +1231,24 @@ class FunctionRow(BoxLayout):
         self.lhs = self.rhs = self.rhs2 = self.range_in = None
 
         if self.mode == "y":
-            self.lhs = self._bind(TextInput(
+            self.lhs = self._bind(_DarkInput(
                 text="f(x)", multiline=False, font_size=13,
                 size_hint_x=None, width=dp(52)))
-            self.rhs = self._bind(TextInput(
+            self.rhs = self._bind(_DarkInput(
                 multiline=False, font_size=13, hint_text="sin(x)/x"))
             self.body.add_widget(self.lhs)
             self.body.add_widget(Label(text="=", size_hint_x=None, width=dp(10)))
             self.body.add_widget(self.rhs)
 
         elif self.mode == "param":
-            self.lhs = self._bind(TextInput(
+            self.lhs = self._bind(_DarkInput(
                 text="x(t)", multiline=False, font_size=12,
                 size_hint_x=None, width=dp(50)))
-            self.rhs = self._bind(TextInput(
+            self.rhs = self._bind(_DarkInput(
                 multiline=False, font_size=12, hint_text="cos(t)"))
-            self.rhs2 = self._bind(TextInput(
+            self.rhs2 = self._bind(_DarkInput(
                 multiline=False, font_size=12, hint_text="sin(t)"))
-            self.range_in = self._bind(TextInput(
+            self.range_in = self._bind(_DarkInput(
                 text="0, 6.283", multiline=False, font_size=11,
                 size_hint_x=None, width=dp(76)))
             self.body.add_widget(self.lhs)
@@ -1246,13 +1259,13 @@ class FunctionRow(BoxLayout):
             self.body.add_widget(self.range_in)
 
         else:  # polar
-            self.lhs = self._bind(TextInput(
+            self.lhs = self._bind(_DarkInput(
                 text="r(\u03b8)", multiline=False, font_size=12,
                 size_hint_x=None, width=dp(50)))
-            self.rhs = self._bind(TextInput(
+            self.rhs = self._bind(_DarkInput(
                 multiline=False, font_size=12,
                 hint_text="1 + cos(\u03b8)"))
-            self.range_in = self._bind(TextInput(
+            self.range_in = self._bind(_DarkInput(
                 text="0, 6.283", multiline=False, font_size=11,
                 size_hint_x=None, width=dp(76)))
             self.body.add_widget(self.lhs)
@@ -1320,12 +1333,12 @@ class SplineRow(BoxLayout):
 
     def __init__(self, color, points, on_delete, **kw):
         super().__init__(orientation="horizontal", size_hint_y=None,
-                         height=dp(42), spacing=dp(4), **kw)
+                         height=dp(46), spacing=dp(4), **kw)
         self.color = color
         self.points = list(points)
         self._fn = make_spline(points)
 
-        self.add_widget(Label(text="\u270e spline",
+        self.add_widget(Label(text="spline",
                               size_hint_x=None, width=dp(70),
                               font_size=13, color=(0.9, 0.9, 0.6, 1)))
         self.add_widget(Label(text=f"{len(points)} pts",
@@ -1333,7 +1346,7 @@ class SplineRow(BoxLayout):
                               color=(0.7, 0.75, 0.8, 1)))
         self.add_widget(ColorDot(color))
 
-        del_btn = Button(text="\u2715", size_hint_x=None, width=dp(30),
+        del_btn = Button(text="X", size_hint_x=None, width=dp(30),
                          font_size=13, background_color=(0.55, 0.12, 0.12, 1))
         del_btn.bind(on_release=lambda *a: on_delete(self))
         self.add_widget(del_btn)
@@ -1350,7 +1363,7 @@ class PiecewiseRow(BoxLayout):
 
     def __init__(self, color, pieces, on_delete, on_convert=None, **kw):
         super().__init__(orientation="horizontal", size_hint_y=None,
-                         height=dp(42), spacing=dp(4), **kw)
+                         height=dp(46), spacing=dp(4), **kw)
         self.color = color
         norm = []
         for p in pieces:
@@ -1363,7 +1376,7 @@ class PiecewiseRow(BoxLayout):
         self._rebuild()
 
         n = len(self.pieces)
-        self.add_widget(Label(text=f"\u270e piecewise \u00b7 {n}",
+        self.add_widget(Label(text=f"piecewise \u00b7 {n}",
                               size_hint_x=None, width=dp(120),
                               font_size=13, color=(0.9, 0.9, 0.6, 1)))
         self.add_widget(Label(text=f"{sum(len(p) for p in self.pieces)} pts",
@@ -1371,12 +1384,12 @@ class PiecewiseRow(BoxLayout):
                               color=(0.7, 0.75, 0.8, 1)))
         self.add_widget(ColorDot(color))
         if on_convert is not None:
-            conv = Button(text="\u2192expr", size_hint_x=None, width=dp(52),
+            conv = Button(text="->expr", size_hint_x=None, width=dp(52),
                           font_size=11,
                           background_color=(0.3, 0.3, 0.5, 1))
             conv.bind(on_release=lambda *a: on_convert(self))
             self.add_widget(conv)
-        del_btn = Button(text="\u2715", size_hint_x=None, width=dp(30),
+        del_btn = Button(text="X", size_hint_x=None, width=dp(30),
                          font_size=13, background_color=(0.55, 0.12, 0.12, 1))
         del_btn.bind(on_release=lambda *a: on_delete(self))
         self.add_widget(del_btn)
@@ -1444,8 +1457,8 @@ class FunctionPlotterScreen(Screen):
         self.graph = GraphCanvas(size_hint=(1, 1))
         root.add_widget(self.graph)
 
-        tb = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(4))
-        b_view = Button(text="View \u25be  (0/0)", font_size=11)
+        tb = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(4))
+        b_view = Button(text="View v  (0/0)", font_size=11)
         b_view.bind(on_release=lambda *a: self._open_view_menu())
         self._b_view = b_view
         tb.add_widget(b_view)
@@ -1460,15 +1473,15 @@ class FunctionPlotterScreen(Screen):
             tb.add_widget(b)
         root.add_widget(tb)
 
-        mode_bar = BoxLayout(size_hint_y=None, height=dp(34), spacing=dp(4))
-        b_undo = Button(text="\u21b6", font_size=14, size_hint_x=None,
-                        width=dp(38))
+        mode_bar = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(4))
+        b_undo = Button(text="Undo", font_size=12, size_hint_x=None,
+                        width=dp(54))
         b_undo.bind(on_release=lambda *a: self._do_undo())
-        b_redo = Button(text="\u21b7", font_size=14, size_hint_x=None,
-                        width=dp(38))
+        b_redo = Button(text="Redo", font_size=12, size_hint_x=None,
+                        width=dp(54))
         b_redo.bind(on_release=lambda *a: self._do_redo())
-        b_hist = Button(text="\u2630", font_size=14, size_hint_x=None,
-                        width=dp(38))
+        b_hist = Button(text="Hist", font_size=12, size_hint_x=None,
+                        width=dp(54))
         b_hist.bind(on_release=lambda *a: self._open_history())
         mode_bar.add_widget(b_undo)
         mode_bar.add_widget(b_redo)
@@ -1482,7 +1495,7 @@ class FunctionPlotterScreen(Screen):
             mode_bar.add_widget(b)
         root.add_widget(mode_bar)
 
-        sv = ScrollView(size_hint_y=None, height=dp(140))
+        sv = ScrollView(size_hint_y=None, height=dp(150))
         self.rows_box = BoxLayout(orientation="vertical", size_hint_y=None,
                                   spacing=dp(3), padding=dp(2))
         self.rows_box.bind(minimum_height=self.rows_box.setter("height"))
@@ -1493,7 +1506,7 @@ class FunctionPlotterScreen(Screen):
                              height=dp(20), color=(0.6, 1, 0.7, 1))
         root.add_widget(self.fit_lbl)
 
-        bb = BoxLayout(size_hint_y=None, height=dp(38), spacing=dp(4))
+        bb = BoxLayout(size_hint_y=None, height=dp(46), spacing=dp(4))
         b_add = Button(text="+ Add function", font_size=12,
                        background_color=(0.2, 0.5, 0.25, 1))
         b_add.bind(on_release=lambda *a: self._add_row())
@@ -1522,8 +1535,6 @@ class FunctionPlotterScreen(Screen):
 
         self._add_row("sin(x)")
         self._add_row("x^2 / 4 - 3")
-
-        Window.bind(on_key_down=self._on_key_down)
 
     def _seed_initial(self):
         self._last_snap = self._snapshot()
@@ -1775,13 +1786,13 @@ class FunctionPlotterScreen(Screen):
 
         popup = Popup(title="History", content=sv,
                       size_hint=(0.8, 0.7))
-        box.add_widget(make_row("\u25cf Current state", False,
+        box.add_widget(make_row("* Current state", False,
                                 bg=(0.15, 0.42, 0.25, 1)))
 
         for rev in range(len(self._undo)):
             i = len(self._undo) - 1 - rev
             label, _snap = self._undo[i]
-            b = make_row(f"\u21b6  {label}", True,
+            b = make_row(f"Undo  {label}", True,
                          on_click=lambda inst, idx=i: (
                              popup.dismiss(),
                              self._jump_to_undo_index(idx)))
@@ -1790,7 +1801,7 @@ class FunctionPlotterScreen(Screen):
         for rev in range(len(self._redo)):
             i = len(self._redo) - 1 - rev
             label, _snap = self._redo[i]
-            b = make_row(f"\u21b7  {label}", True,
+            b = make_row(f"Redo  {label}", True,
                          on_click=lambda inst, idx=i: (
                              popup.dismiss(),
                              self._jump_to_redo_index(idx)),
@@ -1860,7 +1871,7 @@ class FunctionPlotterScreen(Screen):
         if b is not None:
             u = len(self._view_undo)
             r = len(self._view_redo)
-            b.text = f"View \u25be  ({u}/{r})"
+            b.text = f"View v  ({u}/{r})"
 
     def _open_view_menu(self):
         layout = BoxLayout(orientation="vertical", spacing=dp(6),
@@ -1995,7 +2006,7 @@ class FunctionPlotterScreen(Screen):
                 return
             row = self._add_row(poly_to_expr(coefs))
             row.lhs.text = f"pencil_{len(self._rows)}"
-            self.fit_lbl.text = (f"Pencil \u2192 poly deg {deg}: "
+            self.fit_lbl.text = (f"Pencil -> poly deg {deg}: "
                                  f"y = {poly_to_str(coefs)}")
 
         spline_btn.bind(on_release=do_spline)
@@ -2103,7 +2114,7 @@ class FunctionPlotterScreen(Screen):
             w["row"]._fn = make_spline(new_pts)
             self._sync()
             self._commit_undo()
-            self.fit_lbl.text = "Warped \u2192 spline"
+            self.fit_lbl.text = "Warped -> spline"
             return
 
         self._expr_warp_commit_popup(w, new_pts)
@@ -2149,7 +2160,7 @@ class FunctionPlotterScreen(Screen):
                 self._sync()
                 return
             warp["row"].rhs.text = poly_to_expr(coefs)
-            self.fit_lbl.text = f"Warped \u2192 poly deg {deg}"
+            self.fit_lbl.text = f"Warped -> poly deg {deg}"
 
         def do_cancel(*a):
             popup.dismiss()
@@ -2280,7 +2291,7 @@ class FunctionPlotterScreen(Screen):
         finally:
             self._restoring = False
         self._sync()
-        self.fit_lbl.text = (f"Piecewise \u2192 expression "
+        self.fit_lbl.text = (f"Piecewise -> expression "
                              f"({len(fitted)} branches)")
 
     # ── PNG export ─────────────────────────────────────────────────────
@@ -2409,7 +2420,7 @@ class FunctionPlotterScreen(Screen):
             "drawing\n"
             "• Ctrl+Z / Ctrl+Y — undo/redo content\n"
             "• Ctrl+Alt+Z / Ctrl+Alt+Y — undo/redo view\n"
-            "• View ▾ — view-history menu\n"
+            "• View v — view-history menu\n"
             "• Fill — shade ∫(a−b) dx between two y=f(x) curves\n"
             "• PNG — export the current view\n"
         )
