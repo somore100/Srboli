@@ -7,8 +7,12 @@ package.domain = org.somore100
 source.dir = .
 source.include_exts = py,png,jpg,jpeg,json,ttf,txt
 
-source.exclude_dirs = tests,.git,.github,__pycache__,srboli_data/gallery_cache,srboli_data/metadata_cache
-source.exclude_patterns = *.pyc,*.spec,*.egg-info,build.txt,license.txt,README.md,SrboliLight.spec,requirements-desktop.txt,requirements.txt
+# srboli_data/ is the developer's own runtime data (settings, rules, reminders,
+# autosaves, caches, daemon authkey). It must never ship inside the APK: it
+# would overwrite a user's defaults with the developer's, and leak personal
+# files. The app recreates it at first run. Same for tests/ and local state.
+source.exclude_dirs = tests,.git,.github,__pycache__,srboli_data,.venv,venv,build,dist,bin,.buildozer
+source.exclude_patterns = *.pyc,*.spec,.srboli_config.json,*.log,*.zip,*.7z,*.keystore,*.apk,*.egg-info,build.txt,license.txt,README.md,SrboliLight.spec,requirements-desktop.txt,requirements.txt
 
 version = 2.4
 

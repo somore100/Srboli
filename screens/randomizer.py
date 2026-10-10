@@ -24,6 +24,40 @@ from kivy.graphics import Color, Rectangle
 from kivy.metrics import dp
 
 DEFAULT_SYMBOLS = "!@#$%^&*()-_=+[]{}|;:,.<>?"
+
+# Built-in words for passwords (used when no wordlist was imported).
+_BUILTIN_WORDS = [
+    'gorilla', 'money', 'tiger', 'river', 'storm', 'eagle', 'cloud', 'frost',
+    'flame', 'arrow', 'silver', 'golden', 'iron', 'stone', 'forest', 'ocean',
+    'mountain', 'thunder', 'shadow', 'falcon', 'dragon', 'panda', 'koala', 'monkey',
+    'zebra', 'rabbit', 'turtle', 'dolphin', 'penguin', 'walrus', 'otter', 'badger',
+    'beaver', 'lizard', 'parrot', 'raven', 'swan', 'crane', 'heron', 'cobra',
+    'viper', 'python', 'wolf', 'fox', 'bear', 'lion', 'leopard', 'jaguar',
+    'lynx', 'moose', 'bison', 'camel', 'llama', 'alpaca', 'donkey', 'pony',
+    'horse', 'goat', 'sheep', 'cow', 'pig', 'duck', 'goose', 'chicken',
+    'apple', 'banana', 'cherry', 'grape', 'lemon', 'mango', 'melon', 'orange',
+    'peach', 'pear', 'plum', 'berry', 'candy', 'cookie', 'cake', 'bread',
+    'cheese', 'butter', 'honey', 'sugar', 'pepper', 'garlic', 'onion', 'carrot',
+    'potato', 'tomato', 'pizza', 'burger', 'noodle', 'rice', 'soup', 'salad',
+    'coffee', 'tea', 'juice', 'milk', 'water', 'fire', 'earth', 'wind',
+    'snow', 'rain', 'sun', 'moon', 'star', 'comet', 'planet', 'rocket',
+    'galaxy', 'orbit', 'meteor', 'sky', 'dawn', 'dusk', 'night', 'day',
+    'winter', 'summer', 'spring', 'autumn', 'breeze', 'blizzard', 'desert', 'jungle',
+    'island', 'valley', 'canyon', 'meadow', 'harbor', 'castle', 'tower', 'bridge',
+    'garden', 'window', 'door', 'table', 'chair', 'lamp', 'clock', 'mirror',
+    'pencil', 'paper', 'book', 'candle', 'blanket', 'pillow', 'basket', 'bucket',
+    'hammer', 'wrench', 'anchor', 'compass', 'lantern', 'engine', 'pixel', 'turbo',
+    'laser', 'cyber', 'robot', 'ninja', 'pirate', 'wizard', 'knight', 'viking',
+    'hunter', 'ranger', 'sailor', 'pilot', 'artist', 'writer', 'driver', 'maker',
+    'runner', 'jumper', 'swift', 'brave', 'quiet', 'happy', 'lucky', 'mighty',
+    'clever', 'gentle', 'bright', 'rapid', 'silent', 'crimson', 'violet', 'amber',
+    'indigo', 'scarlet', 'cobalt', 'ivory', 'ebony', 'copper', 'bronze', 'marble',
+    'crystal', 'velvet', 'cotton', 'wooden', 'rusty', 'dusty', 'fuzzy', 'cosmic',
+    'atomic', 'magic', 'secret', 'hidden', 'ancient', 'modern',
+]
+
+# Passwords must come from the OS CSPRNG, not the default Mersenne Twister.
+_rng = random.SystemRandom()
 HISTORY_MAX = 50
 
 
@@ -231,6 +265,24 @@ class UtilityToolsScreen(Screen):
         self._char_opts.add_widget(self._custom_sym)
         layout.add_widget(self._char_opts)
 
+        # ── include words (Character mode) ──
+        self._pw_words_row = BoxLayout(size_hint_y=None, height=dp(38),
+                                       spacing=dp(6))
+        self._pw_words_row.add_widget(Label(text="Include words:",
+                                            size_hint_x=None, width=dp(110),
+                                            font_size=13))
+        self._pw_nwords = _Spinner(text="0", values=("0", "1", "2"),
+                                   size_hint_x=None, width=dp(60),
+                                   font_size=13)
+        self._pw_words_row.add_widget(self._pw_nwords)
+        self._pw_cap = CheckBox(active=False, size_hint_x=None,
+                                width=dp(32))
+        self._pw_words_row.add_widget(self._pw_cap)
+        self._pw_words_row.add_widget(Label(text="Capitalize", font_size=13,
+                                            size_hint_x=None, width=dp(80)))
+        self._pw_words_row.add_widget(Label())
+        layout.add_widget(self._pw_words_row)
+
         # ── generate button ──
         gen_btn = Button(text=" Generate", size_hint_y=None, height=dp(46),
                          font_size=15)
@@ -261,7 +313,7 @@ class UtilityToolsScreen(Screen):
         copy_btn.bind(on_release=lambda *a: self._copy_popup(self.pw_result.text))
         import_btn = Button(text="Import Wordlist .txt", font_size=12)
         import_btn.bind(on_release=self._import_wordlist)
-        wl_lbl = Label(font_size=11)
+        wl_lbl = Label(font_size=11, text=f"built-in: {len(_BUILTIN_WORDS)} words")
         self._wl_label = wl_lbl
         bot.add_widget(copy_btn)
         bot.add_widget(import_btn)
@@ -277,6 +329,8 @@ class UtilityToolsScreen(Screen):
         is_words  = text == "Words (passphrase)"
         is_b64    = text == "Base64"
         self._char_opts.opacity  = 1 if is_char else 0.3
+        self._pw_words_row.opacity = 1 if is_char else 0.3
+        self._pw_words_row.disabled = not is_char
         self._pw_len_label.text  = "Words:" if is_words else "Length:"
         if is_words:
             self.pw_length.text = "4"
@@ -305,24 +359,18 @@ class UtilityToolsScreen(Screen):
             except ValueError:
                 word_count = 2
 
-            # word bank — use imported wordlist or built-in animals/adjectives
-            _builtin = [
-                "cat","dog","fish","truck","blue","red","fire","ice",
-                "rain","sun","moon","star","rock","lake","wolf","bear",
-                "eagle","snake","tiger","storm","leaf","sand","iron",
-                "gold","silver","arrow","flame","frost","cloud","river",
-            ]
-            bank = self._word_list if self._word_list else _builtin
-            words = [random.choice(bank).lower() for _ in range(word_count)]
+            # word bank — imported wordlist, else the built-in one
+            bank = self._word_list if self._word_list else _BUILTIN_WORDS
+            words = [_rng.choice(bank).lower() for _ in range(word_count)]
             combined = "".join(words)
 
-            num = str(random.randint(10, 99))
+            num = str(_rng.randint(10, 99))
 
             # optional suffix: uppercase letter or symbol
             if self.pw_symbols.active:
-                suffix = random.choice(DEFAULT_SYMBOLS)
+                suffix = _rng.choice(DEFAULT_SYMBOLS)
             elif self.pw_letters.active:
-                suffix = random.choice(string.ascii_uppercase)
+                suffix = _rng.choice(string.ascii_uppercase)
             else:
                 suffix = ""
 
@@ -341,19 +389,10 @@ class UtilityToolsScreen(Screen):
                 word_count = max(2, min(12, int(self.pw_length.text)))
             except ValueError:
                 word_count = 4
-            if self._word_list:
-                words = [random.choice(self._word_list)
-                         for _ in range(word_count)]
-            else:
-                # fallback: random pronounceable syllables
-                sylls = ["ba","be","bi","bo","bu","ca","co","da","de",
-                         "fa","fi","ga","go","ha","ja","ka","la","ma",
-                         "na","pa","ra","sa","ta","va","wa","za"]
-                words = ["".join(random.choice(sylls)
-                                 for _ in range(random.randint(2,4)))
-                         for _ in range(word_count)]
-            sep = random.choice(["-", "_", ".", ""])
-            num = str(random.randint(10, 99))
+            bank = self._word_list if self._word_list else _BUILTIN_WORDS
+            words = [_rng.choice(bank) for _ in range(word_count)]
+            sep = _rng.choice(["-", "_", ".", ""])
+            num = str(_rng.randint(10, 99))
             pw  = sep.join(words) + num
 
         else:  # Character mode
@@ -371,15 +410,27 @@ class UtilityToolsScreen(Screen):
             if not charset:
                 charset = string.ascii_letters + string.digits
 
-            if self._word_list:
-                word = random.choice(self._word_list)
-                rest = "".join(random.choice(charset)
-                               for _ in range(max(0, length - len(word))))
-                chars = list(word + rest)
+            try:
+                n_words = max(0, min(2, int(self._pw_nwords.text)))
+            except ValueError:
+                n_words = 0
+            if n_words:
+                # words first, then random characters, e.g. gorillamoney2341.
+                # The words already supply letters, so when digits/symbols
+                # are enabled the tail uses only those.
+                bank = self._word_list if self._word_list else _BUILTIN_WORDS
+                picked = [_rng.choice(bank).strip().lower()
+                          for _ in range(n_words)]
+                if self._pw_cap.active:
+                    picked = [w.capitalize() for w in picked]
+                head = "".join(picked)
+                tail_set = "".join(c for c in charset
+                                   if c not in string.ascii_letters) or charset
+                tail_len = max(4, length - len(head))   # never fewer than 4
+                pw = head + "".join(_rng.choice(tail_set)
+                                    for _ in range(tail_len))
             else:
-                chars = [random.choice(charset) for _ in range(length)]
-            random.shuffle(chars)
-            pw = "".join(chars[:length])
+                pw = "".join(_rng.choice(charset) for _ in range(length))
 
         self.pw_result.text = pw
         score, label = _password_strength(pw)

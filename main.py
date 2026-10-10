@@ -274,6 +274,13 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.gridlayout import GridLayout
+# Every folder/file picker gets a type-or-paste path bar (core/pathbar.py).
+# Must run BEFORE any screen module imports FileChooserIconView.
+try:
+    import core.pathbar
+    core.pathbar.install()
+except Exception as _e:
+    print(f"pathbar install skipped: {_e}")
 from kivy.uix.filechooser import FileChooserIconView
 from kivy.uix.popup import Popup
 from kivy.metrics import dp

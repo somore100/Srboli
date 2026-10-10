@@ -16,3 +16,6 @@ srboli_data/metadata_cache/
 build/
 .srboli_overlay_data.json
 .overlay_log.txt
+
+srboli_data/
+.srboli_config.json

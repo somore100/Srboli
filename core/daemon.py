@@ -26,6 +26,7 @@ import core.reminders_core as reminders_core
 import core.notify as notify
 import core.file_sorter_watch as file_sorter_watch
 import core.cover_core as cover_core
+import core.service_config as service_config
 
 START_GRACE = 0.15   # let a "stopping" reply actually reach the client
                      # before the listener socket goes away underneath it
@@ -80,7 +81,8 @@ class Daemon:
         never kill a cover that was started by hand just because the
         setting is off."""
         try:
-            if (cover_core.is_desktop()
+            allowed = service_config.is_allowed("cover")
+            if (allowed and cover_core.is_desktop()
                     and cover_core.load_config().get("service_enabled")
                     and not cover_core.is_running()):
                 if cover_core.start_cover():
@@ -104,6 +106,8 @@ class Daemon:
 
     # -- reminders scheduler ------------------------------------------------
     def _scan_reminders_once(self):
+        if not service_config.is_allowed("reminders"):
+            return          # switched off in Settings -> Background service
         try:
             reminders = reminders_core.load_reminders()
             state = reminders_core.load_state()
@@ -125,8 +129,9 @@ class Daemon:
         # delay reminders.
         while not self._scheduler_stop.is_set():
             try:
-                file_sorter_watch.scan_once(
-                    stop_check=self._scheduler_stop.is_set)
+                if service_config.is_allowed("folder_watch"):
+                    file_sorter_watch.scan_once(
+                        stop_check=self._scheduler_stop.is_set)
             except Exception as e:
                 print(f"Srboli daemon: folder watch failed: {e}")
             self._watch_wake.wait(timeout=file_sorter_watch.POLL_SECONDS)

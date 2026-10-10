@@ -24,6 +24,7 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.checkbox import CheckBox
+from kivy.uix.popup import Popup
 from kivy.uix.widget import Widget
 from kivy.graphics import Color, Rectangle
 from kivy.core.window import Window
@@ -261,6 +262,11 @@ class SettingsScreen(Screen):
         else:
             self._autostart_cb = None
 
+        feat_btn = Button(text="Choose what the service may run...",
+                          size_hint_y=None, height=dp(40), font_size=12)
+        feat_btn.bind(on_release=self._open_service_features)
+        root.add_widget(feat_btn)
+
         self._status = Label(text="", size_hint_y=None, height=dp(22),
                              font_size=11, color=(0.4, 1, 0.4, 1))
         root.add_widget(self._status)
@@ -427,6 +433,49 @@ class SettingsScreen(Screen):
                     break
             Clock.schedule_once(lambda dt: self._apply_daemon_status(resp))
         threading.Thread(target=worker, daemon=True).start()
+
+    def _open_service_features(self, *a):
+        import core.service_config as svc_cfg
+        allow = svc_cfg.load()
+        layout = BoxLayout(orientation="vertical", padding=dp(10),
+                           spacing=dp(8))
+        intro = Label(
+            text=("The service is a separate process: closing Srboli does "
+                  "NOT stop it. Stop it with the Stop button in Settings, "
+                  "or it ends when the computer shuts down (unless 'start "
+                  "when I log in' is ticked). It is off until you start it.\n\n"
+                  "Pick what a running service is allowed to do:"),
+            font_size=12, halign="left", valign="top",
+            size_hint_y=None, height=dp(120))
+        intro.bind(size=lambda i, sz: setattr(i, "text_size", (sz[0], None)))
+        layout.add_widget(intro)
+        boxes = {}
+        for key, (title, desc) in svc_cfg.FEATURES.items():
+            row = BoxLayout(size_hint_y=None, height=dp(58), spacing=dp(8))
+            cb = CheckBox(active=allow.get(key, True), size_hint=(None, None),
+                          size=(dp(32), dp(32)))
+            boxes[key] = cb
+            col = Label(text=f"[b]{title}[/b]\n{desc}", markup=True,
+                        font_size=12, halign="left", valign="middle")
+            col.bind(size=lambda i, sz: setattr(i, "text_size", (sz[0], None)))
+            row.add_widget(cb)
+            row.add_widget(col)
+            layout.add_widget(row)
+        layout.add_widget(Label())
+        save_b = Button(text="Save", size_hint_y=None, height=dp(46))
+        layout.add_widget(save_b)
+        popup = Popup(title="Background service features", content=layout,
+                      size_hint=(0.94, 0.8))
+
+        def _save(*_):
+            ok = svc_cfg.save({k: c.active for k, c in boxes.items()})
+            popup.dismiss()
+            self._status.text = ("Saved." if ok else "Couldn't save.")
+            threading.Thread(
+                target=lambda: send_command("reload", timeout=1.0),
+                daemon=True).start()
+        save_b.bind(on_release=_save)
+        popup.open()
 
     def _toggle_autostart(self, checkbox, active):
         if getattr(self, "_autostart_syncing", False):

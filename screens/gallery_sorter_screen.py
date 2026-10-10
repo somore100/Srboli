@@ -433,6 +433,13 @@ class GallerySorterScreen(Screen):
         self._instant    = True
         self._preview_gen = 0   # bumped each _show_current(); async loads
                                  # check this to discard stale results
+        self._scan_cache = {}    # source folder -> [media paths]; scanning is
+                                 # slow, so a folder is only rescanned on request
+        self._busy       = False # a move is running on the worker thread
+        self._last_act   = {}    # per-action timestamp for double-tap guard
+        self._preview_ev = None  # pending (debounced) preview load
+        self._del_popup  = None  # open delete-confirm popup, if any
+        self._move_err   = ""
 
         root = BoxLayout(orientation="vertical", spacing=dp(3), padding=dp(4))
 
@@ -466,6 +473,10 @@ class GallerySorterScreen(Screen):
                                   width=dp(100), font_size=11, disabled=True)
         self._commit_btn.bind(on_release=self._commit)
         opts.add_widget(self._commit_btn)
+        rescan_b = Button(text="Rescan", size_hint_x=None, width=dp(80),
+                          font_size=11)
+        rescan_b.bind(on_release=lambda *a: self._reload_files(force=True))
+        opts.add_widget(rescan_b)
         root.add_widget(opts)
 
         # ── main area ─────────────────────────────────────────────────────
@@ -591,6 +602,8 @@ class GallerySorterScreen(Screen):
     # ── lifecycle ─────────────────────────────────────────────────────────
     def on_enter(self, *a):
         Window.bind(on_key_down=self._key)
+        if not self._sources:
+            Clock.schedule_once(lambda dt: self._maybe_dcim_hint(), 0.4)
     def on_leave(self, *a):
         Window.unbind(on_key_down=self._key)
     def _key(self, win, key, *a):
@@ -599,6 +612,92 @@ class GallerySorterScreen(Screen):
         elif key == 276: self._step(-1)
         elif key == 127: self._delete()
         elif key == 32:  self._open_player()
+
+    # ── first-run hint ────────────────────────────────────────────────────
+    def _hint_file(self):
+        return os.path.join(app_data.subdir("gallery_state"), "hints.json")
+
+    def _maybe_dcim_hint(self):
+        if self._sources or self.manager is None or \
+                self.manager.current != "gallery":
+            return
+        try:
+            with open(self._hint_file(), encoding="utf-8") as f:
+                if json.load(f).get("dcim_hint"):
+                    return
+        except Exception:
+            pass
+        try:
+            with open(self._hint_file(), "w", encoding="utf-8") as f:
+                json.dump({"dcim_hint": True}, f)
+        except Exception:
+            pass
+        dcim = os.path.join(_home(), "DCIM")
+        layout = BoxLayout(orientation="vertical", padding=dp(10),
+                           spacing=dp(8))
+        lbl = Label(text=("Where are my photos?\n\n"
+                          "On a phone, camera photos and videos live in a "
+                          "folder called DCIM (Camera = your shots, "
+                          "Screenshots = screenshots).\n\n"
+                          "Start there, or pick any other folder."),
+                    halign="center", valign="middle", font_size=14)
+        lbl.bind(size=lambda i, sz: setattr(i, "text_size", (sz[0], None)))
+        layout.add_widget(lbl)
+        popup = Popup(title="Tip", content=layout, size_hint=(0.9, 0.6),
+                      auto_dismiss=True)
+
+        def use_dcim(*_):
+            popup.dismiss()
+            if os.path.isdir(dcim):
+                self._sources.append(dcim)
+                self._reload_files()
+            else:
+                self._status.text = "No DCIM folder found - pick one."
+                self._add_source()
+
+        def pick(*_):
+            popup.dismiss()
+            self._add_source()
+        b1 = Button(text="Use DCIM", size_hint_y=None, height=dp(46))
+        b2 = Button(text="Pick a folder", size_hint_y=None, height=dp(46))
+        b3 = Button(text="Not now", size_hint_y=None, height=dp(46))
+        b1.bind(on_release=use_dcim)
+        b2.bind(on_release=pick)
+        b3.bind(on_release=lambda *a: popup.dismiss())
+        for b in (b1, b2, b3):
+            layout.add_widget(b)
+        popup.open()
+
+    # ── guards / cache helpers ────────────────────────────────────────────
+    def _guard(self, key, interval=0.35):
+        """False if `key` already fired within `interval` seconds (a
+        double-tap). Prevents one fast tap pair from moving two files or
+        opening two confirm popups."""
+        now = time.monotonic()
+        if now - self._last_act.get(key, 0.0) < interval:
+            return False
+        self._last_act[key] = now
+        return True
+
+    def _cache_drop(self, path):
+        for lst in self._scan_cache.values():
+            try:
+                lst.remove(path)
+            except ValueError:
+                pass
+
+    def _cache_add(self, path):
+        best = None
+        for src in self._scan_cache:
+            if path.startswith(src.rstrip("/\\") + os.sep):
+                if best is None or len(src) > len(best):
+                    best = src
+        if best is not None and path not in self._scan_cache[best]:
+            self._scan_cache[best].append(path)
+
+    def _cache_replace(self, old, new):
+        self._cache_drop(old)
+        self._cache_add(new)
 
     # ── sources ───────────────────────────────────────────────────────────
     def _add_source(self, *a):
@@ -615,50 +714,72 @@ class GallerySorterScreen(Screen):
             if f not in self._sources:
                 self._sources.append(f)
                 self._reload_files()
+            else:
+                self._scan_cache.pop(f, None)   # re-picked = rescan it
+                self._reload_files()
             popup.dismiss()
         btn.bind(on_release=_sel); popup.open()
 
-    def _reload_files(self):
+    def _reload_files(self, force=False):
         # Scan on a worker thread: a big folder (e.g. DCIM, ~1700 files)
-        # used to freeze the UI. Shows live progress instead.
-        from kivy.clock import Clock
+        # used to freeze the UI. Folders already scanned are served from
+        # self._scan_cache - only new sources (or force=True / Rescan) hit
+        # the disk. Moves/deletes/undo keep the cache in step.
         self._scan_token = getattr(self, "_scan_token", 0) + 1
         token = self._scan_token
         sources = list(self._sources)
-        self._files = []
-        self._src_lbl.text = "Scanning..."
+        if force:
+            self._scan_cache.clear()
+        cache = self._scan_cache
+        todo = [x for x in sources if x not in cache]
+        keep = self._files[self._index] if self._files and \
+            self._index < len(self._files) else None
+        self._src_lbl.text = "Scanning..." if todo else self._src_lbl.text
 
         def progress(n):
             if token == self._scan_token:
                 self._src_lbl.text = f"Scanning... {n} files found"
 
-        def done(found):
+        def done(scanned):
             if token != self._scan_token:
                 return
+            cache.update(scanned)
+            found, seen = [], set()
+            for src in sources:           # source order; no duplicates when
+                for p in cache.get(src, []):   # one source is inside another
+                    if p not in seen:
+                        seen.add(p)
+                        found.append(p)
             self._files = found
-            self._index = 0
+            self._index = found.index(keep) if keep in seen else 0
             self._src_lbl.text = (f"{len(self._sources)} src, "
                                   f"{len(self._files)} files")
             self._show_current()
 
         def worker():
-            found = []
-            for src in sources:
-                if not os.path.isdir(src):
-                    continue
-                # Recursive: DCIM itself holds only subfolders (Camera,
-                # Screenshots, ...), so a top-level-only scan found 0 files.
-                for root_dir, dirs, names in os.walk(src):
-                    dirs[:] = sorted(d for d in dirs if not d.startswith("."))
-                    for fn in sorted(names):
-                        p = os.path.join(root_dir, fn)
-                        if not fn.startswith(".") and _is_media(p):
-                            found.append(p)
-                            if len(found) % 100 == 0:
-                                Clock.schedule_once(
-                                    lambda dt, n=len(found): progress(n))
-            Clock.schedule_once(lambda dt: done(found))
+            scanned, count = {}, 0
+            for src in todo:
+                lst = []
+                if os.path.isdir(src):
+                    # Recursive: DCIM itself holds only subfolders (Camera,
+                    # Screenshots, ...), so a top-level-only scan found 0.
+                    for root_dir, dirs, names in os.walk(src):
+                        dirs[:] = sorted(d for d in dirs
+                                         if not d.startswith("."))
+                        for fn in sorted(names):
+                            p = os.path.join(root_dir, fn)
+                            if not fn.startswith(".") and _is_media(p):
+                                lst.append(p)
+                                count += 1
+                                if count % 100 == 0:
+                                    Clock.schedule_once(
+                                        lambda dt, n=count: progress(n))
+                scanned[src] = lst
+            Clock.schedule_once(lambda dt: done(scanned))
 
+        if not todo:
+            done({})          # everything cached: instant, no thread
+            return
         threading.Thread(target=worker, daemon=True).start()
 
     # ── destinations ──────────────────────────────────────────────────────
@@ -826,17 +947,40 @@ class GallerySorterScreen(Screen):
 
     # ── sorting ───────────────────────────────────────────────────────────
     def _sort_to(self, dest):
-        if not self._files or self._index >= len(self._files): return
+        if self._busy or not self._files or self._index >= len(self._files):
+            return
+        if not self._guard("sort"):
+            return
         src = self._files[self._index]
         if self._instant:
-            result = self._do_move(src, dest)
-            if result:
-                self._undo_stack.append(("move", src, dest, result))
-            self._files.pop(self._index)
-            if self._index >= len(self._files):
-                self._index = max(0, len(self._files) - 1)
-            self._show_current()
-            self._status.text = f"Moved to {os.path.basename(dest)}"
+            # Move on a worker thread (a cross-storage move copies the whole
+            # file) and ignore taps until it is finished - queued taps used
+            # to fire later and move the NEXT files unseen.
+            self._busy = True
+            self._status.text = f"Moving {os.path.basename(src)}..."
+
+            def work():
+                result = self._do_move(src, dest)
+                err = self._move_err
+
+                def finish(dt):
+                    self._busy = False
+                    if result:
+                        self._undo_stack.append(("move", src, dest, result))
+                        self._cache_drop(src)
+                        if src in self._files:
+                            i = self._files.index(src)
+                            self._files.pop(i)
+                            if i < self._index:
+                                self._index -= 1
+                        if self._index >= len(self._files):
+                            self._index = max(0, len(self._files) - 1)
+                        self._show_current()
+                        self._status.text = f"Moved to {os.path.basename(dest)}"
+                    else:
+                        self._status.text = f"Move error: {err}"
+                Clock.schedule_once(finish, 0)
+            threading.Thread(target=work, daemon=True).start()
         else:
             self._queue.append((src, dest))
             self._commit_btn.text = f"Commit ({len(self._queue)})"
@@ -844,6 +988,8 @@ class GallerySorterScreen(Screen):
             self._step(1)
 
     def _do_move(self, src, dst_folder):
+        """Runs on a worker thread in instant mode: must not touch widgets."""
+        self._move_err = ""
         try:
             os.makedirs(dst_folder, exist_ok=True)
             dst = os.path.join(dst_folder, os.path.basename(src))
@@ -854,10 +1000,12 @@ class GallerySorterScreen(Screen):
             shutil.move(src, dst)
             return dst
         except Exception as e:
-            self._status.text = f"Move error: {e}"
+            self._move_err = str(e)
             return None
 
     def _undo(self, *a):
+        if self._busy or not self._guard("undo"):
+            return
         if not self._undo_stack:
             self._status.text = "Nothing to undo."; return
         action, src, dst_folder, moved_to = self._undo_stack.pop()
@@ -868,6 +1016,7 @@ class GallerySorterScreen(Screen):
             # under that renamed name while self._files still points at
             # the old `src` path, silently orphaning the file.
             shutil.move(moved_to, src)
+            self._cache_add(src)
             self._files.insert(self._index, src)
             self._show_current()
             self._status.text = f"Undone: {os.path.basename(src)}"
@@ -875,18 +1024,25 @@ class GallerySorterScreen(Screen):
             self._status.text = f"Undo error: {e}"
 
     def _commit(self, *a):
-        moved = 0
+        moved, failed = 0, 0
         for src, dst in self._queue:
             if os.path.exists(src):
                 r = self._do_move(src, dst)
                 if r:
                     self._undo_stack.append(("move", src, dst, r))
+                    self._cache_drop(src)
+                    if src in self._files:
+                        self._files.remove(src)
                     moved += 1
+                else:
+                    failed += 1
         self._queue.clear()
         self._commit_btn.text = "Commit (0)"
         self._commit_btn.disabled = True
-        self._reload_files()
-        self._status.text = f"Committed {moved} moves."
+        self._index = min(self._index, max(0, len(self._files) - 1))
+        self._show_current()
+        self._status.text = (f"Committed {moved} moves."
+                             + (f" {failed} failed." if failed else ""))
 
     def _rename(self, *a):
         if not self._files or self._index >= len(self._files): return
@@ -897,6 +1053,7 @@ class GallerySorterScreen(Screen):
         new_path = os.path.join(os.path.dirname(old), new + ext)
         try:
             os.rename(old, new_path)
+            self._cache_replace(old, new_path)
             self._files[self._index] = new_path
             self._ren_in.text = ""
             self._show_current()
@@ -934,7 +1091,9 @@ class GallerySorterScreen(Screen):
     def _show_current(self):
         if not self._files:
             self._preview_img.source  = ""
-            self._file_lbl.text       = "No files"
+            self._file_lbl.text       = ("No files" if self._sources else
+                                         "Tap + Source. Phone photos are "
+                                         "in DCIM.")
             self._prog.text           = "0/0"
             self._info_lbl.text       = ""
             self._play_btn.opacity    = 0
@@ -950,6 +1109,19 @@ class GallerySorterScreen(Screen):
         vid = _is_video(path)
         self._play_btn.opacity  = 1 if vid else 0
         self._strip_btn.opacity = 1 if (vid and CAN_VIDEO_THUMB) else 0
+
+        # Debounce: flicking through files fast used to start two threads
+        # (info + thumbnail, a video decode each) per step. Only the file
+        # you stop on gets loaded.
+        if self._preview_ev is not None:
+            self._preview_ev.cancel()
+        self._preview_ev = Clock.schedule_once(
+            lambda dt: self._load_preview(path, gen, vid), 0.12)
+
+    def _load_preview(self, path, gen, vid):
+        self._preview_ev = None
+        if gen != self._preview_gen:
+            return
 
         # file info in background
         def _get_info(p):
@@ -998,12 +1170,15 @@ class GallerySorterScreen(Screen):
 
     # ── nav ───────────────────────────────────────────────────────────────
     def _step(self, delta):
-        if not self._files: return
+        if not self._files or self._busy: return
         self._index = (self._index + delta) % len(self._files)
         self._show_current()
 
     def _delete(self, *a):
-        if not self._files or self._index >= len(self._files): return
+        if self._busy or not self._files or self._index >= len(self._files):
+            return
+        if self._del_popup is not None or not self._guard("delete", 0.6):
+            return          # a confirm is already open (double-tap)
         src = self._files[self._index]
         layout = BoxLayout(orientation="vertical", padding=dp(8), spacing=dp(5))
         layout.add_widget(Label(
@@ -1016,11 +1191,18 @@ class GallerySorterScreen(Screen):
         row.add_widget(yes); row.add_widget(no)
         layout.add_widget(row)
         popup = Popup(title="Confirm", content=layout, size_hint=(0.6, 0.34))
+        self._del_popup = popup
+        popup.bind(on_dismiss=lambda *a: setattr(self, "_del_popup", None))
         def _do(*a):
             popup.dismiss()
             try:
                 os.remove(src)
-                self._files.pop(self._index)
+                self._cache_drop(src)
+                if src in self._files:          # by value, not by index
+                    i = self._files.index(src)
+                    self._files.pop(i)
+                    if i < self._index:
+                        self._index -= 1
                 if self._index >= len(self._files):
                     self._index = max(0, len(self._files) - 1)
                 self._show_current()
