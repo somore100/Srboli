@@ -16,6 +16,7 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 from kivy.uix.checkbox import CheckBox
+from core.tickbox import TickBox
 from kivy.uix.filechooser import FileChooserIconView
 from kivy.uix.popup import Popup
 from kivy.uix.slider import Slider
@@ -169,9 +170,8 @@ class UtilityToolsScreen(Screen):
         self.num_count = TextInput(text="1", multiline=False, input_filter="int",
                                    size_hint_x=None, width=dp(60))
         row2.add_widget(self.num_count)
-        self.num_unique_cb = CheckBox(size_hint_x=None, size=(dp(28), dp(28)))
+        self.num_unique_cb = TickBox("Unique", width=dp(86))
         row2.add_widget(self.num_unique_cb)
-        row2.add_widget(Label(text="Unique", size_hint_x=None, width=dp(60)))
         layout.add_widget(row2)
 
         gen_btn = Button(text="Generate", size_hint_y=None, height=dp(46),
@@ -245,18 +245,11 @@ class UtilityToolsScreen(Screen):
 
         # ── character options ──
         self._char_opts = BoxLayout(size_hint_y=None, height=dp(34), spacing=dp(6))
-        self.pw_letters = CheckBox(active=True,  size_hint_x=None,
-                                   size=(dp(24), dp(24)))
-        self.pw_numbers = CheckBox(active=True,  size_hint_x=None,
-                                   size=(dp(24), dp(24)))
-        self.pw_symbols = CheckBox(active=False, size_hint_x=None,
-                                   size=(dp(24), dp(24)))
-        for cb, lbl in ((self.pw_letters, "A-Z"),
-                        (self.pw_numbers, "0-9"),
-                        (self.pw_symbols, "!@#")):
+        self.pw_letters = TickBox("A-Z", active=True, width=dp(70))
+        self.pw_numbers = TickBox("0-9", active=True, width=dp(70))
+        self.pw_symbols = TickBox("!@#", active=False, width=dp(70))
+        for cb in (self.pw_letters, self.pw_numbers, self.pw_symbols):
             self._char_opts.add_widget(cb)
-            self._char_opts.add_widget(Label(text=lbl, size_hint_x=None,
-                                             width=dp(44), font_size=13))
         # custom symbols
         self._char_opts.add_widget(Label(text="Custom:", size_hint_x=None,
                                          width=dp(60), font_size=12))
@@ -275,11 +268,8 @@ class UtilityToolsScreen(Screen):
                                    size_hint_x=None, width=dp(60),
                                    font_size=13)
         self._pw_words_row.add_widget(self._pw_nwords)
-        self._pw_cap = CheckBox(active=False, size_hint_x=None,
-                                width=dp(32))
+        self._pw_cap = TickBox("Capitalize", active=False, width=dp(110))
         self._pw_words_row.add_widget(self._pw_cap)
-        self._pw_words_row.add_widget(Label(text="Capitalize", font_size=13,
-                                            size_hint_x=None, width=dp(80)))
         self._pw_words_row.add_widget(Label())
         layout.add_widget(self._pw_words_row)
 

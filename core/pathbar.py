@@ -73,12 +73,20 @@ class PathBar(BoxLayout):
         self._input.bind(on_text_validate=lambda *a: self._go())
         go = Button(text="Go", size_hint_x=None, width=dp(56), font_size=13)
         go.bind(on_release=lambda *a: self._go())
-        paste = Button(text="Paste", size_hint_x=None, width=dp(64),
-                       font_size=13)
-        paste.bind(on_release=lambda *a: self._paste())
-        row.add_widget(self._input)
-        row.add_widget(paste)
-        row.add_widget(go)
+        self._paste_btn = Button(text="Paste", font_size=12,
+                                 background_color=(0.2, 0.35, 0.5, 1))
+        self._paste_btn.bind(on_release=lambda *a: self._paste())
+        self._hist, self._hpos, self._navigating = [], -1, False
+        self._back = Button(text="<", size_hint_x=None, width=dp(38),
+                            font_size=14)
+        self._fwd = Button(text=">", size_hint_x=None, width=dp(38),
+                           font_size=14)
+        up = Button(text="Up", size_hint_x=None, width=dp(42), font_size=12)
+        self._back.bind(on_release=lambda *a: self._hist_go(-1))
+        self._fwd.bind(on_release=lambda *a: self._hist_go(1))
+        up.bind(on_release=lambda *a: self._up())
+        for w in (self._back, self._fwd, up, self._input, go):
+            row.add_widget(w)
         self.add_widget(row)
 
         self._chips = BoxLayout(size_hint_y=None, height=dp(34),
@@ -110,11 +118,12 @@ class PathBar(BoxLayout):
             p = os.path.join(home, name)
             if os.path.isdir(p):
                 targets.append((name, p))
-        for label, p in targets[:6]:
-            b = Button(text=label, font_size=12, background_color=(
-                0.25, 0.25, 0.25, 1))
+        for label, p in targets[:5]:
+            b = Button(text=label, font_size=12, shorten=True,
+                       background_color=(0.25, 0.25, 0.25, 1))
             b.bind(on_release=lambda inst, pp=p: self._open(pp))
             self._chips.add_widget(b)
+        self._chips.add_widget(self._paste_btn)
 
     # behaviour ---------------------------------------------------------
     def _open(self, path):
@@ -153,8 +162,33 @@ class PathBar(BoxLayout):
             return
         self._chooser.path = p
 
+    def _up(self):
+        p = os.path.abspath(self._chooser.path)
+        parent = os.path.dirname(p.rstrip("/\\")) or _fs_root(p)
+        if parent and parent != p and os.path.isdir(parent):
+            self._chooser.path = parent
+
+    def _hist_go(self, step):
+        i = self._hpos + step
+        if 0 <= i < len(self._hist):
+            self._hpos = i
+            self._navigating = True
+            self._chooser.path = self._hist[i]
+            self._navigating = False
+            self._update_nav()
+
+    def _update_nav(self):
+        self._back.disabled = self._hpos <= 0
+        self._fwd.disabled = self._hpos >= len(self._hist) - 1
+
     def _sync(self, *a):
         p = self._chooser.path
+        if not self._navigating and (not self._hist
+                                     or self._hist[self._hpos] != p):
+            del self._hist[self._hpos + 1:]      # new branch drops "forward"
+            self._hist.append(p)
+            self._hpos = len(self._hist) - 1
+        self._update_nav()
         if not self._input.focus:
             self._input.text = p
         state = folder_state(p)
@@ -174,6 +208,25 @@ def install():
     _Orig = fc.FileChooserIconView
 
     class FileChooserIconView(_Orig):
+        def entry_released(self, entry, touch):
+            # Folder pickers (dirselect=True): stock behaviour is tap =
+            # select, DOUBLE tap = open - on a phone that meant a dead second
+            # tap and an unreliable double tap. Now one tap opens the folder
+            # (Select then uses the folder you are in). File pickers already
+            # open folders on a single tap in stock Kivy, so leave them.
+            try:
+                if ("button" in touch.profile and touch.button in (
+                        "scrollup", "scrolldown", "scrollleft",
+                        "scrollright")):
+                    return False
+                if self.dirselect and not self.multiselect and \
+                        self.file_system.is_dir(entry.path):
+                    self.open_entry(entry)
+                    return
+            except Exception:
+                pass
+            return super().entry_released(entry, touch)
+
         def on_parent(self, inst, parent):
             if (parent is None or getattr(self, "_pathbar_done", False)
                     or not isinstance(parent, BoxLayout)

@@ -25,6 +25,7 @@
 #     attempted opportunistically, not required.
 
 import os
+import time
 import base64
 import io
 import threading
@@ -188,10 +189,17 @@ class ImageTextScreen(Screen):
         save_row.add_widget(self._filename_input)
         layout.add_widget(save_row)
 
-        self.save_btn = Button(text="Save File", size_hint_y=None,
-                               height=dp(44), disabled=True)
+        out_row = BoxLayout(size_hint_y=None, height=dp(46), spacing=6)
+        self.save_btn = Button(text="Save As...", disabled=True, font_size=13)
         self.save_btn.bind(on_release=self._pick_save_location)
-        layout.add_widget(self.save_btn)
+        self.dl_btn = Button(text="Download", disabled=True, font_size=13)
+        self.dl_btn.bind(on_release=self._quick_download)
+        self.copy_img_btn = Button(text="Copy image", disabled=True,
+                                   font_size=13)
+        self.copy_img_btn.bind(on_release=self._copy_image)
+        for b in (self.save_btn, self.dl_btn, self.copy_img_btn):
+            out_row.add_widget(b)
+        layout.add_widget(out_row)
 
         tab.add_widget(layout)
         return tab
@@ -425,6 +433,8 @@ class ImageTextScreen(Screen):
             return
 
         self.save_btn.disabled = True
+        self.dl_btn.disabled = True
+        self.copy_img_btn.disabled = True
         self._set_busy(True, self._decode_status, "Decoding...")
 
         def worker():
@@ -445,6 +455,8 @@ class ImageTextScreen(Screen):
 
         self._reconstructed_bytes = raw
         self.save_btn.disabled = False
+        self.dl_btn.disabled = False
+        self.copy_img_btn.disabled = False
         n = len(raw)
         self._decode_status.text = f"Decoded {n:,} bytes ({n/1e6:.1f} MB)."
 
@@ -508,6 +520,57 @@ class ImageTextScreen(Screen):
 
         save_btn.bind(on_release=_save)
         popup.open()
+
+    def _download_dir(self):
+        from core.android_storage import shared_storage_root
+        base = shared_storage_root()
+        for name in ("Download", "Downloads"):
+            p = os.path.join(base, name)
+            if os.path.isdir(p):
+                return p
+        return base
+
+    def _quick_download(self, *a):
+        """One tap: save into the Downloads folder, never overwriting."""
+        raw = self._reconstructed_bytes
+        if raw is None or self._busy:
+            return
+        folder = self._download_dir()
+        name = os.path.basename(self._filename_input.text.strip()) \
+            or "output.bin"
+        full = os.path.join(folder, name)
+        if os.path.exists(full):
+            base, ext = os.path.splitext(name)
+            full = os.path.join(folder, f"{base}_{int(time.time())}{ext}")
+        self._set_busy(True, self._decode_status, "Saving...")
+
+        def worker():
+            try:
+                with open(full, "wb") as f:
+                    f.write(raw)
+                Clock.schedule_once(
+                    lambda dt: self._on_save_file_done(full, None))
+            except Exception as e:
+                Clock.schedule_once(
+                    lambda dt: self._on_save_file_done(full, e))
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _copy_image(self, *a):
+        raw = self._reconstructed_bytes
+        if raw is None or self._busy:
+            return
+        self._decode_status.text = "Copying image..."
+
+        def worker():
+            from core.clipboard_image import copy_image
+            ok, msg = copy_image(raw)
+            Clock.schedule_once(lambda dt: self._on_copy_image_done(ok, msg))
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _on_copy_image_done(self, ok, msg):
+        self._decode_status.text = msg
+        if not ok:
+            self._popup("Copy image", msg)
 
     def _on_save_file_done(self, path, error):
         self._set_busy(False)

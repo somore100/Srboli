@@ -225,8 +225,8 @@ class TextEditorScreen(Screen):
         self._root = root
 
         # ── export format selector ────────────────────────────────────────────
-        fmt_sel_row = BoxLayout(size_hint_y=None, height=dp(54), spacing=6,
-                                padding=(0, 4))
+        fmt_sel_row = BoxLayout(size_hint_y=None, height=dp(46), spacing=6,
+                                padding=(0, 2))
         fmt_sel_row.add_widget(Label(text="Export format:", size_hint_x=None,
                                      width=dp(110), font_size=13))
         from kivy.uix.spinner import Spinner as _FmtSp
@@ -253,126 +253,106 @@ class TextEditorScreen(Screen):
 
 
         # ── toolbar ──────────────────────────────────────────────────────────
-        # Rows are wider than a phone screen, so they sit in a horizontal
-        # ScrollView (swipe sideways) instead of being clipped.
-        bar = BoxLayout(size_hint=(None, 1), spacing=4)
-        bar.bind(minimum_width=bar.setter("width"))
-        for lbl, cb in [("New",    self._new),
-                         ("Open",   self._open),
-                         ("Save",   self._save_internal),
-                         ("Export", self._export),
-                         ("Save As",self._save_as)]:
-            w = dp(80) if lbl in ("Save As","Export") else dp(62)
-            b = Button(text=lbl, font_size=12, size_hint_x=None, width=w)
-            b.bind(on_release=cb)
-            bar.add_widget(b)
-        copy_btn = Button(text="Copy All", font_size=11,
-                          size_hint_x=None, width=dp(78))
-        copy_btn.bind(on_release=lambda *a: Clipboard.copy(self._ed.text))
-        bar.add_widget(copy_btn)
+        # Every row fits the screen width (buttons share the width equally),
+        # so nothing is hidden off to the right any more. More rows instead
+        # of side-scrolling: tall phones have the room, and a button you
+        # can't see is a button you can't find.
+        def _row(h=40, sp=4):
+            return BoxLayout(size_hint_y=None, height=dp(h), spacing=dp(sp))
 
+        def _btn(text, cb, size=12, **kw):
+            bt = Button(text=text, font_size=size, shorten=True,
+                        shorten_from="right", **kw)
+            if cb:
+                bt.bind(on_release=cb)
+            return bt
+
+        rowA = _row()
+        for lbl, cb in [("New",     self._new),
+                        ("Open",    self._open),
+                        ("Save",    self._save_internal),
+                        ("Export",  self._export),
+                        ("Save As", self._save_as)]:
+            rowA.add_widget(_btn(lbl, cb))
+        rowA.add_widget(_btn("Copy All", lambda *a: Clipboard.copy(self._ed.text)))
+        root.add_widget(rowA)
+
+        rowB = _row()
         # Raw / Styled view toggle (like GitHub's Code | Preview)
         self._raw_btn = ToggleButton(text="Raw", group="te_view", state="down",
-                                     allow_no_selection=False,
-                                     size_hint_x=None, width=dp(54), font_size=12)
+                                     allow_no_selection=False, font_size=12)
         self._sty_btn = ToggleButton(text="Styled", group="te_view",
-                                     allow_no_selection=False,
-                                     size_hint_x=None, width=dp(64), font_size=12)
+                                     allow_no_selection=False, font_size=12)
         self._sty_btn.bind(state=lambda i, st: self._set_view(st == "down"))
-        bar.add_widget(self._raw_btn)
-        bar.add_widget(self._sty_btn)
-        self._status = Label(text="New file", font_size=10, halign="left",
-                             shorten=True, shorten_from="right", max_lines=1,
-                             size_hint_x=None, width=dp(140))
-        self._status.bind(size=self._status.setter("text_size"))
-        bar.add_widget(self._status)
-        bar_sv = ScrollView(size_hint_y=None, height=dp(44), do_scroll_x=True,
-                            do_scroll_y=False, bar_width=dp(2))
-        bar_sv.add_widget(bar)
-        root.add_widget(bar_sv)
+        rowB.add_widget(self._raw_btn)
+        rowB.add_widget(self._sty_btn)
+        # colour wheel button
+        col_btn = _btn("Color", lambda *a: _color_wheel_popup(
+            self._insert_color_tag))
+        self._col_btn = col_btn
+        rowB.add_widget(col_btn)
+        # autosave
+        self._auto_btn = ToggleButton(text="Autosave ON", state="down",
+                                      font_size=11, shorten=True,
+                                      shorten_from="right")
+        self._auto_btn.bind(on_release=self._toggle_autosave)
+        rowB.add_widget(self._auto_btn)
+        root.add_widget(rowB)
 
-        # ── format row ───────────────────────────────────────────────────────
-        fmt = BoxLayout(size_hint=(None, 1), spacing=5)
-        fmt.bind(minimum_width=fmt.setter("width"))
-
-        fmt.add_widget(Label(text="Zoom:", size_hint_x=None,
-                             width=dp(42), font_size=12))
+        rowC = _row()
+        rowC.add_widget(Label(text="Zoom:", size_hint_x=None,
+                              width=dp(46), font_size=12))
         # font_size ints are px in Kivy; main.py scales them by density on
         # Android, so the zoom base has to be scaled the same way.
         from kivy.utils import platform as _plat
         from kivy.metrics import Metrics as _M
         self._base_font_size = 15 * (_M.density if _plat == "android" else 1)
-        self._font_sl = Slider(min=50, max=250, value=100,
-                               size_hint_x=None, width=dp(100))
+        self._font_sl = Slider(min=50, max=250, value=100)
         self._font_lbl = Label(text="100%", size_hint_x=None,
-                               width=dp(40), font_size=12)
+                               width=dp(44), font_size=12)
         self._font_sl.bind(value=self._on_zoom)
-        fmt.add_widget(self._font_sl)
-        fmt.add_widget(self._font_lbl)
-
-        # colour wheel button
-        col_btn = Button(text=" Color", size_hint_x=None, width=dp(82),
-                         font_size=12)
-        col_btn.bind(on_release=lambda *a: _color_wheel_popup(
-            self._insert_color_tag))
-        self._col_btn = col_btn
-        fmt.add_widget(col_btn)
-
-        # autosave
-        self._auto_btn = ToggleButton(text="Autosave ON", state="down",
-                                      size_hint_x=None, width=dp(108),
-                                      font_size=11)
-        self._auto_btn.bind(on_release=self._toggle_autosave)
-        fmt.add_widget(self._auto_btn)
-
-        # rotate
-        rot_btn = Button(text=" Rotate", size_hint_x=None, width=dp(84),
-                         font_size=11)
-        rot_btn.bind(on_release=self._toggle_rotation)
-        fmt.add_widget(rot_btn)
-
-        # script mode link
-        script_btn = Button(text="Copy Script Mode", size_hint_x=None,
-                            width=dp(116), font_size=11)
-        script_btn.bind(on_release=lambda *a: setattr(
-            self.manager, "current", "script_mode"))
-        fmt.add_widget(script_btn)
-
-        fmt_sv = ScrollView(size_hint_y=None, height=dp(40), do_scroll_x=True,
-                            do_scroll_y=False, bar_width=dp(2))
-        fmt_sv.add_widget(fmt)
-        root.add_widget(fmt_sv)
+        rowC.add_widget(self._font_sl)
+        rowC.add_widget(self._font_lbl)
+        rowC.add_widget(_btn("Script Mode", lambda *a: setattr(
+            self.manager, "current", "script_mode"), 11,
+            size_hint_x=None, width=dp(104)))
+        if _plat != "android":      # window rotation only makes sense on PC
+            rowC.add_widget(_btn("Rotate", self._toggle_rotation, 11,
+                                 size_hint_x=None, width=dp(64)))
+        root.add_widget(rowC)
 
         # ── formatting bar (Markdown / HTML only) ────────────────────────────
-        # Select text, tap a button: the markers are wrapped around it
-        # (Raw view shows **bold**; Styled view shows the result).
+        # Tap a button: the markers are inserted with the cursor BETWEEN them
+        # (**|**), or wrapped around the selected text. Tap the same button
+        # again while the cursor sits inside empty markers to jump out.
         self._fmt_buttons = []
-        fb = BoxLayout(size_hint=(None, 1), spacing=4)
-        fb.bind(minimum_width=fb.setter("width"))
-        for label, kind, a, b2 in [
-                ("B", "wrap", "**", "**"), ("I", "wrap", "*", "*"),
-                ("S", "wrap", "~~", "~~"), ("Code", "wrap", "`", "`"),
-                ("H1", "line", "# ", ""), ("H2", "line", "## ", ""),
-                ("H3", "line", "### ", ""), ("Quote", "line", "> ", ""),
-                ("List", "line", "- ", ""), ("1.", "line", "1. ", ""),
-                ("Link", "wrap", "[", "](https://)"),
-                ("Image", "wrap", "![", "](image.jpg)"),
-                ("Line", "block", "\n---\n", "")]:
-            w = dp(40) if len(label) <= 2 else dp(58)
-            btn = Button(text=label, size_hint_x=None, width=w, font_size=13,
+        fmt_box = BoxLayout(orientation="vertical", size_hint_y=None,
+                            height=dp(84), spacing=dp(4))
+        specs = [
+            ("B", "wrap", "**", "**"), ("I", "wrap", "*", "*"),
+            ("S", "wrap", "~~", "~~"), ("Code", "wrap", "`", "`"),
+            ("H1", "line", "# ", ""), ("H2", "line", "## ", ""),
+            ("H3", "line", "### ", ""), ("Quote", "line", "> ", ""),
+            ("List", "line", "- ", ""), ("1.", "line", "1. ", ""),
+            ("Link", "wrap", "[", "](https://)"),
+            ("Image", "wrap", "![", "](image.jpg)"),
+            ("Line", "block", "\n---\n", "")]
+        r1, r2 = _row(40, 4), _row(40, 4)
+        for i, (label, kind, a, b2) in enumerate(specs):
+            btn = Button(text=label, font_size=13, shorten=True,
                          bold=(label == "B"), italic=(label == "I"),
                          strikethrough=(label == "S"))
-            btn.bind(on_release=lambda i, k=kind, x=a, y=b2: self._apply_fmt(k, x, y))
-            fb.add_widget(btn)
+            btn.bind(on_release=lambda inst, k=kind, x=a, y=b2:
+                     self._apply_fmt(k, x, y))
+            (r1 if i < 7 else r2).add_widget(btn)
             self._fmt_buttons.append(btn)
-        help_btn = Button(text="?", size_hint_x=None, width=dp(40), font_size=14)
+        help_btn = Button(text="?", font_size=14)
         help_btn.bind(on_release=lambda *a: self._show_syntax_help())
-        fb.add_widget(help_btn)
-        self._fmt_bar_sv = ScrollView(size_hint_y=None, height=dp(40),
-                                      do_scroll_x=True, do_scroll_y=False,
-                                      bar_width=dp(2))
-        self._fmt_bar_sv.add_widget(fb)
-        root.add_widget(self._fmt_bar_sv)
+        r2.add_widget(help_btn)
+        fmt_box.add_widget(r1)
+        fmt_box.add_widget(r2)
+        self._fmt_bar_sv = fmt_box      # name kept: opacity is dimmed for .txt
+        root.add_widget(fmt_box)
 
         # ── editor ───────────────────────────────────────────────────────────
         self._ed = TextInput(
@@ -383,6 +363,13 @@ class TextEditorScreen(Screen):
         )
         self._ed.bind(text=self._on_change)
         root.add_widget(self._ed)
+
+        self._status = Label(text="New file", font_size=11, halign="left",
+                             valign="middle", shorten=True,
+                             shorten_from="right", max_lines=1,
+                             size_hint_y=None, height=dp(20))
+        self._status.bind(size=self._status.setter("text_size"))
+        root.add_widget(self._status)
 
         back = Button(text="< Back", size_hint_y=None, height=dp(42))
         back.bind(on_release=self._go_back)
@@ -396,27 +383,44 @@ class TextEditorScreen(Screen):
     def _fmt_key(self):
         return self._export_fmt.text.split(" ")[0]
 
+    def _wrap_at_cursor(self, a, b):
+        """Insert a+b with the cursor BETWEEN them (**|**), wrap the
+        selection if there is one, or - if the cursor already sits inside
+        empty a|b - hop past b so the user can keep typing.
+        Works on character indices: ed.cursor's row is the WRAPPED visual
+        line, not the text line, so it can't be used to index the text."""
+        ed = self._ed
+        sel = ed.selection_text
+        if sel:
+            ed.delete_selection()
+            ed.insert_text(f"{a}{sel}{b}")
+            return
+        idx = ed.cursor_index()
+        t = ed.text
+        # Cursor right before the closing marker and its opener is earlier
+        # on the same line (**bold|**): a second tap leaves the formatting.
+        line_start = t.rfind("\n", 0, idx) + 1
+        if b and t[idx:idx + len(b)] == b and t.rfind(a, line_start, idx) != -1:
+            ed.cursor = ed.get_cursor_from_index(idx + len(b))
+            return
+        ed.insert_text(f"{a}{b}")
+        ed.cursor = ed.get_cursor_from_index(idx + len(a))
+
     def _apply_fmt(self, kind, a, b):
         ed = self._ed
         if self._styled:
             self._popup("Switch to Raw", "Formatting buttons edit the text - "
                         "switch to the Raw view first.")
             return
-        sel = ed.selection_text
         if kind == "wrap":
-            if sel:
-                ed.delete_selection()
-                ed.insert_text(f"{a}{sel}{b}")
-            else:
-                ed.insert_text(f"{a}text{b}")
+            self._wrap_at_cursor(a, b)
         elif kind == "line":
-            # put the marker at the start of the current line
-            col, row = ed.cursor
-            lines = ed.text.split("\n")
-            if row < len(lines):
-                lines[row] = a + lines[row]
-                ed.text = "\n".join(lines)
-                ed.cursor = (col + len(a), row)
+            # put the marker at the start of the current TEXT line
+            idx = ed.cursor_index()
+            start = ed.text.rfind("\n", 0, idx) + 1
+            ed.cursor = ed.get_cursor_from_index(start)
+            ed.insert_text(a)
+            ed.cursor = ed.get_cursor_from_index(idx + len(a))
         else:  # block
             ed.insert_text(a)
         ed.focus = True
@@ -534,7 +538,8 @@ class TextEditorScreen(Screen):
 
     # ── colour tag ───────────────────────────────────────────────────────────
     def _insert_color_tag(self, hex_str):
-        self._ed.insert_text(f"[color={hex_str}]text[/color]")
+        self._wrap_at_cursor(f"[color={hex_str}]", "[/color]")
+        self._ed.focus = True
 
     # ── rotation ─────────────────────────────────────────────────────────────
     def _toggle_rotation(self, *a):

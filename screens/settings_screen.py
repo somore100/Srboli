@@ -265,6 +265,10 @@ class SettingsScreen(Screen):
         feat_btn = Button(text="Choose what the service may run...",
                           size_hint_y=None, height=dp(40), font_size=12)
         feat_btn.bind(on_release=self._open_service_features)
+        from kivy.utils import platform as _p_
+        if _p_ == "android":
+            feat_btn.disabled = True
+            feat_btn.text = "Background service: desktop only (not on Android yet)"
         root.add_widget(feat_btn)
 
         self._status = Label(text="", size_hint_y=None, height=dp(22),

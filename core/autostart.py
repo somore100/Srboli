@@ -18,6 +18,12 @@ _RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 
 
 def _platform():
+    # python-for-android reports platform.system() == "Linux", which sent
+    # the Android app into the Linux ~/.config/autostart code (and
+    # "[Errno 13] Permission denied: /data/.config"). Android has no such
+    # mechanism, so name it explicitly and report it as unsupported.
+    if "ANDROID_ARGUMENT" in os.environ or "ANDROID_PRIVATE" in os.environ:
+        return "Android"
     return platform.system()
 
 

@@ -524,7 +524,13 @@ class GallerySorterScreen(Screen):
             font_size=11, halign="left", valign="top",
             color=(0.7, 0.85, 1, 1))
         self._info_lbl.bind(size=self._info_lbl.setter("text_size"))
-        pbox.add_widget(self._info_lbl)
+        info_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(4))
+        info_row.add_widget(self._info_lbl)
+        clear_b = Button(text="Clear", size_hint_x=None, width=dp(60),
+                         font_size=12)
+        clear_b.bind(on_release=lambda *a: self._clear_popup())
+        info_row.add_widget(clear_b)
+        pbox.add_widget(info_row)
 
         self._file_lbl = Label(text="--", size_hint_y=None, height=dp(16),
                                font_size=10, shorten=True,
@@ -621,6 +627,9 @@ class GallerySorterScreen(Screen):
         if self._sources or self.manager is None or \
                 self.manager.current != "gallery":
             return
+        dcim = os.path.join(_home(), "DCIM")
+        if not os.path.isdir(dcim):
+            return              # PC / no DCIM: the tip would just be noise
         try:
             with open(self._hint_file(), encoding="utf-8") as f:
                 if json.load(f).get("dcim_hint"):
@@ -632,7 +641,6 @@ class GallerySorterScreen(Screen):
                 json.dump({"dcim_hint": True}, f)
         except Exception:
             pass
-        dcim = os.path.join(_home(), "DCIM")
         layout = BoxLayout(orientation="vertical", padding=dp(10),
                            spacing=dp(8))
         lbl = Label(text=("Where are my photos?\n\n"
@@ -667,6 +675,49 @@ class GallerySorterScreen(Screen):
         for b in (b1, b2, b3):
             layout.add_widget(b)
         popup.open()
+
+    # ── clear (memory only, never touches files on disk) ──────────────────
+    def _clear_popup(self):
+        layout = BoxLayout(orientation="vertical", padding=dp(10),
+                           spacing=dp(8))
+        lbl = Label(text=("Clear what Srboli has loaded?\n\nThis only "
+                          "empties the app's memory. No file or folder is "
+                          "deleted or moved."), halign="center",
+                    font_size=13)
+        lbl.bind(size=lambda i, sz: setattr(i, "text_size", (sz[0], None)))
+        layout.add_widget(lbl)
+        popup = Popup(title="Clear", content=layout, size_hint=(0.9, 0.5))
+
+        def go(dests):
+            popup.dismiss()
+            self._clear_loaded(dests)
+        for text, d in (("Clear sources and loaded files", False),
+                        ("Clear everything (also destinations)", True)):
+            b = Button(text=text, size_hint_y=None, height=dp(46),
+                       font_size=13)
+            b.bind(on_release=lambda inst, dd=d: go(dd))
+            layout.add_widget(b)
+        cancel = Button(text="Cancel", size_hint_y=None, height=dp(46))
+        cancel.bind(on_release=lambda *a: popup.dismiss())
+        layout.add_widget(cancel)
+        popup.open()
+
+    def _clear_loaded(self, destinations=False):
+        self._scan_token = getattr(self, "_scan_token", 0) + 1  # drop scans
+        self._sources = []
+        self._files = []
+        self._index = 0
+        self._scan_cache.clear()
+        self._queue.clear()
+        self._undo_stack.clear()
+        self._commit_btn.text = "Commit (0)"
+        self._commit_btn.disabled = True
+        if destinations:
+            self._dest_tree = []
+            self._refresh_dests()
+        self._src_lbl.text = "0 src, 0 files"
+        self._show_current()
+        self._status.text = "Cleared (nothing was deleted)."
 
     # ── guards / cache helpers ────────────────────────────────────────────
     def _guard(self, key, interval=0.35):
