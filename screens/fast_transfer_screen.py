@@ -285,7 +285,7 @@ class FastTransferScreen(Screen):
         self._done_count = 0
         self._error_lines = []
 
-        root = BoxLayout(orientation="vertical", padding=8, spacing=6)
+        root = BoxLayout(orientation="vertical", padding=dp(8), spacing=dp(6))
         root.add_widget(Label(text="[b]Fast File Transfer[/b] (parallel/batched)",
                               markup=True, font_size=18, size_hint_y=None,
                               height=dp(30)))
@@ -300,7 +300,7 @@ class FastTransferScreen(Screen):
         root.add_widget(explain)
 
         # source / destination
-        src_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=4)
+        src_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(4))
         self._src_lbl = Label(text="(no source folder chosen)", font_size=11,
                               halign="left", color=(0.7, 0.9, 0.7, 1))
         self._src_lbl.bind(size=self._src_lbl.setter("text_size"))
@@ -310,7 +310,7 @@ class FastTransferScreen(Screen):
         src_row.add_widget(self._src_lbl)
         root.add_widget(src_row)
 
-        dst_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=4)
+        dst_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(4))
         self._dst_lbl = Label(text="(no destination folder chosen)", font_size=11,
                               halign="left", color=(0.7, 0.9, 0.7, 1))
         self._dst_lbl.bind(size=self._dst_lbl.setter("text_size"))
@@ -321,7 +321,7 @@ class FastTransferScreen(Screen):
         root.add_widget(dst_row)
 
         # options
-        opt_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=8)
+        opt_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(8))
         opt_row.add_widget(Label(text="Mode:", size_hint_x=None, width=dp(50),
                                  font_size=12))
         self._mode_spinner = Spinner(text="Copy", values=MODES,
@@ -343,7 +343,7 @@ class FastTransferScreen(Screen):
         root.add_widget(opt_row)
 
         # concurrency
-        conc_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=8)
+        conc_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(8))
         conc_row.add_widget(Label(text="Concurrency:", size_hint_x=None,
                                   width=dp(90), font_size=12))
         self._concurrency_input = TextInput(text="4", multiline=False,
@@ -358,7 +358,7 @@ class FastTransferScreen(Screen):
         root.add_widget(conc_row)
 
         # actions
-        act_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=6)
+        act_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
         self._analyze_btn = Button(text="Analyze")
         self._analyze_btn.bind(on_release=self._run_analyze)
         self._start_btn = Button(text="Start Transfer", disabled=True)

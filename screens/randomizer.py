@@ -88,7 +88,7 @@ class UtilityToolsScreen(Screen):
         self._items = []        # list picker
         self._word_list = []    # password wordlist
 
-        root = BoxLayout(orientation="vertical", padding=6, spacing=6)
+        root = BoxLayout(orientation="vertical", padding=dp(6), spacing=dp(6))
 
         self.tabs = TabbedPanel(do_default_tab=False, tab_height=dp(42))
         self.tabs.add_widget(self._build_number_tab())
@@ -119,25 +119,25 @@ class UtilityToolsScreen(Screen):
     # ── Number tab ────────────────────────────────────────────────────────────
     def _build_number_tab(self):
         tab = TabbedPanelItem(text=" Number")
-        layout = BoxLayout(orientation="vertical", padding=10, spacing=8)
+        layout = BoxLayout(orientation="vertical", padding=dp(10), spacing=dp(8))
 
-        row = BoxLayout(size_hint_y=None, height=dp(40), spacing=8)
-        row.add_widget(Label(text="Min:", size_hint_x=None, width=40))
+        row = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(8))
+        row.add_widget(Label(text="Min:", size_hint_x=None, width=dp(40)))
         self.num_min = TextInput(text="1", multiline=False, input_filter="int")
         row.add_widget(self.num_min)
-        row.add_widget(Label(text="Max:", size_hint_x=None, width=40))
+        row.add_widget(Label(text="Max:", size_hint_x=None, width=dp(40)))
         self.num_max = TextInput(text="100", multiline=False, input_filter="int")
         row.add_widget(self.num_max)
         layout.add_widget(row)
 
-        row2 = BoxLayout(size_hint_y=None, height=dp(40), spacing=8)
-        row2.add_widget(Label(text="Count:", size_hint_x=None, width=56))
+        row2 = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(8))
+        row2.add_widget(Label(text="Count:", size_hint_x=None, width=dp(56)))
         self.num_count = TextInput(text="1", multiline=False, input_filter="int",
-                                   size_hint_x=None, width=60)
+                                   size_hint_x=None, width=dp(60))
         row2.add_widget(self.num_count)
         self.num_unique_cb = CheckBox(size_hint_x=None, size=(dp(28), dp(28)))
         row2.add_widget(self.num_unique_cb)
-        row2.add_widget(Label(text="Unique", size_hint_x=None, width=60))
+        row2.add_widget(Label(text="Unique", size_hint_x=None, width=dp(60)))
         layout.add_widget(row2)
 
         gen_btn = Button(text="Generate", size_hint_y=None, height=dp(46),
@@ -182,10 +182,10 @@ class UtilityToolsScreen(Screen):
     # ── Password tab ─────────────────────────────────────────────────────────
     def _build_password_tab(self):
         tab = TabbedPanelItem(text=" Password")
-        layout = BoxLayout(orientation="vertical", padding=8, spacing=5)
+        layout = BoxLayout(orientation="vertical", padding=dp(8), spacing=dp(5))
 
         # ── mode ──
-        mode_row = BoxLayout(size_hint_y=None, height=dp(34), spacing=6)
+        mode_row = BoxLayout(size_hint_y=None, height=dp(34), spacing=dp(6))
         mode_row.add_widget(Label(text="Mode:", size_hint_x=None,
                                   width=dp(50), font_size=13))
         from kivy.uix.spinner import Spinner as _Spinner
@@ -199,7 +199,7 @@ class UtilityToolsScreen(Screen):
         layout.add_widget(mode_row)
 
         # ── length / word count (shared row, label swaps) ──
-        len_row = BoxLayout(size_hint_y=None, height=dp(38), spacing=8)
+        len_row = BoxLayout(size_hint_y=None, height=dp(38), spacing=dp(8))
         self._pw_len_label = Label(text="Length:", size_hint_x=None,
                                    width=dp(70), font_size=13)
         len_row.add_widget(self._pw_len_label)
@@ -210,7 +210,7 @@ class UtilityToolsScreen(Screen):
         layout.add_widget(len_row)
 
         # ── character options ──
-        self._char_opts = BoxLayout(size_hint_y=None, height=dp(34), spacing=6)
+        self._char_opts = BoxLayout(size_hint_y=None, height=dp(34), spacing=dp(6))
         self.pw_letters = CheckBox(active=True,  size_hint_x=None,
                                    size=(dp(24), dp(24)))
         self.pw_numbers = CheckBox(active=True,  size_hint_x=None,
@@ -256,7 +256,7 @@ class UtilityToolsScreen(Screen):
         layout.add_widget(self.pw_strength_label)
 
         # ── copy + wordlist import ──
-        bot = BoxLayout(size_hint_y=None, height=dp(38), spacing=6)
+        bot = BoxLayout(size_hint_y=None, height=dp(38), spacing=dp(6))
         copy_btn = Button(text="Copy Copy", font_size=13)
         copy_btn.bind(on_release=lambda *a: self._copy_popup(self.pw_result.text))
         import_btn = Button(text="Import Wordlist .txt", font_size=12)
@@ -415,15 +415,15 @@ class UtilityToolsScreen(Screen):
     # ── List picker tab ───────────────────────────────────────────────────────
     def _build_list_tab(self):
         tab = TabbedPanelItem(text="Copy List")
-        layout = BoxLayout(orientation="vertical", padding=8, spacing=6)
+        layout = BoxLayout(orientation="vertical", padding=dp(8), spacing=dp(6))
 
-        add_row = BoxLayout(size_hint_y=None, height=dp(40), spacing=6)
+        add_row = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(6))
         self.list_input = TextInput(hint_text="Add item…", multiline=False)
-        add_btn = Button(text="Add", size_hint_x=None, width=70)
+        add_btn = Button(text="Add", size_hint_x=None, width=dp(70))
         add_btn.bind(on_release=self._add_item)
-        import_btn = Button(text="Import .txt", size_hint_x=None, width=100)
+        import_btn = Button(text="Import .txt", size_hint_x=None, width=dp(100))
         import_btn.bind(on_release=self._import_list)
-        clear_btn = Button(text="Clear", size_hint_x=None, width=70)
+        clear_btn = Button(text="Clear", size_hint_x=None, width=dp(70))
         clear_btn.bind(on_release=lambda *a: self._clear_items())
         add_row.add_widget(self.list_input)
         add_row.add_widget(add_btn)
@@ -432,15 +432,15 @@ class UtilityToolsScreen(Screen):
         layout.add_widget(add_row)
 
         sv = ScrollView(size_hint=(1, 0.45))
-        self.list_grid = GridLayout(cols=1, spacing=3, size_hint_y=None)
+        self.list_grid = GridLayout(cols=1, spacing=dp(3), size_hint_y=None)
         self.list_grid.bind(minimum_height=self.list_grid.setter("height"))
         sv.add_widget(self.list_grid)
         layout.add_widget(sv)
 
-        pick_row = BoxLayout(size_hint_y=None, height=dp(40), spacing=8)
-        pick_row.add_widget(Label(text="Pick:", size_hint_x=None, width=42))
+        pick_row = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(8))
+        pick_row.add_widget(Label(text="Pick:", size_hint_x=None, width=dp(42)))
         self.pick_count = TextInput(text="1", multiline=False, input_filter="int",
-                                    size_hint_x=None, width=50)
+                                    size_hint_x=None, width=dp(50))
         pick_row.add_widget(self.pick_count)
         pick_btn = Button(text="Pick Random!")
         pick_btn.bind(on_release=self._pick_random)
@@ -524,29 +524,29 @@ class UtilityToolsScreen(Screen):
     # ── Dice / Coin tab ───────────────────────────────────────────────────────
     def _build_dice_tab(self):
         tab = TabbedPanelItem(text=" Dice")
-        layout = BoxLayout(orientation="vertical", padding=10, spacing=8)
+        layout = BoxLayout(orientation="vertical", padding=dp(10), spacing=dp(8))
 
         layout.add_widget(Label(text="[b]Dice Roller[/b]", markup=True,
                                 size_hint_y=None, height=dp(30), font_size=16))
 
-        dice_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=8)
-        dice_row.add_widget(Label(text="Rolls:", size_hint_x=None, width=52))
+        dice_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(8))
+        dice_row.add_widget(Label(text="Rolls:", size_hint_x=None, width=dp(52)))
         self.dice_count = TextInput(text="1", multiline=False, input_filter="int",
-                                    size_hint_x=None, width=50)
+                                    size_hint_x=None, width=dp(50))
         dice_row.add_widget(self.dice_count)
-        dice_row.add_widget(Label(text="d", size_hint_x=None, width=18,
+        dice_row.add_widget(Label(text="d", size_hint_x=None, width=dp(18),
                                   font_size=18))
         self.dice_sides = TextInput(text="6", multiline=False, input_filter="int",
-                                    size_hint_x=None, width=60)
+                                    size_hint_x=None, width=dp(60))
         dice_row.add_widget(self.dice_sides)
-        dice_row.add_widget(Label(text="+", size_hint_x=None, width=16, font_size=16))
+        dice_row.add_widget(Label(text="+", size_hint_x=None, width=dp(16), font_size=16))
         self.dice_mod = TextInput(text="0", multiline=False, input_filter="int",
-                                  size_hint_x=None, width=50)
+                                  size_hint_x=None, width=dp(50))
         dice_row.add_widget(self.dice_mod)
         layout.add_widget(dice_row)
 
         # quick dice buttons
-        quick = BoxLayout(size_hint_y=None, height=dp(38), spacing=5)
+        quick = BoxLayout(size_hint_y=None, height=dp(38), spacing=dp(5))
         for sides in (4, 6, 8, 10, 12, 20, 100):
             b = Button(text=f"d{sides}", font_size=12)
             b.bind(on_release=lambda inst, s=sides: self._quick_roll(s))
@@ -607,18 +607,18 @@ class UtilityToolsScreen(Screen):
     # ── History tab ───────────────────────────────────────────────────────────
     def _build_history_tab(self):
         tab = TabbedPanelItem(text=" History")
-        layout = BoxLayout(orientation="vertical", padding=8, spacing=6)
+        layout = BoxLayout(orientation="vertical", padding=dp(8), spacing=dp(6))
 
-        top = BoxLayout(size_hint_y=None, height=dp(38), spacing=8)
+        top = BoxLayout(size_hint_y=None, height=dp(38), spacing=dp(8))
         top.add_widget(Label(text="Recent results:", font_size=14))
-        clr = Button(text="Clear", size_hint_x=None, width=80)
+        clr = Button(text="Clear", size_hint_x=None, width=dp(80))
         clr.bind(on_release=lambda *a: self._clear_history())
         top.add_widget(clr)
         layout.add_widget(top)
 
         sv = ScrollView()
-        self.history_grid = GridLayout(cols=1, spacing=3, size_hint_y=None,
-                                       padding=4)
+        self.history_grid = GridLayout(cols=1, spacing=dp(3), size_hint_y=None,
+                                       padding=dp(4))
         self.history_grid.bind(minimum_height=self.history_grid.setter("height"))
         sv.add_widget(self.history_grid)
         layout.add_widget(sv)

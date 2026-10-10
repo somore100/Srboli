@@ -181,12 +181,12 @@ def open_app_launcher_popup():
     """Spotlight/rofi-style popup: type to filter installed apps, click or
     press Enter on the top match to launch."""
     apps = _get_apps()
-    layout = BoxLayout(orientation="vertical", spacing=4, padding=6)
+    layout = BoxLayout(orientation="vertical", spacing=dp(4), padding=dp(6))
     search = TextInput(hint_text="Search installed apps...", multiline=False,
                        size_hint_y=None, height=dp(40), font_size=14)
     layout.add_widget(search)
     results_sv = ScrollView()
-    results_grid = GridLayout(cols=1, spacing=2, size_hint_y=None)
+    results_grid = GridLayout(cols=1, spacing=dp(2), size_hint_y=None)
     results_grid.bind(minimum_height=results_grid.setter("height"))
     results_sv.add_widget(results_grid)
     layout.add_widget(results_sv)
@@ -317,10 +317,10 @@ class QuickSwitcherScreen(Screen):
         self._config  = _load_config()
         self._enabled = self._config.get("enabled", True)
 
-        root = BoxLayout(orientation="vertical", padding=8, spacing=6)
+        root = BoxLayout(orientation="vertical", padding=dp(8), spacing=dp(6))
 
         # ── header ────────────────────────────────────────────────────────
-        hdr = BoxLayout(size_hint_y=None, height=dp(38), spacing=8)
+        hdr = BoxLayout(size_hint_y=None, height=dp(38), spacing=dp(8))
         hdr.add_widget(Label(
             text="Quick Switcher", font_size=17, bold=True,
             size_hint_x=0.5))
@@ -340,7 +340,7 @@ class QuickSwitcherScreen(Screen):
 
         # ── target type ───────────────────────────────────────────────────
         self._target_type = "screen"
-        type_row = BoxLayout(size_hint_y=None, height=dp(34), spacing=5)
+        type_row = BoxLayout(size_hint_y=None, height=dp(34), spacing=dp(5))
         type_row.add_widget(Label(text="Target:", size_hint_x=None,
                                   width=dp(56), font_size=12))
         self._type_spinner = Spinner(
@@ -352,7 +352,7 @@ class QuickSwitcherScreen(Screen):
         root.add_widget(type_row)
 
         # ── add bind row ──────────────────────────────────────────────────
-        add_box = BoxLayout(size_hint_y=None, height=dp(44), spacing=5)
+        add_box = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(5))
 
         add_box.add_widget(Label(text="Modifier:", size_hint_x=None,
                                  width=dp(66), font_size=12))
@@ -372,7 +372,7 @@ class QuickSwitcherScreen(Screen):
 
         # this container swaps between the screen spinner and the
         # external-file picker depending on the target type toggle above
-        self._dest_container = BoxLayout(spacing=5)
+        self._dest_container = BoxLayout(spacing=dp(5))
         add_box.add_widget(self._dest_container)
 
         self._dest_sp = Spinner(
@@ -392,7 +392,7 @@ class QuickSwitcherScreen(Screen):
         # detaches the wrapper, it doesn't unparent the wrapper's own
         # children, so re-adding self._ext_pick_btn etc. into a brand new
         # wrapper would hit "already has a parent".
-        self._external_col = BoxLayout(orientation="vertical", spacing=2)
+        self._external_col = BoxLayout(orientation="vertical", spacing=dp(2))
         self._external_col.add_widget(self._ext_pick_btn)
         self._external_col.add_widget(self._ext_path_lbl)
 
@@ -400,9 +400,9 @@ class QuickSwitcherScreen(Screen):
             text="", multiline=False, font_size=12,
             hint_text="e.g. code . / notepad / htop")
         self._cmd_visible_cb = CheckBox(size_hint=(None, None), size=(dp(20), dp(20)))
-        self._command_col = BoxLayout(orientation="vertical", spacing=2)
+        self._command_col = BoxLayout(orientation="vertical", spacing=dp(2))
         self._command_col.add_widget(self._cmd_input)
-        _vis_row = BoxLayout(size_hint_y=None, height=dp(24), spacing=4)
+        _vis_row = BoxLayout(size_hint_y=None, height=dp(24), spacing=dp(4))
         _vis_row.add_widget(self._cmd_visible_cb)
         _vis_lbl = Label(text="Show terminal window", font_size=11, halign="left")
         _vis_lbl.bind(size=_vis_lbl.setter("text_size"))
@@ -418,7 +418,7 @@ class QuickSwitcherScreen(Screen):
         root.add_widget(add_box)
 
         # ── special: log out / go home bind ──────────────────────────────
-        logout_box = BoxLayout(size_hint_y=None, height=dp(38), spacing=5)
+        logout_box = BoxLayout(size_hint_y=None, height=dp(38), spacing=dp(5))
         logout_box.add_widget(Label(text="Log out / Home bind:",
                                     size_hint_x=None, width=dp(150),
                                     font_size=12))
@@ -446,7 +446,7 @@ class QuickSwitcherScreen(Screen):
         root.add_widget(Label(text="Current shortcuts:", size_hint_y=None,
                               height=dp(22), font_size=13, bold=True))
         sv = ScrollView()
-        self._binds_grid = GridLayout(cols=1, spacing=3, size_hint_y=None)
+        self._binds_grid = GridLayout(cols=1, spacing=dp(3), size_hint_y=None)
         self._binds_grid.bind(minimum_height=self._binds_grid.setter("height"))
         sv.add_widget(self._binds_grid)
         root.add_widget(sv)
@@ -613,7 +613,7 @@ class QuickSwitcherScreen(Screen):
                 target_label = f"[cmd]{vis} {dest[:40]}"
             else:
                 target_label = ROUTE_LABELS.get(dest, dest)
-            row  = BoxLayout(size_hint_y=None, height=dp(30), spacing=5)
+            row  = BoxLayout(size_hint_y=None, height=dp(30), spacing=dp(5))
             row.add_widget(Label(
                 text=f"{mod}+{key}",
                 size_hint_x=None, width=dp(120),

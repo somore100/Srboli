@@ -88,13 +88,13 @@ class RichTextPanel(BoxLayout):
     """
 
     def __init__(self, doc: Document, **kw):
-        super().__init__(orientation="vertical", spacing=3, **kw)
+        super().__init__(orientation="vertical", spacing=dp(3), **kw)
         self.doc   = doc
         self._rows = []   # list of BoxLayout rows
         self._active_para = 0
 
         # ── formatting toolbar ──
-        bar = BoxLayout(size_hint_y=None, height=dp(36), spacing=4)
+        bar = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(4))
 
         bar.add_widget(Label(text="Size:", size_hint_x=None,
                              width=dp(38), font_size=12))
@@ -139,8 +139,8 @@ class RichTextPanel(BoxLayout):
 
         # ── paragraph list ──
         sv = ScrollView()
-        self._para_box = BoxLayout(orientation="vertical", spacing=4,
-                                   size_hint_y=None, padding=(4, 4))
+        self._para_box = BoxLayout(orientation="vertical", spacing=dp(4),
+                                   size_hint_y=None, padding=(dp(4), dp(4)))
         self._para_box.bind(minimum_height=self._para_box.setter("height"))
         sv.add_widget(self._para_box)
         self.add_widget(sv)
@@ -152,7 +152,7 @@ class RichTextPanel(BoxLayout):
         self._rows = []
         for i, para in enumerate(self.doc.paragraphs):
             row = BoxLayout(size_hint_y=None, height=dp(max(40, para["size"]*2+10)),
-                            spacing=3)
+                            spacing=dp(3))
             # index label
             idx_lbl = Button(text=str(i+1), size_hint_x=None, width=dp(26),
                              font_size=11,
@@ -278,16 +278,16 @@ class RichTextPanel(BoxLayout):
 # ═══════════════════════════════════════════════════════════════════════════════
 class SlidesPanel(BoxLayout):
     def __init__(self, doc: Document, **kw):
-        super().__init__(orientation="horizontal", spacing=4, **kw)
+        super().__init__(orientation="horizontal", spacing=dp(4), **kw)
         self.doc = doc
         self._active = 0
 
         # ── slide list (left) ──
-        left = BoxLayout(orientation="vertical", size_hint_x=0.22, spacing=3)
+        left = BoxLayout(orientation="vertical", size_hint_x=0.22, spacing=dp(3))
         left.add_widget(Label(text="Slides", size_hint_y=None,
                               height=dp(24), font_size=13))
         sv = ScrollView()
-        self._slide_list = GridLayout(cols=1, spacing=3, size_hint_y=None)
+        self._slide_list = GridLayout(cols=1, spacing=dp(3), size_hint_y=None)
         self._slide_list.bind(minimum_height=self._slide_list.setter("height"))
         sv.add_widget(self._slide_list)
         left.add_widget(sv)
@@ -303,10 +303,10 @@ class SlidesPanel(BoxLayout):
         self.add_widget(left)
 
         # ── slide editor (right) ──
-        right = BoxLayout(orientation="vertical", spacing=4)
+        right = BoxLayout(orientation="vertical", spacing=dp(4))
 
         # slide toolbar
-        stool = BoxLayout(size_hint_y=None, height=dp(36), spacing=5)
+        stool = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(5))
         stool.add_widget(Label(text="Title:", size_hint_x=None,
                                width=dp(40), font_size=13))
         self._title_in = TextInput(multiline=False, font_size=14,
@@ -344,7 +344,7 @@ class SlidesPanel(BoxLayout):
         right.add_widget(self._body_in)
 
         # preview bar
-        prev_row = BoxLayout(size_hint_y=None, height=dp(34), spacing=5)
+        prev_row = BoxLayout(size_hint_y=None, height=dp(34), spacing=dp(5))
         prev_btn = Button(text="<", size_hint_x=None, width=dp(44))
         next_btn = Button(text=">", size_hint_x=None, width=dp(44))
         self._slide_idx_lbl = Label(text="1/1", size_hint_x=None,
@@ -436,7 +436,7 @@ class SlidesPanel(BoxLayout):
             body  = s.get("body","")
             img   = s.get("image")
 
-            layout = BoxLayout(orientation="vertical", padding=16, spacing=8)
+            layout = BoxLayout(orientation="vertical", padding=dp(16), spacing=dp(8))
             with layout.canvas.before:
                 try:
                     h = bg.lstrip("#")
@@ -464,7 +464,7 @@ class SlidesPanel(BoxLayout):
             layout.add_widget(Label(text=body, font_size=18, color=fcol,
                                     halign="left", valign="top"))
 
-            nav = BoxLayout(size_hint_y=None, height=dp(44), spacing=8)
+            nav = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(8))
             pb = Button(text="< Prev", disabled=(idx==0))
             nb = Button(text="Next >", disabled=(idx==len(slides)-1))
             xb = Button(text="x Exit", size_hint_x=None, width=dp(90))
@@ -499,13 +499,13 @@ class SpreadsheetPanel(BoxLayout):
     """
 
     def __init__(self, doc: Document, **kw):
-        super().__init__(orientation="vertical", spacing=3, **kw)
+        super().__init__(orientation="vertical", spacing=dp(3), **kw)
         self.doc       = doc
         self._sel      = (0, 0)   # (row, col)
         self._cell_inputs = {}    # (r,c) -> TextInput
 
         # ── formula bar ──
-        fbar = BoxLayout(size_hint_y=None, height=dp(36), spacing=6)
+        fbar = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(6))
         fbar.add_widget(Label(text="Cell:", size_hint_x=None,
                               width=dp(40), font_size=13))
         self._cell_ref = Label(text="A1", size_hint_x=None,
@@ -527,7 +527,7 @@ class SpreadsheetPanel(BoxLayout):
         sv = ScrollView()
         rows = self.doc.sheet_rows
         cols = self.doc.sheet_cols
-        grid = GridLayout(cols=cols+1, spacing=1, size_hint=(None, None))
+        grid = GridLayout(cols=cols+1, spacing=dp(1), size_hint=(None, None))
         grid.bind(minimum_size=grid.setter("size"))
 
         col_letters = [chr(65+c) for c in range(cols)]
@@ -658,10 +658,10 @@ class FullEditorScreen(Screen):
         self.doc  = Document()
         self._dirty = False
 
-        root = BoxLayout(orientation="vertical", padding=4, spacing=4)
+        root = BoxLayout(orientation="vertical", padding=dp(4), spacing=dp(4))
 
         # ── file bar ──
-        fbar = BoxLayout(size_hint_y=None, height=dp(40), spacing=5)
+        fbar = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(5))
         self._doc_title = TextInput(text="Untitled", multiline=False,
                                     font_size=14, size_hint_x=0.35,
                                     hint_text="Document title")
@@ -763,7 +763,7 @@ class FullEditorScreen(Screen):
             multiline=False, size_hint_y=None, height=dp(36), font_size=13)
         chooser  = FileChooserIconView(path=docs_dir)
         btn = Button(text="Save", size_hint_y=None, height=dp(44))
-        layout = BoxLayout(orientation="vertical", spacing=4)
+        layout = BoxLayout(orientation="vertical", spacing=dp(4))
         layout.add_widget(chooser)
         layout.add_widget(name_in)
         layout.add_widget(btn)
