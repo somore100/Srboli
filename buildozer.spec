@@ -14,7 +14,7 @@ source.include_exts = py,png,jpg,jpeg,json,ttf,txt
 source.exclude_dirs = tests,.git,.github,__pycache__,srboli_data,.venv,venv,build,dist,bin,.buildozer
 source.exclude_patterns = *.pyc,*.spec,.srboli_config.json,*.log,*.zip,*.7z,*.keystore,*.apk,*.egg-info,build.txt,license.txt,README.md,SrboliLight.spec,requirements-desktop.txt,requirements.txt
 
-version = 2.4
+version = 2.5
 
 # Core dependencies. Don't pin python3's own version here — p4a.branch
 # below is what actually controls which CPython gets built.

@@ -34,6 +34,7 @@ SCREENS = [
     ("reminders",      "screens.reminders_screen",        "RemindersScreen"),
     ("fast_transfer",  "screens.fast_transfer_screen",    "FastTransferScreen"),
     ("quickswitcher",  "screens.quickswitcher_screen",    "QuickSwitcherScreen"),
+    ("minesweeper",    "screens.minesweeper_screen",      "MinesweeperScreen"),
 ]
 
 LABELS = {
@@ -60,6 +61,7 @@ LABELS = {
     "reminders":      "Reminders",
     "fast_transfer":  "Fast File Transfer",
     "quickswitcher":  "Quick Switcher",
+    "minesweeper":    "Minesweeper",
 }
 
 

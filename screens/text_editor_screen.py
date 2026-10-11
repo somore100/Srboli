@@ -383,28 +383,47 @@ class TextEditorScreen(Screen):
     def _fmt_key(self):
         return self._export_fmt.text.split(" ")[0]
 
+    def _place_cursor(self, idx):
+        """Put the caret at character index `idx` AFTER the editor has been
+        refocused. Tapping a toolbar button steals focus; when the TextInput
+        regains it (and again once the IME/layout settles) the caret was being
+        moved to the end of the text, which left B -> `****|` instead of
+        `**|**`. So: refocus first, then set the caret now and again on the
+        next frames."""
+        ed = self._ed
+        ed.focus = True
+
+        def _set(dt=0):
+            try:
+                ed.cursor = ed.get_cursor_from_index(min(idx, len(ed.text)))
+            except Exception:
+                pass
+        _set()
+        Clock.schedule_once(_set, 0)
+        Clock.schedule_once(_set, 0.12)
+
     def _wrap_at_cursor(self, a, b):
         """Insert a+b with the cursor BETWEEN them (**|**), wrap the
         selection if there is one, or - if the cursor already sits inside
-        empty a|b - hop past b so the user can keep typing.
-        Works on character indices: ed.cursor's row is the WRAPPED visual
-        line, not the text line, so it can't be used to index the text."""
+        a formatted span - hop past the closing marker so the user can keep
+        typing. Works on character indices: ed.cursor's row is the WRAPPED
+        visual line, not the text line, so it can't index the text."""
         ed = self._ed
         sel = ed.selection_text
         if sel:
+            start = min(ed.selection_from, ed.selection_to)
             ed.delete_selection()
             ed.insert_text(f"{a}{sel}{b}")
+            self._place_cursor(start + len(a) + len(sel) + len(b))
             return
         idx = ed.cursor_index()
         t = ed.text
-        # Cursor right before the closing marker and its opener is earlier
-        # on the same line (**bold|**): a second tap leaves the formatting.
         line_start = t.rfind("\n", 0, idx) + 1
         if b and t[idx:idx + len(b)] == b and t.rfind(a, line_start, idx) != -1:
-            ed.cursor = ed.get_cursor_from_index(idx + len(b))
+            self._place_cursor(idx + len(b))            # leave the formatting
             return
         ed.insert_text(f"{a}{b}")
-        ed.cursor = ed.get_cursor_from_index(idx + len(a))
+        self._place_cursor(idx + len(a))
 
     def _apply_fmt(self, kind, a, b):
         ed = self._ed
@@ -420,10 +439,10 @@ class TextEditorScreen(Screen):
             start = ed.text.rfind("\n", 0, idx) + 1
             ed.cursor = ed.get_cursor_from_index(start)
             ed.insert_text(a)
-            ed.cursor = ed.get_cursor_from_index(idx + len(a))
+            self._place_cursor(idx + len(a))
         else:  # block
             ed.insert_text(a)
-        ed.focus = True
+            self._place_cursor(ed.cursor_index())
 
     def _show_syntax_help(self):
         rows = [("# Heading", "big heading (## and ### smaller)"),
@@ -539,7 +558,6 @@ class TextEditorScreen(Screen):
     # ── colour tag ───────────────────────────────────────────────────────────
     def _insert_color_tag(self, hex_str):
         self._wrap_at_cursor(f"[color={hex_str}]", "[/color]")
-        self._ed.focus = True
 
     # ── rotation ─────────────────────────────────────────────────────────────
     def _toggle_rotation(self, *a):

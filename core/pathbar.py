@@ -106,12 +106,12 @@ class PathBar(BoxLayout):
     # chips -------------------------------------------------------------
     def _build_chips(self):
         home = shared_storage_root()
-        from core.android_storage import ON_ANDROID
+        from core.android_storage import ON_ANDROID, removable_volumes
         if ON_ANDROID:
-            # "Phone" = internal storage, "Storage" lists it plus SD card /
-            # USB drives (switch between them here), "Root" = /.
-            targets = [("Phone", home), ("Storage", "/storage"),
-                       ("Root", "/")]
+            # Android refuses to list "/" and "/storage" to apps, so those
+            # shortcuts only ever showed "no permission". Offer the phone's
+            # shared storage plus any SD card / USB drive instead.
+            targets = [("Phone", home)] + removable_volumes()
         else:
             targets = [("Home", home), ("Root", _fs_root(home))]
         for name in ("DCIM", "Download", "Pictures", "Movies", "Music"):

@@ -1,5 +1,9 @@
-# main.py — Srboli v2.4
+# main.py — Srboli (version: core/version.py)
 import sys, os
+try:
+    from core.version import VERSION as _APP_VERSION
+except Exception:
+    _APP_VERSION = "?"
 
 app_dir = os.path.dirname(os.path.abspath(__file__))
 for p in (app_dir, os.path.join(app_dir, "_internal")):
@@ -200,6 +204,26 @@ if _platform == "android":
     except Exception as _e:
         print(f"modal patch skipped: {_e}")
 
+    # ROOT FIX for the "needs two taps" family: Kivy receives every tap twice
+    # on Android (finger + SDL's synthesised mouse event). Drop the duplicate
+    # before it reaches any widget. See core/touch_dedupe.py.
+    try:
+        import core.touch_dedupe as _td
+        _td_log = None
+        try:
+            from core.android_storage import shared_storage_root as _ssr3
+            _tp = os.path.join(_ssr3(), "Srboli_debug_touch")
+            if os.path.exists(_tp):
+                _tlog = open(os.path.join(_ssr3(), "Srboli_touch.log"), "a",
+                             buffering=1)
+                import time as _t3
+                _td_log = lambda m: _tlog.write(f"{_t3.time():.3f} {m}\n")
+        except Exception:
+            pass
+        _td.install(_td_log)
+    except Exception as _e:
+        print(f"touch dedupe skipped: {_e}")
+
     # Opt-in touch trace for the "needs two taps" bug. Create an EMPTY file
     # named Srboli_debug_touch in the phone's storage root, restart the app,
     # reproduce, then send Srboli_touch.log. No file = no logging, no cost.
@@ -379,7 +403,7 @@ class Dashboard(Screen):
         sv.add_widget(grid)
         root.add_widget(sv)
 
-        root.add_widget(Label(text="Srboli v2.4", font_size=9,
+        root.add_widget(Label(text=f"Srboli v{_APP_VERSION}", font_size=9,
                               size_hint_y=None, height=dp(18)))
         self.add_widget(root)
         self._sig = self._signature()

@@ -101,3 +101,34 @@ def request_notification_permission():
         request_permissions(["android.permission.POST_NOTIFICATIONS"])
     except Exception as exc:
         print(f"!! request_notification_permission failed: {exc}")
+
+
+def removable_volumes():
+    """[(label, path)] for SD cards / USB drives on Android, [] elsewhere.
+
+    /storage and / are NOT listable by apps on modern Android (EACCES), so
+    the picker can't browse its way to an SD card. Instead ask Android for the
+    app's per-volume folders (getExternalFilesDirs) and cut each one back to
+    the volume root (.../Android/data/<pkg>/files -> <volume root>)."""
+    if not ON_ANDROID:
+        return []
+    out = []
+    try:
+        from jnius import autoclass
+        PythonActivity = autoclass("org.kivy.android.PythonActivity")
+        dirs = PythonActivity.mActivity.getExternalFilesDirs(None)
+        primary = shared_storage_root()
+        for i in range(len(dirs)):
+            f = dirs[i]
+            if f is None:
+                continue
+            root = str(f.getAbsolutePath()).split("/Android/")[0]
+            if (root.startswith("/storage/emulated") or root == primary
+                    or not os.path.isdir(root)):
+                continue
+            if all(root != p for _, p in out):
+                n = len(out) + 1
+                out.append(("SD card" if n == 1 else f"SD card {n}", root))
+    except Exception:
+        pass
+    return out
