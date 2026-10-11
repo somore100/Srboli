@@ -35,6 +35,8 @@ SCREENS = [
     ("fast_transfer",  "screens.fast_transfer_screen",    "FastTransferScreen"),
     ("quickswitcher",  "screens.quickswitcher_screen",    "QuickSwitcherScreen"),
     ("minesweeper",    "screens.minesweeper_screen",      "MinesweeperScreen"),
+    ("touch_test",     "screens.touch_test_screen",       "TouchTestScreen"),
+    ("converter",      "screens.file_converter_screen",   "FileConverterScreen"),
 ]
 
 LABELS = {
@@ -62,6 +64,8 @@ LABELS = {
     "fast_transfer":  "Fast File Transfer",
     "quickswitcher":  "Quick Switcher",
     "minesweeper":    "Minesweeper",
+    "touch_test":     "Touch Test",
+    "converter":      "File Converter",
 }
 
 

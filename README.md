@@ -43,6 +43,8 @@ tool, with global shortcuts to jump between them.
 | **Fast File Transfer** | Parallel / batched copy / move for folders of many smaller files |
 | **Quick Switcher** | Global keyboard shortcuts — jump to a screen, launch an app/script, open the file picker, or run a terminal command |
 | **Minesweeper** | Classic Minesweeper: 3 difficulties, long-press to flag, tap a number to chord, timer and best times |
+| **Touch Test** | Shows what each tap looks like to the app (finger vs. mouse duplicates) and has the duplicate-tap filter switch |
+| **File Converter** | Batch-convert images (png/jpg/webp/bmp/gif/tiff/ico/pdf), documents (txt/md/html/docx/pdf/csv/tsv/json) and - on desktop with ffmpeg - audio/video |
 | **Settings** | Reorder / hide dashboard screens, toggle lazy-loading, manage the background service and autostart |
 | **Data Directory** | First-launch + settings screen for choosing where Srboli stores its data |
 
@@ -153,7 +155,9 @@ srboli/
     ├── reminders_screen.py
     ├── fast_transfer_screen.py
     ├── quickswitcher_screen.py
-    └── minesweeper_screen.py
+    ├── minesweeper_screen.py
+    ├── touch_test_screen.py
+    └── file_converter_screen.py
 
 Contributing
 

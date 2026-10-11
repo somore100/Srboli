@@ -102,3 +102,75 @@ def install(log=None):
 
 def stats():
     return _deduper.count if _deduper else 0
+
+
+# ── persisted switch (Touch Test screen) ───────────────────────────────────
+# Flag files in the phone's root are unreliable (a fresh install can't read
+# them until "all files access" is granted), so the switch lives in the app's
+# own data dir. DEFAULT IS OFF: the filter only runs if you turned it on.
+#
+# Self-healing: when the filter starts it sets "pending". The first time any
+# button actually reacts to a tap, mark_healthy() clears "pending". If the next
+# start still finds "pending" set, taps never worked with the filter on, so it
+# switches itself OFF again before installing - a bad filter can cost you one
+# launch, never a permanently dead app.
+
+import json
+import os
+
+
+def _cfg_path():
+    import app_data
+    return os.path.join(app_data.subdir("touch"), "touch_dedupe.json")
+
+
+def load_cfg():
+    try:
+        with open(_cfg_path(), encoding="utf-8") as f:
+            d = json.load(f)
+        return {"enabled": bool(d.get("enabled", False)),
+                "pending": bool(d.get("pending", False))}
+    except Exception:
+        return {"enabled": False, "pending": False}
+
+
+def save_cfg(cfg):
+    try:
+        with open(_cfg_path(), "w", encoding="utf-8") as f:
+            json.dump(cfg, f)
+        return True
+    except Exception:
+        return False
+
+
+def set_enabled(on):
+    cfg = load_cfg()
+    cfg["enabled"] = bool(on)
+    cfg["pending"] = False
+    return save_cfg(cfg)
+
+
+def mark_healthy():
+    cfg = load_cfg()
+    if cfg.get("pending"):
+        cfg["pending"] = False
+        save_cfg(cfg)
+
+
+def decide_at_startup(log=None):
+    """True if the filter should be installed this run. Applies the
+    self-healing rule above."""
+    cfg = load_cfg()
+    if cfg["pending"]:
+        cfg["enabled"] = False
+        cfg["pending"] = False
+        save_cfg(cfg)
+        if log:
+            log("touch filter was ON last run and no tap ever worked: "
+                "switched OFF automatically")
+        return False
+    if not cfg["enabled"]:
+        return False
+    cfg["pending"] = True
+    save_cfg(cfg)
+    return True

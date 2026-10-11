@@ -209,13 +209,12 @@ if _platform == "android":
     except Exception as _e:
         print(f"modal patch skipped: {_e}")
 
-    # ROOT FIX for the "needs two taps" family: Kivy receives every tap twice
-    # on Android (finger + SDL's synthesised mouse event). Drop the duplicate
-    # before it reaches any widget. See core/touch_dedupe.py.
+    # Duplicate-tap filter (core/touch_dedupe.py). OFF by default: turn it on
+    # in the Touch Test screen. It switches itself off again if taps stop
+    # working. Flag files (Srboli_no_dedupe / Srboli_safe_mode) still force it
+    # off when the app can read them.
     try:
         import core.touch_dedupe as _td
-        if _bl and (_bl.flag("Srboli_no_dedupe") or _bl.flag("Srboli_safe_mode")):
-            raise RuntimeError("disabled by flag file")
         _td_log = None
         try:
             from core.android_storage import shared_storage_root as _ssr3
@@ -227,13 +226,30 @@ if _platform == "android":
                 _td_log = lambda m: _tlog.write(f"{_t3.time():.3f} {m}\n")
         except Exception:
             pass
-        _td.install(_td_log)
-        if _bl:
-            _bl.log("touch dedupe installed")
+        _forced_off = _bl and (_bl.flag("Srboli_no_dedupe")
+                               or _bl.flag("Srboli_safe_mode"))
+        if not _forced_off and _td.decide_at_startup(
+                _bl.log if _bl else None):
+            _td.install(_td_log)
+            # first button that really reacts proves taps work
+            from kivy.uix.behaviors.button import ButtonBehavior as _BB2
+            _orig_rel = _BB2._do_release
+
+            def _do_release(self, *a):
+                try:
+                    _td.mark_healthy()
+                    _BB2._do_release = _orig_rel      # one-shot
+                except Exception:
+                    pass
+                return _orig_rel(self, *a)
+            _BB2._do_release = _do_release
+            if _bl:
+                _bl.log("touch dedupe installed (enabled in Touch Test)")
+        elif _bl:
+            _bl.log("touch dedupe OFF")
     except Exception as _e:
         if _bl:
             _bl.log(f"touch dedupe NOT installed: {_e}")
-        print(f"touch dedupe skipped: {_e}")
 
     # Opt-in touch trace for the "needs two taps" bug. Create an EMPTY file
     # named Srboli_debug_touch in the phone's storage root, restart the app,
