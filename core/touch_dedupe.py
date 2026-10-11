@@ -25,27 +25,50 @@ DEDUPE_DIST = 0.05       # normalised screen units
 
 
 class TouchDeduper:
+    """Never raises: on any internal error it switches itself off and lets
+    every event through, so the filter can degrade the app to 'double taps'
+    but can never make it unresponsive."""
+
     def __init__(self, log=None):
         self._recent = []        # (time, device, x, y) of accepted begins
-        self._dropped = set()    # id(touch) of touches being ignored
+        self._dropped = {}       # touch uid -> time it was marked a ghost
         self.count = 0           # how many duplicates were dropped
+        self.disabled = False
         self._log = log
 
     def should_drop(self, etype, me, now=None):
-        key = id(me)
+        if self.disabled:
+            return False
+        try:
+            return self._should_drop(etype, me, now)
+        except Exception as e:           # never break input handling
+            self.disabled = True
+            if self._log:
+                self._log(f"DEDUP disabled itself after error: {e!r}")
+            return False
+
+    def _should_drop(self, etype, me, now):
+        now = time.monotonic() if now is None else now
+        # uid is unique per touch for the life of the process. (id(me) is
+        # NOT: Python reuses addresses, which could make a brand-new touch
+        # look like an old ghost and swallow it.)
+        key = me.uid
+        if self._dropped:
+            # a ghost whose 'end' never showed up must not linger
+            for k in [k for k, t in self._dropped.items() if now - t > 5.0]:
+                del self._dropped[k]
         if key in self._dropped:
             if etype == "end":
-                self._dropped.discard(key)
+                del self._dropped[key]
             return True
         if etype != "begin":
             return False
-        now = time.monotonic() if now is None else now
         x, y = me.sx, me.sy
         self._recent = [r for r in self._recent if now - r[0] < DEDUPE_WINDOW]
         for _, dev, rx, ry in self._recent:
             if (dev != me.device and abs(rx - x) < DEDUPE_DIST
                     and abs(ry - y) < DEDUPE_DIST):
-                self._dropped.add(key)
+                self._dropped[key] = now
                 self.count += 1
                 if self._log:
                     self._log(f"DEDUP dropped {me.device} touch "

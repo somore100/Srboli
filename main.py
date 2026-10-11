@@ -1,6 +1,11 @@
 # main.py — Srboli (version: core/version.py)
 import sys, os
 try:
+    import core.bootlog as _bl
+    _bl.log('main.py imported')
+except Exception:
+    _bl = None
+try:
     from core.version import VERSION as _APP_VERSION
 except Exception:
     _APP_VERSION = "?"
@@ -209,6 +214,8 @@ if _platform == "android":
     # before it reaches any widget. See core/touch_dedupe.py.
     try:
         import core.touch_dedupe as _td
+        if _bl and (_bl.flag("Srboli_no_dedupe") or _bl.flag("Srboli_safe_mode")):
+            raise RuntimeError("disabled by flag file")
         _td_log = None
         try:
             from core.android_storage import shared_storage_root as _ssr3
@@ -221,7 +228,11 @@ if _platform == "android":
         except Exception:
             pass
         _td.install(_td_log)
+        if _bl:
+            _bl.log("touch dedupe installed")
     except Exception as _e:
+        if _bl:
+            _bl.log(f"touch dedupe NOT installed: {_e}")
         print(f"touch dedupe skipped: {_e}")
 
     # Opt-in touch trace for the "needs two taps" bug. Create an EMPTY file
@@ -499,6 +510,9 @@ class SrboliApp(App):
             print(f"Reminder tick failed: {e}")
 
     def build(self):
+        if _bl:
+            _bl.log("App.build start")
+            _bl.start_watchdog()
         self.title = "Srboli"
         sm = ScreenManager(transition=NoTransition())
         sm.add_widget(Dashboard(name="dashboard"))
@@ -524,7 +538,9 @@ class SrboliApp(App):
         # a time in idle time (Kivy widgets must be built on the main thread,
         # so this is spread over frames rather than done in one long freeze).
         # Opening a screen that isn't built yet still builds it on demand.
-        if lazy and settings_cfg.get("preload_bg", True):
+        if _bl and _bl.flag("Srboli_safe_mode"):
+            _bl.log("safe mode: background preload skipped")
+        elif lazy and settings_cfg.get("preload_bg", True):
             from kivy.clock import Clock as _PClock
             _pending = [r for r, _m, _c in SCREENS]
 
@@ -534,10 +550,16 @@ class SrboliApp(App):
                 if not _pending:
                     return False
                 route = _pending.pop(0)
+                if _bl:
+                    _bl.log(f"preload start {route}")
                 try:
                     ensure_screen_loaded(sm, route)
                 except Exception as e:
                     print(f"Preload of {route} failed: {e}")
+                    if _bl:
+                        _bl.log(f"preload FAILED {route}: {e}")
+                if _bl:
+                    _bl.log(f"preload done  {route}")
                 return bool(_pending)
 
             _PClock.schedule_once(
@@ -579,6 +601,18 @@ class SrboliApp(App):
         except Exception as e:
             print(f"QuickSwitcher not installed: {e}")
 
+        if _bl:
+            _bl.log("App.build end (dashboard ready)")
+            from kivy.clock import Clock as _FC
+            _FC.schedule_once(lambda dt: _bl.log("first frame after build"), 0)
+            _seen_touch = []
+
+            def _first_touch(win, touch, *a):
+                if not _seen_touch:
+                    _seen_touch.append(1)
+                    _bl.log(f"first touch reached the window "
+                            f"(device={touch.device})")
+            Window.bind(on_touch_down=_first_touch)
         return sm
 
 

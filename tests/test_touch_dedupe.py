@@ -5,8 +5,12 @@ from core.touch_dedupe import TouchDeduper
 
 
 class ME:
+    _n = 0
+
     def __init__(self, dev, x, y):
         self.device, self.sx, self.sy = dev, x, y
+        ME._n += 1
+        self.uid = ME._n
 
 
 d = TouchDeduper()
@@ -25,4 +29,8 @@ g = ME("sdl", .5, .5)
 d.should_drop("begin", g, now=3.0)
 assert not d.should_drop("begin", ME("mouse", .9, .1), now=3.01)  # far away
 assert d.count == 1
+# a broken event must disable the filter, not raise
+class Bad: uid = 999; device = "x"
+assert d.should_drop("begin", Bad(), now=9.0) is False and d.disabled
+assert not d.should_drop("begin", ME("sdl", .1, .1), now=9.1)   # now inert
 print("touch dedupe tests passed")
