@@ -251,6 +251,20 @@ if _platform == "android":
         if _bl:
             _bl.log(f"touch dedupe NOT installed: {_e}")
 
+    # Ghost-press guard (core/tap_guard.py): one physical tap reaches a widget
+    # twice a few ms apart on this phone; ignore the second press of the same
+    # button. Conservative (it can only ignore, never block the first tap).
+    try:
+        import core.tap_guard as _tg
+        if _bl and _bl.flag("Srboli_safe_mode"):
+            raise RuntimeError("safe mode")
+        _tg.install()
+        if _bl:
+            _bl.log("tap guard installed")
+    except Exception as _e:
+        if _bl:
+            _bl.log(f"tap guard NOT installed: {_e}")
+
     # Opt-in touch trace for the "needs two taps" bug. Create an EMPTY file
     # named Srboli_debug_touch in the phone's storage root, restart the app,
     # reproduce, then send Srboli_touch.log. No file = no logging, no cost.

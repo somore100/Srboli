@@ -25,6 +25,31 @@ from core.android_storage import shared_storage_root
 _installed = False
 
 
+def _is_android():
+    from core.android_storage import ON_ANDROID
+    return ON_ANDROID
+
+
+def allowed_roots():
+    """Folders the picker may stay inside. On Android, "/", "/storage" and
+    "/storage/emulated" can't be listed by apps (EACCES): walking up into them
+    left the picker on a stale, empty list. Elsewhere: no restriction."""
+    if not _is_android():
+        return None
+    from core.android_storage import shared_storage_root, removable_volumes
+    roots = [os.path.abspath(shared_storage_root())]
+    roots += [os.path.abspath(p) for _, p in removable_volumes()]
+    return roots
+
+
+def inside_allowed(path, roots):
+    if roots is None:
+        return True
+    p = os.path.abspath(path)
+    return any(p == r or p.startswith(r.rstrip(os.sep) + os.sep)
+               for r in roots)
+
+
 def _fs_root(path):
     """'/' on Linux/mac/Android, the drive root (C:\\) on Windows."""
     if os.name == "nt":
@@ -77,6 +102,9 @@ class PathBar(BoxLayout):
                                  background_color=(0.2, 0.35, 0.5, 1))
         self._paste_btn.bind(on_release=lambda *a: self._paste())
         self._hist, self._hpos, self._navigating = [], -1, False
+        self._roots = allowed_roots()
+        self._last_ok = chooser.path
+        self._reverting = False
         self._back = Button(text="<", size_hint_x=None, width=dp(38),
                             font_size=14)
         self._fwd = Button(text=">", size_hint_x=None, width=dp(38),
@@ -183,6 +211,26 @@ class PathBar(BoxLayout):
 
     def _sync(self, *a):
         p = self._chooser.path
+        if self._reverting:
+            return
+        # Never leave the folders an app is allowed to read, and never stay
+        # on a folder we can't open: go back to the last good one and say why.
+        bad = None
+        if not inside_allowed(p, self._roots):
+            bad = "That's the top of the storage an app can browse."
+        elif folder_state(p) == "denied":
+            bad = "Android doesn't let apps open that folder."
+        if bad and self._last_ok and p != self._last_ok:
+            self._reverting = True
+            try:
+                self._chooser.path = self._last_ok
+            finally:
+                self._reverting = False
+            self._input.text = self._last_ok
+            self._status.text = bad
+            self._update_nav()
+            return
+        self._last_ok = p
         if not self._navigating and (not self._hist
                                      or self._hist[self._hpos] != p):
             del self._hist[self._hpos + 1:]      # new branch drops "forward"
@@ -208,7 +256,26 @@ def install():
     _Orig = fc.FileChooserIconView
 
     class FileChooserIconView(_Orig):
+        def _ghost(self, kind):
+            """True if this entry event repeats the previous one within
+            150 ms - one tap arriving twice. Android only (on desktop a quick
+            double-click on a file is a real gesture)."""
+            if not _is_android():
+                return False
+            import time as _t
+            now = _t.monotonic()
+            last = getattr(self, "_ghost_" + kind, 0.0)
+            setattr(self, "_ghost_" + kind, now)
+            return now - last < 0.15
+
+        def entry_touched(self, entry, touch):
+            if self._ghost("touched"):
+                return False
+            return super().entry_touched(entry, touch)
+
         def entry_released(self, entry, touch):
+            if self._ghost("released"):
+                return False
             # Folder pickers (dirselect=True): stock behaviour is tap =
             # select, DOUBLE tap = open - on a phone that meant a dead second
             # tap and an unreliable double tap. Now one tap opens the folder

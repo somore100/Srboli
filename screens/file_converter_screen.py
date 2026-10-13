@@ -302,15 +302,40 @@ class FileConverterScreen(Screen):
                 os.path.join(folder, name)) or bool(cc.kind_of(name))])
         layout = BoxLayout(orientation="vertical", spacing=dp(4))
         layout.add_widget(chooser)
+        sel_row = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(4))
+        all_b = Button(text="Select all here", font_size=12)
+        none_b = Button(text="Select none", font_size=12)
+        sel_row.add_widget(all_b)
+        sel_row.add_widget(none_b)
+        layout.add_widget(sel_row)
         btn = Button(text="Add selected files", size_hint_y=None,
                      height=dp(46))
         layout.add_widget(btn)
-        popup = Popup(title="Choose files (tap to select, tap again to "
-                      "unselect)", content=layout, size_hint=(0.94, 0.94))
+        popup = Popup(title="Tap files to select - tap again to unselect",
+                      content=layout, size_hint=(0.94, 0.94))
+
+        def count(*a):
+            n = len([p for p in chooser.selection if os.path.isfile(p)])
+            btn.text = (f"Add {n} selected file{'s' if n != 1 else ''}"
+                        if n else "Add selected files")
+        chooser.bind(selection=count)
+
+        def select_all(*a):
+            try:
+                names = sorted(os.listdir(chooser.path))
+            except OSError:
+                return
+            chooser.selection = [
+                os.path.join(chooser.path, n) for n in names
+                if os.path.isfile(os.path.join(chooser.path, n))
+                and cc.kind_of(n)]
+        all_b.bind(on_release=select_all)
+        none_b.bind(on_release=lambda *a: setattr(chooser, "selection", []))
 
         def done(*a):
             popup.dismiss()
-            self._add_paths(list(chooser.selection))
+            self._add_paths([p for p in chooser.selection
+                             if os.path.isfile(p)])
         btn.bind(on_release=done)
         popup.open()
 

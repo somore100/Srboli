@@ -271,6 +271,11 @@ class SettingsScreen(Screen):
             feat_btn.text = "Background service: desktop only (not on Android yet)"
         root.add_widget(feat_btn)
 
+        tt_btn = Button(text="Touch Test (are my taps arriving twice?)",
+                        size_hint_y=None, height=dp(40), font_size=12)
+        tt_btn.bind(on_release=self._open_touch_test)
+        root.add_widget(tt_btn)
+
         self._status = Label(text="", size_hint_y=None, height=dp(22),
                              font_size=11, color=(0.4, 1, 0.4, 1))
         root.add_widget(self._status)
@@ -437,6 +442,12 @@ class SettingsScreen(Screen):
                     break
             Clock.schedule_once(lambda dt: self._apply_daemon_status(resp))
         threading.Thread(target=worker, daemon=True).start()
+
+    def _open_touch_test(self, *a):
+        if not self.manager.has_screen("touch_test"):
+            from screens.touch_test_screen import TouchTestScreen
+            self.manager.add_widget(TouchTestScreen(name="touch_test"))
+        self.manager.current = "touch_test"
 
     def _open_service_features(self, *a):
         import core.service_config as svc_cfg
