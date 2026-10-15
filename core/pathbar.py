@@ -23,6 +23,7 @@ from kivy.uix.textinput import TextInput
 from core.android_storage import shared_storage_root
 
 _installed = False
+_TREE_MODE = [False]      # remembered for the session: history vs folder levels
 
 
 def _is_android():
@@ -102,6 +103,9 @@ class PathBar(BoxLayout):
                                  background_color=(0.2, 0.35, 0.5, 1))
         self._paste_btn.bind(on_release=lambda *a: self._paste())
         self._hist, self._hpos, self._navigating = [], -1, False
+        self._tree = _TREE_MODE[0]       # False: history, True: folder levels
+        self._down = []                  # folders we climbed out of (for ">")
+        self._tree_move = False
         self._roots = allowed_roots()
         self._last_ok = chooser.path
         self._reverting = False
@@ -109,11 +113,13 @@ class PathBar(BoxLayout):
                             font_size=14)
         self._fwd = Button(text=">", size_hint_x=None, width=dp(38),
                            font_size=14)
-        up = Button(text="Up", size_hint_x=None, width=dp(42), font_size=12)
-        self._back.bind(on_release=lambda *a: self._hist_go(-1))
-        self._fwd.bind(on_release=lambda *a: self._hist_go(1))
-        up.bind(on_release=lambda *a: self._up())
-        for w in (self._back, self._fwd, up, self._input, go):
+        self._mode_btn = Button(text="", size_hint_x=None, width=dp(52),
+                                font_size=12,
+                                background_color=(0.2, 0.35, 0.5, 1))
+        self._back.bind(on_release=lambda *a: self._nav(-1))
+        self._fwd.bind(on_release=lambda *a: self._nav(1))
+        self._mode_btn.bind(on_release=lambda *a: self._toggle_mode())
+        for w in (self._back, self._fwd, self._mode_btn, self._input, go):
             row.add_widget(w)
         self.add_widget(row)
 
@@ -190,11 +196,47 @@ class PathBar(BoxLayout):
             return
         self._chooser.path = p
 
-    def _up(self):
+    def _parent(self):
         p = os.path.abspath(self._chooser.path)
         parent = os.path.dirname(p.rstrip("/\\")) or _fs_root(p)
-        if parent and parent != p and os.path.isdir(parent):
-            self._chooser.path = parent
+        if (parent and parent != p and os.path.isdir(parent)
+                and inside_allowed(parent, self._roots)):
+            return parent
+        return None
+
+    def _up(self):
+        parent = self._parent()
+        if parent:
+            self._down.append(os.path.abspath(self._chooser.path))
+            self._tree_move = True
+            try:
+                self._chooser.path = parent
+            finally:
+                self._tree_move = False
+
+    def _down_into(self):
+        cur = os.path.abspath(self._chooser.path)
+        while self._down:
+            child = self._down.pop()
+            if os.path.dirname(child.rstrip("/\\")) == cur \
+                    and os.path.isdir(child):
+                self._tree_move = True
+                try:
+                    self._chooser.path = child
+                finally:
+                    self._tree_move = False
+                return
+
+    def _toggle_mode(self):
+        self._tree = not self._tree
+        _TREE_MODE[0] = self._tree
+        self._update_nav()
+
+    def _nav(self, step):
+        if self._tree:
+            self._up() if step < 0 else self._down_into()
+        else:
+            self._hist_go(step)
 
     def _hist_go(self, step):
         i = self._hpos + step
@@ -206,8 +248,17 @@ class PathBar(BoxLayout):
             self._update_nav()
 
     def _update_nav(self):
-        self._back.disabled = self._hpos <= 0
-        self._fwd.disabled = self._hpos >= len(self._hist) - 1
+        self._mode_btn.text = "Tree" if self._tree else "Hist"
+        if self._tree:
+            # "<" = up one folder level, ">" = back down into the folder you
+            # just climbed out of
+            self._back.disabled = self._parent() is None
+            cur = os.path.abspath(self._chooser.path)
+            self._fwd.disabled = not any(
+                os.path.dirname(c.rstrip("/\\")) == cur for c in self._down)
+        else:
+            self._back.disabled = self._hpos <= 0
+            self._fwd.disabled = self._hpos >= len(self._hist) - 1
 
     def _sync(self, *a):
         p = self._chooser.path
@@ -231,6 +282,13 @@ class PathBar(BoxLayout):
             self._update_nav()
             return
         self._last_ok = p
+        if not self._tree_move and self._down:
+            cur = os.path.abspath(p)
+            # moved somewhere unrelated: the "go back down" trail is stale
+            if not any(os.path.dirname(c.rstrip("/\\")) == cur
+                       or c.startswith(cur.rstrip(os.sep) + os.sep)
+                       for c in self._down):
+                self._down = []
         if not self._navigating and (not self._hist
                                      or self._hist[self._hpos] != p):
             del self._hist[self._hpos + 1:]      # new branch drops "forward"

@@ -48,6 +48,12 @@ class TouchDeduper:
             return False
 
     def _should_drop(self, etype, me, now):
+        # Hover events (a mouse pointer moving with no button) are not taps:
+        # never record them and never drop them - otherwise a hover arriving
+        # a few ms before a real finger touch could make the finger look like
+        # the "duplicate" and swallow it.
+        if not getattr(me, "is_touch", True):
+            return False
         now = time.monotonic() if now is None else now
         # uid is unique per touch for the life of the process. (id(me) is
         # NOT: Python reuses addresses, which could make a brand-new touch

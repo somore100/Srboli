@@ -83,3 +83,24 @@ assert ch.selection == [f]
 time.sleep(0.25); ch.entry_touched(E(), T())                 # a real second tap: unselect
 assert ch.selection == []
 print("picker guards passed")
+
+# ---- "<" ">" in both modes -----------------------------------------------------------
+pb._is_android = lambda: False
+pb.allowed_roots = lambda: None
+a = os.path.join(root, "a"); b = os.path.join(a, "b"); os.makedirs(b)
+ch.path = root; tick(6)
+bar = [w for w in lay.children if type(w).__name__ == "PathBar"][0]
+bar._open(a); tick(); bar._open(b); tick()                         # root -> a -> b
+bar._roots = None                                                 # desktop-style: no restriction
+assert bar._mode_btn.text == "Hist"
+bar._nav(-1); tick(); assert ch.path == a                         # history back
+bar._nav(-1); tick(); assert ch.path == root
+bar._nav(1); tick(); assert ch.path == a                          # history forward
+bar._toggle_mode(); assert bar._mode_btn.text == "Tree"
+bar._nav(-1); tick(); assert ch.path == root                      # tree: up one level
+assert not bar._fwd.disabled and not bar._back.disabled
+bar._nav(1); tick(); assert ch.path == a                          # tree: back down
+bar._open(root); tick()                                           # unrelated jump
+assert bar._down == [] or bar._fwd.disabled
+bar._toggle_mode(); assert bar._mode_btn.text == "Hist"
+print("picker < > modes passed")

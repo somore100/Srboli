@@ -7,8 +7,9 @@ from core.touch_dedupe import TouchDeduper
 class ME:
     _n = 0
 
-    def __init__(self, dev, x, y):
+    def __init__(self, dev, x, y, touch=True):
         self.device, self.sx, self.sy = dev, x, y
+        self.is_touch = touch
         ME._n += 1
         self.uid = ME._n
 
@@ -33,4 +34,10 @@ assert d.count == 1
 class Bad: uid = 999; device = "x"
 assert d.should_drop("begin", Bad(), now=9.0) is False and d.disabled
 assert not d.should_drop("begin", ME("sdl", .1, .1), now=9.1)   # now inert
+# a hover (pointer moving, no button) must neither be dropped nor hide the finger
+d2 = TouchDeduper()
+hover, finger2 = ME("mouse", .5, .5, touch=False), ME("sdl", .5, .5)
+assert not d2.should_drop("begin", hover, now=5.0)
+assert not d2.should_drop("begin", finger2, now=5.001)
+assert d2.should_drop("begin", ME("mouse", .5, .5), now=5.004)      # the real ghost
 print("touch dedupe tests passed")

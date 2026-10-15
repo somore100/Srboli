@@ -149,7 +149,7 @@ class TouchTestScreen(Screen):
         devs = ", ".join(f"{k}: {v}" for k, v in sorted(self._by_dev.items())) \
             or "-"
         verdict = ""
-        if self._taps >= 3:
+        if self._taps >= 1:
             verdict = ("   -> DUPLICATE TAPS" if per > 1.4 else
                        "   -> looks fine")
         self._summary.text = (f"taps: {self._taps}   touches: {self._touches}"

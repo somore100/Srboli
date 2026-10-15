@@ -8,7 +8,10 @@
 #   audio/video: mp3 wav ogg flac m4a opus, mp4 webm mkv gif ...
 #                needs ffmpeg -> desktop only; on Android the screen says so
 #
-# Batch: add several files (or a whole folder), pick ONE target format, convert.
+# Batch: add several files (or a whole folder). Files are GROUPED by kind
+# (images / video / audio / documents) and every group has its own "Convert
+# to" choice, so a mixed batch never asks for something impossible like
+# image -> mp3. Groups left on "-" are simply not converted.
 # Originals are never touched; outputs never overwrite anything.
 
 import os
@@ -56,6 +59,7 @@ class FileConverterScreen(Screen):
     def __init__(self, **kw):
         super().__init__(**kw)
         self._files = []
+        self._targets = {}            # kind -> chosen target ("-" = skip)
         self._out_dir = self._load_out_dir()
         self._running = False
         self._cancel = threading.Event()
@@ -85,15 +89,7 @@ class FileConverterScreen(Screen):
         sv.add_widget(self._list)
         root.add_widget(sv)
 
-        # -- target + options -------------------------------------------------
-        trow = BoxLayout(size_hint_y=None, height=dp(42), spacing=dp(6))
-        trow.add_widget(Label(text="Convert to:", font_size=13,
-                              size_hint_x=None, width=dp(86)))
-        self._target = Spinner(text="-", values=(), font_size=14)
-        self._target.bind(text=lambda *a: self._on_target())
-        trow.add_widget(self._target)
-        root.add_widget(trow)
-
+        # -- options (images only; shown when an image group has a target) ------
         self._opts = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(6))
         self._q_lbl = Label(text="Quality 90", font_size=12,
                             size_hint_x=None, width=dp(84))
@@ -109,12 +105,6 @@ class FileConverterScreen(Screen):
         for w in (self._q_lbl, self._quality, self._maxside):
             self._opts.add_widget(w)
         root.add_widget(self._opts)
-
-        self._notice = Label(text="", font_size=12, size_hint_y=None,
-                             height=0, halign="left", valign="top",
-                             color=(1, 0.65, 0.4, 1))
-        self._notice.bind(size=self._fit_text)
-        root.add_widget(self._notice)
 
         # -- output folder ----------------------------------------------------
         orow = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(6))
@@ -222,75 +212,108 @@ class FileConverterScreen(Screen):
             self._files.remove(path)
             self._refresh()
 
-    def _common_targets(self):
-        sets = [cc.targets_for(p) for p in self._files]
-        if not sets:
-            return []
-        first = sets[0]
-        return [t for t in first if all(t in s for s in sets[1:])]
+    KIND_ORDER = ("image", "video", "audio", "doc")
+
+    def _files_of(self, kind):
+        return [p for p in self._files if cc.kind_of(p) == kind]
+
+    def _group_targets(self, kind):
+        """Targets that make sense for at least one file of this kind."""
+        files = self._files_of(kind)
+        return [t for t in cc.TARGETS[kind]
+                if any(t in cc.targets_for(p) for p in files)]
+
+    def _group_problem(self, kind):
+        """Why this group can't be converted here (or None)."""
+        files = self._files_of(kind)
+        for t in self._group_targets(kind):
+            why = cc.unavailable_reason(files[0], t)
+            if why:
+                return why
+        return None
 
     def _refresh(self):
         self._list.clear_widgets()
-        kinds = {}
-        for p in self._files:
-            k = cc.kind_of(p)
-            kinds[k] = kinds.get(k, 0) + 1
-            row = BoxLayout(size_hint_y=None, height=dp(34), spacing=dp(4))
-            try:
-                size = _human(os.path.getsize(p))
-            except OSError:
-                size = "?"
-            lbl = Label(text=f"{os.path.basename(p)}   [{size}]",
-                        font_size=12, halign="left", valign="middle",
-                        shorten=True, shorten_from="right")
-            lbl.bind(size=lambda i, s: setattr(i, "text_size", s))
-            x = Button(text="X", font_size=12, size_hint_x=None, width=dp(40))
-            x.bind(on_release=lambda inst, pp=p: self._remove(pp))
-            row.add_widget(lbl)
-            row.add_widget(x)
-            self._list.add_widget(row)
+        counts = {k: len(self._files_of(k)) for k in self.KIND_ORDER}
+        for kind in self.KIND_ORDER:
+            files = self._files_of(kind)
+            if not files:
+                self._targets.pop(kind, None)
+                continue
+            problem = self._group_problem(kind)
+            values = ["-"] + ([] if problem else self._group_targets(kind))
+            if self._targets.get(kind) not in values:
+                self._targets[kind] = "-"
+            head = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
+            title = Label(text=f"[b]{cc.KIND_LABEL[kind]}[/b] ({len(files)})",
+                          markup=True, font_size=14, halign="left",
+                          valign="middle", size_hint_x=None, width=dp(128),
+                          color=(0.7, 0.9, 1, 1))
+            title.bind(size=lambda i, sz: setattr(i, "text_size", sz))
+            sp = Spinner(text=self._targets[kind], values=tuple(values),
+                         font_size=14, disabled=bool(problem))
+            sp.bind(text=lambda inst, val, k=kind: self._set_target(k, val))
+            head.add_widget(title)
+            head.add_widget(Label(text="convert to", font_size=11,
+                                  size_hint_x=None, width=dp(64),
+                                  color=(0.6, 0.6, 0.6, 1)))
+            head.add_widget(sp)
+            self._list.add_widget(head)
+            if problem:
+                note = Label(text=problem, font_size=11, halign="left",
+                             valign="top", size_hint_y=None, height=dp(48),
+                             color=(1, 0.65, 0.4, 1))
+                note.bind(size=lambda i, sz: setattr(i, "text_size",
+                                                     (sz[0], None)))
+                self._list.add_widget(note)
+            for p in files:
+                row = BoxLayout(size_hint_y=None, height=dp(34), spacing=dp(4))
+                try:
+                    size = _human(os.path.getsize(p))
+                except OSError:
+                    size = "?"
+                lbl = Label(text=f"{os.path.basename(p)}   [{size}]",
+                            font_size=12, halign="left", valign="middle",
+                            shorten=True, shorten_from="right")
+                lbl.bind(size=lambda i, s_: setattr(i, "text_size", s_))
+                x = Button(text="X", font_size=12, size_hint_x=None,
+                           width=dp(40))
+                x.bind(on_release=lambda inst, pp=p: self._remove(pp))
+                row.add_widget(lbl)
+                row.add_widget(x)
+                self._list.add_widget(row)
         if self._files:
             desc = ", ".join(f"{n} {cc.KIND_LABEL[k].lower()}"
-                             for k, n in kinds.items())
-            self._count_lbl.text = f"{len(self._files)} file(s): {desc}"
+                             for k, n in counts.items() if n)
+            self._count_lbl.text = (f"{len(self._files)} file(s): {desc}. "
+                                    "Pick a format for each group.")
         else:
             self._count_lbl.text = ("No files yet. Add files or a folder - "
                                     "images, documents, audio, video.")
-        targets = self._common_targets()
-        keep = self._target.text if self._target.text in targets else \
-            (targets[0] if targets else "-")
-        self._target.values = tuple(targets)
-        self._target.text = keep
         self._out_lbl.text = "Saves to: " + self._out_dir
-        self._on_target()
+        self._update_controls()
 
-    def _on_target(self):
-        t = self._target.text
-        kinds = {cc.kind_of(p) for p in self._files}
-        is_img = kinds == {"image"}
-        show = is_img and t in ("jpg", "webp", "png", "gif", "tiff", "ico",
-                                "bmp", "pdf")
-        q_ok = is_img and t in ("jpg", "webp")
-        self._opts.height = dp(40) if show else 0
-        self._opts.opacity = 1 if show else 0
-        self._opts.disabled = not show
+    def _set_target(self, kind, value):
+        self._targets[kind] = value
+        self._update_controls()
+
+    def _plan(self):
+        """[(source, target)] for every file whose group has a target."""
+        return [(p, self._targets[cc.kind_of(p)]) for p in self._files
+                if self._targets.get(cc.kind_of(p), "-") != "-"]
+
+    def _update_controls(self):
+        img_on = self._targets.get("image", "-") != "-"
+        self._opts.height = dp(40) if img_on else 0
+        self._opts.opacity = 1 if img_on else 0
+        self._opts.disabled = not img_on
+        q_ok = self._targets.get("image") in ("jpg", "webp")
         self._q_lbl.opacity = 1 if q_ok else 0.35
         self._quality.disabled = not q_ok
-        # why can't we convert?
-        msg = ""
-        if self._files and t == "-":
-            msg = ("These files have no format in common. Clear the list and "
-                   "convert one kind at a time (e.g. only images).")
-        elif self._files and t != "-":
-            for p in self._files:
-                why = cc.unavailable_reason(p, t)
-                if why:
-                    msg = why
-                    break
-        self._notice.text = msg
-        self._notice.height = dp(52) if msg else 0
-        self._go.disabled = (self._running or not self._files or t == "-"
-                             or bool(msg))
+        plan = self._plan()
+        self._go.disabled = self._running or not plan
+        self._go.text = (f"Convert {len(plan)} file{'s' if len(plan) != 1 else ''}"
+                         if plan else "Convert")
 
     # ── pickers ───────────────────────────────────────────────────────────
     def _pick_files(self):
@@ -390,10 +413,9 @@ class FileConverterScreen(Screen):
 
     # ── conversion ────────────────────────────────────────────────────────
     def _start(self):
-        if self._running or not self._files:
+        plan = self._plan()
+        if self._running or not plan:
             return
-        target = self._target.text
-        files = list(self._files)
         opts = {"quality": int(self._quality.value)}
         try:
             opts["max_side"] = int(self._maxside.text) if \
@@ -408,20 +430,26 @@ class FileConverterScreen(Screen):
         self._bar.value = 0
         self._results.text = ""
         self._status.text = "Starting..."
-        threading.Thread(target=self._worker,
-                         args=(files, target, out_dir, opts),
+        threading.Thread(target=self._worker, args=(plan, out_dir, opts),
                          daemon=True).start()
 
-    def _worker(self, files, target, out_dir, opts):
-        ok, bad, lines = 0, 0, []
-        total = len(files)
-        for i, src in enumerate(files):
+    def _worker(self, plan, out_dir, opts):
+        ok, bad, skipped, lines = 0, 0, 0, []
+        total = len(plan)
+        for i, (src, target) in enumerate(plan):
             if self._cancel.is_set():
                 lines.append("Cancelled.")
                 break
             name = os.path.basename(src)
             Clock.schedule_once(
                 lambda dt, i=i, n=name: self._progress(i, total, n))
+            if target not in cc.targets_for(src):
+                skipped += 1
+                same = cc._norm(cc.ext_of(src)) == target
+                lines.append(f"SKIP  {name}: " + (
+                    f"already .{target}" if same else
+                    f"can't turn .{cc.ext_of(src)} into .{target}"))
+                continue
             try:
                 dst = cc.convert_file(src, out_dir, target, opts,
                                       cancel=self._cancel)
@@ -436,21 +464,22 @@ class FileConverterScreen(Screen):
                 bad += 1
                 lines.append(f"FAIL  {name}: {type(e).__name__}: {e}")
         Clock.schedule_once(
-            lambda dt: self._finished(ok, bad, lines, out_dir))
+            lambda dt: self._finished(ok, bad, skipped, lines, out_dir))
 
     def _progress(self, i, total, name):
         self._bar.value = 100.0 * i / max(total, 1)
         self._status.text = f"Converting {i + 1}/{total}: {name}"
 
-    def _finished(self, ok, bad, lines, out_dir):
+    def _finished(self, ok, bad, skipped, lines, out_dir):
         self._running = False
         self._stop.disabled = True
         self._bar.value = 100 if ok and not bad else self._bar.value
         self._status.text = (f"Done: {ok} converted"
                              + (f", {bad} failed" if bad else "")
+                             + (f", {skipped} skipped" if skipped else "")
                              + (f".  Saved in {out_dir}" if ok else ""))
         self._results.text = "\n".join(lines)
-        self._on_target()
+        self._update_controls()
 
     def on_leave(self, *a):
         # leaving mid-conversion lets it finish in the background; nothing to
