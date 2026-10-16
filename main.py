@@ -51,7 +51,12 @@ if len(sys.argv) > 1 and sys.argv[1] == "--daemon":
     sys.exit(core.daemon.run())
 
 from kivy.config import Config
-Config.set("input", "mouse", "mouse,disable_multitouch")
+# disable_on_activity: Android's SDL feeds every tap twice (a real finger touch
+# AND a synthesised mouse touch, 1-4 ms apart; see Touch Test). Kivy's own
+# fix is to make the mouse provider ignore itself while a finger touch is
+# active, so the ghost never reaches any widget. (Real mouse input, e.g.
+# Samsung DeX, still works: no finger touch is active then.)
+Config.set("input", "mouse", "mouse,disable_multitouch,disable_on_activity")
 Config.set("kivy", "exit_on_escape", "0")
 
 from kivy.core.window import Window
