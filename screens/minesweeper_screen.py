@@ -29,6 +29,7 @@ from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.gridlayout import GridLayout
+from kivy.graphics import Color, Line, Triangle
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.togglebutton import ToggleButton
@@ -66,6 +67,40 @@ class _Cell(Button):
         self._game = game
         self._lp_ev = None
         self._lp_fired = False
+        self._flag_drawn = False
+        self.bind(pos=self._redraw_flag, size=self._redraw_flag)
+
+    def set_flag(self, on, color=None):
+        """Draw (or clear) a little flag: pole + triangle. No font needed."""
+        self._flag_drawn = bool(on)
+        self._flag_color = color or RED
+        self._redraw_flag()
+
+    def _redraw_flag(self, *a):
+        self.canvas.after.clear()
+        if not self._flag_drawn:
+            return
+        x, y, w, h = self.x, self.y, self.width, self.height
+        pole_x = x + w * 0.45
+        with self.canvas.after:
+            Color(*self._flag_color)
+            Triangle(points=[pole_x, y + h * 0.82,
+                             pole_x, y + h * 0.47,
+                             x + w * 0.78, y + h * 0.645])
+            Color(0.1, 0.1, 0.1, 1)
+            Line(points=[pole_x, y + h * 0.82, pole_x, y + h * 0.2],
+                 width=max(1.0, w * 0.04))
+            Line(points=[x + w * 0.3, y + h * 0.2, x + w * 0.62, y + h * 0.2],
+                 width=max(1.0, w * 0.05))
+
+    def on_touch_down(self, touch):
+        # desktop: right mouse button flags, no long-press needed
+        if (getattr(touch, "button", None) == "right"
+                and self.collide_point(*touch.pos)):
+            touch.grab(self)
+            self._game.cell_long_press(self.r, self.c)
+            return True
+        return super().on_touch_down(touch)
 
     def on_press(self):
         self._lp_fired = False
@@ -86,6 +121,10 @@ class _Cell(Button):
             self._game.cell_tap(self.r, self.c)
 
     def on_touch_up(self, touch):
+        if (touch.grab_current is self
+                and getattr(touch, "button", None) == "right"):
+            touch.ungrab(self)
+            return True
         # finger slid off the cell: don't let a pending long-press fire
         if touch.grab_current is self or self.collide_point(*touch.pos):
             pass
@@ -296,8 +335,8 @@ class MinesweeperScreen(Screen):
             return
         self.flagged[r][c] = not self.flagged[r][c]
         b = self._cells[r][c]
-        b.text = "F" if self.flagged[r][c] else ""
-        b.color = RED if self.flagged[r][c] else (0, 0, 0, 1)
+        b.text = ""
+        b.set_flag(self.flagged[r][c])
         self._update_mine_counter()
 
     def _chord(self, r, c):
@@ -347,6 +386,7 @@ class MinesweeperScreen(Screen):
                     b.color = (0, 0, 0, 1)
                     b.background_color = (0.75, 0.55, 0.55, 1)
                 elif self.flagged[r][c] and self.board[r][c] != -1:
+                    b.set_flag(False)
                     b.text = "X"                    # a flag that was wrong
                     b.color = RED
         hit = self._cells[hit_r][hit_c]
@@ -366,8 +406,8 @@ class MinesweeperScreen(Screen):
             for c in range(self.cols):
                 if self.board[r][c] == -1:
                     self.flagged[r][c] = True
-                    self._cells[r][c].text = "F"
-                    self._cells[r][c].color = RED
+                    self._cells[r][c].text = ""
+                    self._cells[r][c].set_flag(True)
         self._update_mine_counter()
         t = int(self._elapsed)
         best = self._best_time()
