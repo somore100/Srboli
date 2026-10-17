@@ -108,9 +108,10 @@ def unavailable_reason(path, target):
     k = kind_of(path)
     if k in ("audio", "video"):
         if _on_android():
-            return ("Audio and video conversion needs ffmpeg, which "
-                    "isn't available inside the Android app. Use the "
-                    "desktop version for these.")
+            return ("Audio and video conversion isn't available on Android: "
+                    "due to Android limitations it's not possible to bundle "
+                    "ffmpeg inside the app. Use the desktop version for "
+                    "these.")
         if not find_ffmpeg():
             return ("ffmpeg is not installed. Install it (Pop!OS/Ubuntu: "
                     "sudo apt install ffmpeg) and try again.")
