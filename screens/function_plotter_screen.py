@@ -21,11 +21,13 @@ import datetime
 import math
 import operator
 import os
+import re
 
 from kivy.clock import Clock
 from kivy.core.text import Label as CoreLabel
 from kivy.core.window import Window
-from kivy.graphics import Color, Line, Mesh, Rectangle
+from kivy.graphics import (Color, Line, Mesh, Rectangle, ScissorPop,
+                           ScissorPush)
 from kivy.metrics import dp, sp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -341,7 +343,7 @@ def thin_stroke(stroke, xspan, yspan, step=0.012):
     return out
 
 
-def smooth_path(pts, xspan=1.0, yspan=1.0, per_seg=8):
+def smooth_path(pts, xspan=1.0, yspan=1.0, per_seg=8, closed=False):
     """Centripetal Catmull-Rom through ORDERED points (no sorting, no
     overshoot loops). Works in view-normalised units so a wide, flat view
     doesn't distort it. Returns a dense list of (x, y)."""
@@ -354,8 +356,11 @@ def smooth_path(pts, xspan=1.0, yspan=1.0, per_seg=8):
             P.append(q)
     if len(P) < 3:
         return [(x * xspan, y * yspan) for x, y in P]
-    ext = ([(2 * P[0][0] - P[1][0], 2 * P[0][1] - P[1][1])] + P +
-           [(2 * P[-1][0] - P[-2][0], 2 * P[-1][1] - P[-2][1])])
+    if closed:
+        ext = [P[-1]] + P + [P[0], P[1]]
+    else:
+        ext = ([(2 * P[0][0] - P[1][0], 2 * P[0][1] - P[1][1])] + P +
+               [(2 * P[-1][0] - P[-2][0], 2 * P[-1][1] - P[-2][1])])
 
     def lerp(a, b, ta, tb, t):
         d = tb - ta
@@ -367,6 +372,8 @@ def smooth_path(pts, xspan=1.0, yspan=1.0, per_seg=8):
     out = [P[0]]
     for i in range(1, len(ext) - 2):
         p0, p1, p2, p3 = ext[i - 1], ext[i], ext[i + 1], ext[i + 2]
+        if closed and p1 == p2:
+            continue
         t0 = 0.0
         t1 = t0 + max(1e-6, math.hypot(p1[0] - p0[0], p1[1] - p0[1])) ** 0.5
         t2 = t1 + max(1e-6, math.hypot(p2[0] - p1[0], p2[1] - p1[1])) ** 0.5
@@ -380,6 +387,25 @@ def smooth_path(pts, xspan=1.0, yspan=1.0, per_seg=8):
             b2 = lerp(a2, a3, t1, t3, t)
             out.append(lerp(b1, b2, t1, t2, t))
     return [(x * xspan, y * yspan) for x, y in out]
+
+
+def densify(pts, per_seg=12, closed=False):
+    """Straight-line interpolation: `per_seg` points per segment."""
+    P = list(pts)
+    if closed and len(P) >= 2 and P[0] != P[-1]:
+        P.append(P[0])
+    if len(P) < 2:
+        return P
+    out = [P[0]]
+    for a, b in zip(P, P[1:]):
+        for k in range(1, per_seg + 1):
+            t = k / per_seg
+            out.append((a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t))
+    return out
+
+
+def poly_var(expr, var="t"):
+    return re.sub(r"\*x\b", "*" + var, expr)
 
 
 def stroke_is_function(stroke, tol=0.03):
@@ -595,6 +621,9 @@ class GraphCanvas(Widget):
         if self.width <= 1 or self.height <= 1:
             return
         with self.canvas:
+            ScissorPush(x=int(self.x), y=int(self.y),
+                        width=max(1, int(self.width)),
+                        height=max(1, int(self.height)))
             Color(0.07, 0.08, 0.11, 1)
             Rectangle(pos=self.pos, size=self.size)
             self._draw_grid()
@@ -646,17 +675,18 @@ class GraphCanvas(Widget):
                 gx, gy = self.warp_visual["grab"]
                 r = self.warp_visual["radius"]
                 pts = []
+                ay = self.warp_visual.get("ay", 1.0)
                 for i in range(72):
                     a = 2 * math.pi * i / 72
                     pts.extend(self._w2s(gx + r * math.cos(a),
-                                         gy + r * math.sin(a)))
+                                         gy + r * ay * math.sin(a)))
                 pts.extend(pts[:2])
                 Color(1.0, 0.62, 0.22, 0.28)
                 Line(points=pts, width=dp(1.2))
                 pct = self.warp_visual.get("pct")
                 if pct is not None:
                     cx_px, _ = self._w2s(gx, gy)
-                    _, py_above = self._w2s(gx, gy + r)
+                    _, py_above = self._w2s(gx, gy + r * ay)
                     self._text(f"r = {pct}%",
                                cx_px + 6, py_above + 4,
                                (1.0, 0.75, 0.35, 1), 11)
@@ -670,6 +700,8 @@ class GraphCanvas(Widget):
                 Line(circle=(px, py, dp(6)), width=dp(1.4))
                 Color(1, 0.9, 0.3, 1)
                 Line(circle=(px, py, dp(2)), width=dp(1.0))
+
+            ScissorPop()
 
     def _nice_step(self, span):
         if span <= 0:
@@ -1097,7 +1129,9 @@ class GraphCanvas(Widget):
             return True
 
         # pan mode: try warp before falling through to pan
-        hit_i = self._hit_test_curve(touch.pos)
+        # (drag mode never warps: it only moves the canvas)
+        hit_i = (None if self.mode == "drag"
+                 else self._hit_test_curve(touch.pos))
         if hit_i is not None and self.on_warp_start:
             wx, wy = self._s2w(*touch.pos)
             if self.on_warp_start(hit_i, (wx, wy)):
@@ -1420,7 +1454,7 @@ class SplineRow(BoxLayout):
     """Non-editable row for a pencil-drawn spline."""
     kind = "spline"
 
-    def __init__(self, color, points, on_delete, **kw):
+    def __init__(self, color, points, on_delete, on_expr=None, **kw):
         super().__init__(orientation="horizontal", size_hint_y=None,
                          height=dp(46), spacing=dp(4), **kw)
         self.color = color
@@ -1433,6 +1467,11 @@ class SplineRow(BoxLayout):
         self.add_widget(Label(text=f"{len(points)} pts",
                               font_size=12,
                               color=(0.7, 0.75, 0.8, 1)))
+        if on_expr:
+            eb = Button(text="Expr", size_hint_x=None, width=dp(52),
+                        font_size=12, background_color=(0.25, 0.5, 0.35, 1))
+            eb.bind(on_release=lambda *a: on_expr(self))
+            self.add_widget(eb)
         self.add_widget(ColorDot(color))
 
         del_btn = Button(text="X", size_hint_x=None, width=dp(30),
@@ -1447,16 +1486,19 @@ class SplineRow(BoxLayout):
 
 
 class PathRow(BoxLayout):
-    """Free pencil curve: ordered points, loops and backtracking allowed."""
+    """Free curve: ordered points, loops and backtracking allowed.
+    smooth=True -> Catmull-Rom through the points; False -> straight lines."""
     kind = "path"
 
-    def __init__(self, color, points, on_delete, xspan=1.0, yspan=1.0, **kw):
+    def __init__(self, color, points, on_delete, xspan=1.0, yspan=1.0,
+                 smooth=True, closed=False, on_expr=None, **kw):
         super().__init__(orientation="horizontal", size_hint_y=None,
                          height=dp(46), spacing=dp(4), **kw)
         self.color = color
         self.points = list(points)
         self.xspan, self.yspan = xspan, yspan
-        self.dense = smooth_path(self.points, xspan, yspan)
+        self.smooth, self.closed = bool(smooth), bool(closed)
+        self.dense = self._make_dense()
 
         self.add_widget(Label(text="curve",
                               size_hint_x=None, width=dp(70),
@@ -1464,15 +1506,26 @@ class PathRow(BoxLayout):
         self.add_widget(Label(text=f"{len(points)} pts",
                               font_size=12,
                               color=(0.7, 0.75, 0.8, 1)))
+        if on_expr:
+            eb = Button(text="Expr", size_hint_x=None, width=dp(52),
+                        font_size=12, background_color=(0.25, 0.5, 0.35, 1))
+            eb.bind(on_release=lambda *a: on_expr(self))
+            self.add_widget(eb)
         self.add_widget(ColorDot(color))
         del_btn = Button(text="X", size_hint_x=None, width=dp(30),
                          font_size=13, background_color=(0.55, 0.12, 0.12, 1))
         del_btn.bind(on_release=lambda *a: on_delete(self))
         self.add_widget(del_btn)
 
+    def _make_dense(self):
+        if self.smooth:
+            return smooth_path(self.points, self.xspan, self.yspan,
+                               closed=self.closed and len(self.points) >= 3)
+        return densify(self.points, 1, self.closed)
+
     def set_points(self, points):
         self.points = list(points)
-        self.dense = smooth_path(self.points, self.xspan, self.yspan)
+        self.dense = self._make_dense()
 
     def get_entry(self):
         return {"kind": "path", "name": "curve", "mode": "path",
@@ -1588,6 +1641,7 @@ class FunctionPlotterScreen(Screen):
         tb.add_widget(b_view)
         for label, cb in (
             ("Clear pts", lambda *a: self.graph.clear_points()),
+            ("Connect", lambda *a: self._connect_points()),
             ("Fit poly", lambda *a: self._fit()),
             ("Fill", lambda *a: self._open_fill_popup()),
             ("PNG", lambda *a: self._export_png()),
@@ -1610,8 +1664,8 @@ class FunctionPlotterScreen(Screen):
         mode_bar.add_widget(b_undo)
         mode_bar.add_widget(b_redo)
         mode_bar.add_widget(b_hist)
-        for mode_name, label in (("pan", "Pan"), ("point", "Point"),
-                                 ("pencil", "Pencil")):
+        for mode_name, label in (("pan", "Pan"), ("drag", "Drag"),
+                                 ("point", "Point"), ("pencil", "Pencil")):
             b = ToggleButton(text=label, font_size=11, group="mode")
             if mode_name == "pan":
                 b.state = "down"
@@ -1677,16 +1731,32 @@ class FunctionPlotterScreen(Screen):
         return row
 
     def _add_spline_row(self, points):
-        row = SplineRow(self._next_color(), points, self._on_row_delete)
+        row = SplineRow(self._next_color(), points, self._on_row_delete,
+                        on_expr=self._row_to_expr)
         self._rows.append(row)
         self.rows_box.add_widget(row)
         self._sync()
 
-    def _add_path_row(self, points, xspan, yspan):
-        row = PathRow(self._next_color(), points, self._on_row_delete,
-                      xspan=xspan, yspan=yspan)
+    def _add_path_row(self, points, xspan, yspan, smooth=True, closed=False,
+                      color=None):
+        row = PathRow(color or self._next_color(), points,
+                      self._on_row_delete, xspan=xspan, yspan=yspan,
+                      smooth=smooth, closed=closed, on_expr=self._row_to_expr)
         self._rows.append(row)
         self.rows_box.add_widget(row)
+        self._sync()
+
+    def _replace_row(self, old, new):
+        """Swap a row for another one in the same list position."""
+        if old not in self._rows:
+            self._rows.append(new)
+            self.rows_box.add_widget(new)
+        else:
+            i = self._rows.index(old)
+            self._rows[i] = new
+            pos = self.rows_box.children.index(old)
+            self.rows_box.remove_widget(old)
+            self.rows_box.add_widget(new, index=pos)
         self._sync()
 
     def _add_piecewise_row(self, pieces):
@@ -1731,7 +1801,8 @@ class FunctionPlotterScreen(Screen):
             elif row.kind == "path":
                 out.append({"kind": "path", "color": row.color,
                             "points": list(row.points),
-                            "xspan": row.xspan, "yspan": row.yspan})
+                            "xspan": row.xspan, "yspan": row.yspan,
+                            "smooth": row.smooth, "closed": row.closed})
             elif row.kind == "piecewise":
                 out.append({"kind": "piecewise",
                             "color": row.color,
@@ -1814,12 +1885,16 @@ class FunctionPlotterScreen(Screen):
             for r in snap["rows"]:
                 if r["kind"] == "spline":
                     row = SplineRow(r["color"], r["points"],
-                                    self._on_row_delete)
+                                    self._on_row_delete,
+                                    on_expr=self._row_to_expr)
                 elif r["kind"] == "path":
                     row = PathRow(r["color"], r["points"],
                                   self._on_row_delete,
                                   xspan=r.get("xspan", 1.0),
-                                  yspan=r.get("yspan", 1.0))
+                                  yspan=r.get("yspan", 1.0),
+                                  smooth=r.get("smooth", True),
+                                  closed=r.get("closed", False),
+                                  on_expr=self._row_to_expr)
                 elif r["kind"] == "piecewise":
                     row = PiecewiseRow(r["color"], r["pieces"],
                                        self._on_row_delete)
@@ -2204,12 +2279,15 @@ class FunctionPlotterScreen(Screen):
         if row.kind == "path":
             if len(row.dense) < 6:
                 return False
+            orig = list(row.dense) if row.smooth else densify(
+                row.points, 16, row.closed)
             self._warp = {
                 "row": row, "kind": "path",
-                "orig_points": list(row.dense),
+                "orig_points": orig,
                 "grab_world": world_xy,
                 "radius_world": radius_world,
                 "base_radius_world": radius_world,
+                "xs": g.x_max - g.x_min, "ys": g.y_max - g.y_min,
             }
             return True
 
@@ -2220,13 +2298,14 @@ class FunctionPlotterScreen(Screen):
                 "grab_world": world_xy,
                 "radius_world": radius_world,
                 "base_radius_world": radius_world,
+                "xs": g.x_max - g.x_min, "ys": g.y_max - g.y_min,
             }
             return True
 
         entry = getattr(row, "_entry", None)
         if not entry or not entry.get("fn"):
             return False
-        n = 80
+        n = 240
         pts = []
         for i in range(n):
             wx = g.x_min + (g.x_max - g.x_min) * i / (n - 1)
@@ -2245,6 +2324,7 @@ class FunctionPlotterScreen(Screen):
             "grab_world": world_xy,
             "radius_world": radius_world,
             "base_radius_world": radius_world,
+            "xs": g.x_max - g.x_min, "ys": g.y_max - g.y_min,
         }
         return True
 
@@ -2256,17 +2336,24 @@ class FunctionPlotterScreen(Screen):
         gx, gy = w["grab_world"]
         dx = world_xy[0] - gx
         dy = world_xy[1] - gy
-        r2 = max(1e-9, w["radius_world"] ** 2)
+        # The falloff is a circle ON SCREEN (distances measured relative
+        # to the view), and it grows when you drag far, so a long pull
+        # makes a wide smooth bend instead of a thin needle.
+        xs_, ys_ = w.get("xs", 1.0), w.get("ys", 1.0)
+        ay = ys_ / xs_
+        pull = math.hypot(dx, dy / ay)
+        r_eff = max(w["radius_world"], 0.5 * pull)
+        r2 = max(1e-9, r_eff ** 2)
         new_pts = []
         for px, py in w["orig_points"]:
-            d2 = (px - gx) ** 2 + (py - gy) ** 2
+            d2 = (px - gx) ** 2 + ((py - gy) / ay) ** 2
             wgt = math.exp(-(d2 / r2))
             new_pts.append((px + dx * wgt, py + dy * wgt))
         w["current_points"] = new_pts
         self.graph.warp_preview = new_pts
-        pct = int(100 * w["radius_world"] / w["base_radius_world"])
+        pct = int(100 * r_eff / w["base_radius_world"])
         self.graph.warp_visual = {"grab": (gx, gy),
-                                  "radius": w["radius_world"],
+                                  "radius": r_eff, "ay": ay,
                                   "pct": pct}
         self.fit_lbl.text = (f"Warp \u2014 falloff r = {pct}% "
                              f"(2-finger or wheel)")
@@ -2303,27 +2390,49 @@ class FunctionPlotterScreen(Screen):
             return
 
         if w["kind"] == "spline":
-            w["row"].points = list(new_pts)
-            w["row"]._fn = make_spline(new_pts)
-            self._sync()
-            self._commit_undo()
-            self.fit_lbl.text = "Warped -> spline"
+            if stroke_is_function(new_pts, 0.001):
+                w["row"].points = list(new_pts)
+                w["row"]._fn = make_spline(new_pts)
+                self._sync()
+                self._commit_undo()
+                self.fit_lbl.text = "Warped -> spline"
+            else:
+                # the warp folded the curve: a function can't hold that,
+                # so it becomes a free curve (same colour, same place)
+                g = self.graph
+                xs_, ys_ = g.x_max - g.x_min, g.y_max - g.y_min
+                pr = PathRow(w["row"].color,
+                             thin_stroke(new_pts, xs_, ys_, 0.008),
+                             self._on_row_delete, xspan=xs_, yspan=ys_,
+                             on_expr=self._row_to_expr)
+                self._replace_row(w["row"], pr)
+                self.fit_lbl.text = "Warped -> free curve (it folded)"
             return
 
         self._expr_warp_commit_popup(w, new_pts)
 
     def _expr_warp_commit_popup(self, warp, new_pts):
-        info = Label(text="Keep warped curve as:", size_hint_y=None,
-                     height=dp(22), font_size=12)
-        spline_btn = Button(text="Spline (exact)", size_hint_y=None,
-                            height=dp(44), font_size=13,
-                            background_color=(0.2, 0.45, 0.7, 1))
+        g = self.graph
+        xs_, ys_ = g.x_max - g.x_min, g.y_max - g.y_min
+        func_like = stroke_is_function(new_pts, 0.001)
+        txt = ("Keep warped curve as:" if func_like else
+               "The curve folded, so only Free curve can hold it:")
+        info = Label(text=txt, size_hint_y=None, height=dp(30),
+                     font_size=12)
+        free_btn = Button(text="Free curve (exact shape)",
+                          size_hint_y=None, height=dp(44), font_size=13,
+                          background_color=(0.2, 0.45, 0.7, 1))
+        spline_btn = Button(text="Function spline (y of x)",
+                            size_hint_y=None, height=dp(44), font_size=13,
+                            background_color=(0.3, 0.4, 0.55, 1),
+                            disabled=not func_like)
         deg_sp = Spinner(text="6",
                          values=("2", "3", "4", "5", "6", "7", "8", "10", "12"),
                          size_hint_x=None, width=dp(60), font_size=13)
         poly_btn = Button(text="Polynomial", size_hint_y=None,
                           height=dp(44), font_size=13,
-                          background_color=(0.25, 0.55, 0.3, 1))
+                          background_color=(0.25, 0.55, 0.3, 1),
+                          disabled=not func_like)
         poly_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
         poly_row.add_widget(Label(text="deg", size_hint_x=None,
                                   width=dp(34), font_size=12))
@@ -2335,10 +2444,19 @@ class FunctionPlotterScreen(Screen):
 
         layout = BoxLayout(orientation="vertical", spacing=dp(6),
                            padding=dp(8))
-        for wdg in (info, spline_btn, poly_row, cancel):
+        for wdg in (info, free_btn, spline_btn, poly_row, cancel):
             layout.add_widget(wdg)
         popup = Popup(title="Warped curve", content=layout,
-                      size_hint=(0.85, None), height=dp(250))
+                      size_hint=(0.85, None), height=dp(330))
+
+        def do_free(*a):
+            popup.dismiss()
+            pr = PathRow(warp["row"].color,
+                         thin_stroke(new_pts, xs_, ys_, 0.008),
+                         self._on_row_delete, xspan=xs_, yspan=ys_,
+                         on_expr=self._row_to_expr)
+            self._replace_row(warp["row"], pr)
+            self.fit_lbl.text = "Warped -> free curve"
 
         def do_spline(*a):
             popup.dismiss()
@@ -2359,9 +2477,144 @@ class FunctionPlotterScreen(Screen):
             popup.dismiss()
             self.graph._redraw()
 
+        free_btn.bind(on_release=do_free)
         spline_btn.bind(on_release=do_spline)
         poly_btn.bind(on_release=do_poly)
         cancel.bind(on_release=do_cancel)
+        popup.open()
+
+    # ── free curve / spline -> expression ──────────────────────────────
+
+    def _row_to_expr(self, row):
+        """Popup: write a free curve or spline as an editable formula."""
+        is_path = getattr(row, "kind", "") == "path"
+        info = Label(
+            text=("Fit x(t), y(t) polynomials (t from -1 to 1)."
+                  if is_path else "Fit y = polynomial in x."),
+            size_hint_y=None, height=dp(30), font_size=12)
+        deg_sp = Spinner(text="8" if is_path else "6",
+                         values=("3", "4", "5", "6", "8", "10", "12"),
+                         size_hint_x=None, width=dp(60), font_size=13)
+        go = Button(text="Make formula", font_size=13,
+                    background_color=(0.25, 0.55, 0.3, 1))
+        line = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
+        line.add_widget(Label(text="deg", size_hint_x=None, width=dp(34),
+                              font_size=12))
+        line.add_widget(deg_sp)
+        line.add_widget(go)
+        cancel = Button(text="Cancel", size_hint_y=None, height=dp(38),
+                        font_size=12)
+        layout = BoxLayout(orientation="vertical", spacing=dp(6),
+                           padding=dp(8))
+        for wdg in (info, line, cancel):
+            layout.add_widget(wdg)
+        popup = Popup(title="Curve to formula", content=layout,
+                      size_hint=(0.85, None), height=dp(210))
+
+        def do_make(*a):
+            popup.dismiss()
+            try:
+                deg = int(deg_sp.text)
+            except ValueError:
+                deg = 6
+            if is_path:
+                self._path_to_param_row(row, deg)
+            else:
+                coefs, d = self._fit_poly_to_points(row.points, str(deg))
+                if coefs is None:
+                    self.fit_lbl.text = "Could not fit a formula."
+                    return
+                nr = self._add_row(poly_to_expr(coefs))
+                nr.lhs.text = "f(x)"
+                self.fit_lbl.text = f"Spline -> poly deg {d}"
+
+        go.bind(on_release=do_make)
+        cancel.bind(on_release=lambda *a: popup.dismiss())
+        popup.open()
+
+    def _path_to_param_row(self, row, deg):
+        pts = densify(row.dense, 1) if len(row.dense) >= 2 else []
+        if len(pts) < 4:
+            self.fit_lbl.text = "Curve too short for a formula."
+            return
+        # arc-length parameter mapped to [-1, 1]
+        L = [0.0]
+        for a, b in zip(pts, pts[1:]):
+            L.append(L[-1] + math.hypot((b[0] - a[0]) / (row.xspan or 1),
+                                        (b[1] - a[1]) / (row.yspan or 1)))
+        total = L[-1] or 1.0
+        ts = [2.0 * v / total - 1.0 for v in L]
+        step = max(1, len(ts) // 300)
+        ts, pts = ts[::step], pts[::step]
+        deg = max(1, min(deg, len(ts) - 1))
+        cx = poly_fit(ts, [p[0] for p in pts], deg)
+        cy = poly_fit(ts, [p[1] for p in pts], deg)
+        if cx is None or cy is None:
+            self.fit_lbl.text = "Could not fit a formula."
+            return
+
+        def ev(c, t):
+            r = 0.0
+            for k in range(len(c) - 1, -1, -1):
+                r = r * t + c[k]
+            return r
+        err = max(math.hypot((ev(cx, t) - p[0]) / (row.xspan or 1),
+                             (ev(cy, t) - p[1]) / (row.yspan or 1))
+                  for t, p in zip(ts, pts))
+        nr = self._add_row("")
+        nr.mode_sp.text = "x,y(t)"
+        nr.lhs.text = "c(t)"
+        nr.rhs.text = poly_var(poly_to_expr(cx))
+        nr.rhs2.text = poly_var(poly_to_expr(cy))
+        nr.range_in.text = "-1, 1"
+        self._on_row_change(nr)
+        warn = ("" if err < 0.03 else "  (rough: try a higher degree)")
+        self.fit_lbl.text = (f"Curve -> x(t), y(t) deg {deg}, "
+                             f"max error {err * 100:.1f}% of view{warn}")
+
+    # ── connect points ─────────────────────────────────────────────────
+
+    def _connect_points(self):
+        pts = list(self.graph.points)
+        if len(pts) < 2:
+            self.fit_lbl.text = "Place at least 2 points first (Point mode)."
+            return
+        g = self.graph
+        xs_, ys_ = g.x_max - g.x_min, g.y_max - g.y_min
+        info = Label(text=f"Connect {len(pts)} points in the order placed:",
+                     size_hint_y=None, height=dp(30), font_size=12)
+        smooth_btn = Button(text="Smooth curve", size_hint_y=None,
+                            height=dp(44), font_size=13,
+                            background_color=(0.2, 0.45, 0.7, 1),
+                            disabled=len(pts) < 3)
+        line_btn = Button(text="Straight lines", size_hint_y=None,
+                          height=dp(44), font_size=13,
+                          background_color=(0.25, 0.55, 0.3, 1))
+        close_tb = ToggleButton(text="Close the loop", size_hint_y=None,
+                                height=dp(40), font_size=12,
+                                disabled=len(pts) < 3)
+        cancel = Button(text="Cancel", size_hint_y=None, height=dp(38),
+                        font_size=12)
+        layout = BoxLayout(orientation="vertical", spacing=dp(6),
+                           padding=dp(8))
+        for wdg in (info, smooth_btn, line_btn, close_tb, cancel):
+            layout.add_widget(wdg)
+        popup = Popup(title="Connect points", content=layout,
+                      size_hint=(0.85, None), height=dp(320))
+
+        def make(smooth):
+            popup.dismiss()
+            g.points = []
+            g.fit = None
+            self._add_path_row(pts, xs_, ys_, smooth=smooth,
+                               closed=(close_tb.state == "down"))
+            g._redraw()
+            self.fit_lbl.text = ("Connected: " +
+                                 ("smooth curve" if smooth else "lines"))
+
+        smooth_btn.bind(on_release=lambda *a: make(True))
+        line_btn.bind(on_release=lambda *a: make(False))
+        cancel.bind(on_release=lambda *a: popup.dismiss())
         popup.open()
 
     # ── fill between curves ────────────────────────────────────────────
@@ -2603,7 +2856,10 @@ class FunctionPlotterScreen(Screen):
             "• x,y(t) — parametric, range lo, hi\n"
             "• r(θ) — polar, range lo, hi\n\n"
             "[b]Controls[/b]\n"
-            "• Drag on the graph → pan\n"
+            "• Drag on empty graph → pan\n"
+            "• Drag mode: one finger always moves the canvas, never warps\n"
+            "• Connect: join placed points into a smooth curve or lines\n"
+            "• Expr (on a curve row): turn it into an editable formula\n"
             "• Mouse wheel → zoom at cursor\n"
             "• Pan mode: grab a curve to warp it; pinch or wheel "
             "to widen/narrow the falloff\n"
