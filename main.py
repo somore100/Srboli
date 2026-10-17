@@ -1,6 +1,14 @@
 # main.py — Srboli (version: core/version.py)
 import sys, os
+# Helper modes (--cover, --cover-cmd, --daemon, --overlay) must not touch Kivy
+# before their own dispatch below: Kivy parses sys.argv on import and aborts
+# on flags it doesn't know. The boot log imports Kivy indirectly, so it only
+# runs for a normal app start.
+_HELPER_MODE = len(sys.argv) > 1 and sys.argv[1] in (
+    "--cover", "--cover-cmd", "--daemon", "--overlay")
 try:
+    if _HELPER_MODE:
+        raise ImportError("helper mode: no boot log")
     import core.bootlog as _bl
     _bl.log('main.py imported')
 except Exception:
