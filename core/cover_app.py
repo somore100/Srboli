@@ -218,7 +218,8 @@ class ControlServer:
             elif cmd == "status":
                 reply = "ok " + self._status()
             elif cmd in ("toggle", "show", "hide", "blackout", "add_box",
-                         "lock", "reload", "quit", "toggle_box"):
+                         "lock", "reload", "quit", "toggle_box",
+                         "delete_box"):
                 self._post((cmd, arg))
                 reply = "ok"
             else:
@@ -257,8 +258,7 @@ class Box:
         w.bind("<ButtonPress-1>", self._press)
         w.bind("<B1-Motion>", self._motion)
         w.bind("<ButtonRelease-1>", self._release)
-        w.bind("<ButtonPress-3>", lambda e: self.app.set_box(self.cfg["id"],
-                                                             False))
+        w.bind("<ButtonPress-3>", self._delete)
         w.bind("<Motion>", self._hover)
         return w
 
@@ -319,6 +319,11 @@ class Box:
         self.wins = []
 
     # ── mouse: drag to move, bottom-right corner to resize (solid) ──
+    def _delete(self, e):
+        # deferred: the box's own windows are destroyed by the rebuild
+        bid = self.cfg["id"]
+        self.app.root.after(0, lambda: self.app.delete_box(bid))
+
     def _in_grip(self, e):
         c = self.cfg
         return (c["style"] == "solid"
@@ -423,6 +428,19 @@ class CoverApp:
         b = self.boxes.get(bid)
         if b:
             self.set_box(bid, not b.visible)
+
+    def delete_box(self, bid):
+        try:
+            cfg = cc.load_config()
+            cfg["boxes"] = [b for b in cfg["boxes"] if b["id"] != bid]
+            cc.save_config(cfg)
+            self._own_mtime = cc.config_mtime()
+            self._seen_mtime = self._own_mtime
+            self.cfg = cc.load_config()
+            self.override.pop(bid, None)
+            self.rebuild()
+        except Exception as e:
+            _log(f"delete_box failed: {e}")
 
     def set_all(self, on):
         self.shown = on
@@ -559,6 +577,8 @@ class CoverApp:
             self.set_all(False)
         elif cmd == "toggle_box":
             self.toggle_box(arg)
+        elif cmd == "delete_box":
+            self.delete_box(arg)
         elif cmd == "blackout":
             self.toggle_blackout()
         elif cmd == "add_box":
