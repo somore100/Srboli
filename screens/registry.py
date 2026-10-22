@@ -37,6 +37,7 @@ SCREENS = [
     ("minesweeper",    "screens.minesweeper_screen",      "MinesweeperScreen"),
     ("touch_test",     "screens.touch_test_screen",       "TouchTestScreen"),
     ("converter",      "screens.file_converter_screen",   "FileConverterScreen"),
+    ("learn",          "screens.learn_screen",            "LearnScreen"),
 ]
 
 LABELS = {
@@ -66,6 +67,7 @@ LABELS = {
     "minesweeper":    "Minesweeper",
     "touch_test":     "Touch Test",
     "converter":      "File Converter",
+    "learn":          "Learn (AI courses)",
 }
 
 
