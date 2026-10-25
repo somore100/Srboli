@@ -2880,5 +2880,11 @@ class FunctionPlotterScreen(Screen):
         lbl.bind(texture_size=lambda *a: setattr(
             lbl, "height", lbl.texture_size[1] + dp(16)))
         sv = ScrollView()
+        # desktop: dragging text must not drag the page (wheel/bar still
+        # scroll); on a phone dragging is how you scroll, so keep it
+        from kivy.utils import platform as _plat
+        if _plat != "android":
+            sv.scroll_type = ["bars"]
+            sv.bar_width = dp(10)
         sv.add_widget(lbl)
         Popup(title="Help", content=sv, size_hint=(0.9, 0.85)).open()

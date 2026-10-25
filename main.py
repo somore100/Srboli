@@ -64,7 +64,19 @@ from kivy.config import Config
 # fix is to make the mouse provider ignore itself while a finger touch is
 # active, so the ghost never reaches any widget. (Real mouse input, e.g.
 # Samsung DeX, still works: no finger touch is active then.)
-Config.set("input", "mouse", "mouse,disable_multitouch,disable_on_activity")
+_ON_ANDROID = "ANDROID_ARGUMENT" in os.environ or "ANDROID_STORAGE" in os.environ
+if _ON_ANDROID:
+    Config.set("input", "mouse", "mouse,disable_multitouch,disable_on_activity")
+else:
+    # Desktop: SDL already delivers real touchscreens, and has no ghost taps.
+    # With disable_on_activity the mouse is ignored while ANY touch is
+    # "active", and Kivy's raw /dev/input reader (the [MTD] lines in the log)
+    # can leave one stuck (touchpad / touchscreen), which froze all clicks.
+    Config.set("input", "mouse", "mouse,disable_multitouch")
+    try:
+        Config.remove_option("input", "hid_%(name)s")
+    except Exception:
+        pass
 Config.set("kivy", "exit_on_escape", "0")
 
 from kivy.core.window import Window
@@ -407,7 +419,15 @@ def ensure_screen_loaded(sm, route):
         return True
     for r, mod, cls_name in SCREENS:
         if r == route:
+            import time as _t
+            _t0 = _t.monotonic()
             sm.add_widget(try_import(mod, cls_name)(name=route))
+            try:
+                import core.advlog as _al
+                _al.did(f"built screen {route} in {_t.monotonic() - _t0:.2f}s",
+                        "build")
+            except Exception:
+                pass
             return True
     return False
 
@@ -577,21 +597,39 @@ class SrboliApp(App):
                 sm.add_widget(try_import(mod, cls_name)(name=route))
         sm.current = "dashboard"
 
+        try:
+            import core.advlog as _advlog
+            _advlog.install(Window, sm)
+            _advlog.set_enabled(settings_cfg.get("advanced_logging", False))
+        except Exception as _e:
+            print(f"advanced logging unavailable: {_e}")
+
         # Show the dashboard first, then build the remaining screens one at
         # a time in idle time (Kivy widgets must be built on the main thread,
         # so this is spread over frames rather than done in one long freeze).
         # Opening a screen that isn't built yet still builds it on demand.
         if _bl and _bl.flag("Srboli_safe_mode"):
             _bl.log("safe mode: background preload skipped")
-        elif lazy and settings_cfg.get("preload_bg", True):
+        elif lazy and settings_cfg.get("preload_bg", False):
             from kivy.clock import Clock as _PClock
             _pending = [r for r, _m, _c in SCREENS]
+            _last_input = [_PClock.get_time()]
+
+            def _note_input(*a):
+                _last_input[0] = _PClock.get_time()
+            Window.bind(on_touch_down=_note_input, on_touch_move=_note_input,
+                        on_touch_up=_note_input, on_key_down=_note_input,
+                        on_mouse_pos=_note_input)
 
             def _preload_step(dt):
                 while _pending and sm.has_screen(_pending[0]):
                     _pending.pop(0)
                 if not _pending:
                     return False
+                # Building a screen blocks the UI for as long as it takes, so
+                # only do it when the user has been idle for a moment.
+                if _PClock.get_time() - _last_input[0] < 2.0:
+                    return True
                 route = _pending.pop(0)
                 if _bl:
                     _bl.log(f"preload start {route}")
@@ -606,7 +644,7 @@ class SrboliApp(App):
                 return bool(_pending)
 
             _PClock.schedule_once(
-                lambda dt: _PClock.schedule_interval(_preload_step, 0.25), 1.5)
+                lambda dt: _PClock.schedule_interval(_preload_step, 0.5), 3.0)
 
         # Ask for real filesystem access (Fast Transfer, Gallery Sorter,
         # File Sorter, and the data-dir picker all need this). No-op off

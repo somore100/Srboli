@@ -164,10 +164,11 @@ class LearnScreen(Screen):
                           size_hint_y=None, height=dp(40))
         box.add_widget(topic)
         box.add_widget(level)
-        sv = ScrollView()
-        out = _wrap_label("", 11, color=(0.8, 0.8, 0.8, 1))
-        sv.add_widget(out)
-        box.add_widget(sv)
+        # read-only TextInput: stays put, drag selects text, scrolls inside
+        out = TextInput(text="", readonly=True, font_size=12,
+                        background_color=(0.12, 0.12, 0.14, 1),
+                        foreground_color=(0.85, 0.85, 0.85, 1))
+        box.add_widget(out)
 
         def refresh(*a):
             out.text = L.build_prompt(topic.text, level.text)

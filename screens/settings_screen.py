@@ -62,7 +62,14 @@ def load_settings():
     data["order"]      = order
     data["hidden"]     = hidden
     data["lazy_load"]  = bool(data.get("lazy_load", True))
-    data["preload_bg"] = bool(data.get("preload_bg", True))
+    # Background preload froze the UI while heavy screens were built, so it
+    # is off by default; saved files from before that change are switched
+    # off once ("preload_v2"), after which the user's own choice sticks.
+    if not data.get("preload_v2"):
+        data["preload_bg"] = False
+        data["preload_v2"] = True
+    data["preload_bg"] = bool(data.get("preload_bg", False))
+    data["advanced_logging"] = bool(data.get("advanced_logging", False))
     return data
 
 
@@ -198,18 +205,35 @@ class SettingsScreen(Screen):
         root.add_widget(lazy_row)
 
         pre_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=8)
-        self._pre_cb = CheckBox(active=self._cfg.get("preload_bg", True),
+        self._pre_cb = CheckBox(active=self._cfg.get("preload_bg", False),
                                 size_hint=(None, None), size=(dp(24), dp(24)))
         self._pre_cb.bind(active=self._toggle_preload)
         pre_row.add_widget(self._pre_cb)
         pre_lbl = Label(
             text="Preload screens in the background (show the dashboard "
                  "first, then build the other screens one by one while "
-                 "idle). Needs lazy-loading on. Applies after a restart.",
+                 "idle, and only while you are not touching the app). May stutter "
+                 "on slow devices. Needs lazy-loading on. Applies after a "
+                 "restart.",
             font_size=11, halign="left", valign="middle")
         pre_lbl.bind(size=pre_lbl.setter("text_size"))
         pre_row.add_widget(pre_lbl)
         root.add_widget(pre_row)
+
+        adv_row = BoxLayout(size_hint_y=None, height=dp(56), spacing=8)
+        self._adv_cb = CheckBox(active=self._cfg.get("advanced_logging", False),
+                                size_hint=(None, None), size=(dp(24), dp(24)))
+        self._adv_cb.bind(active=self._toggle_adv_log)
+        adv_row.add_widget(self._adv_cb)
+        adv_lbl = Label(
+            text="Advanced logging (diagnostics): write what the app "
+                 "receives (touches, clicks, keys; typed letters are not "
+                 "recorded) and what it does (screens, builds, stalls) to "
+                 "a log file. Applies immediately.",
+            font_size=11, halign="left", valign="middle")
+        adv_lbl.bind(size=adv_lbl.setter("text_size"))
+        adv_row.add_widget(adv_lbl)
+        root.add_widget(adv_row)
 
         # ── background service ──────────────────────────────────────────
         root.add_widget(Label(text="[b]Background service[/b]", markup=True,
@@ -346,6 +370,18 @@ class SettingsScreen(Screen):
         self._status.text = ("Lazy loading ON — restart Srboli to apply."
                              if active else
                              "Lazy loading OFF — restart Srboli to apply.")
+
+    def _toggle_adv_log(self, inst, active):
+        self._cfg["advanced_logging"] = active
+        save_settings(self._cfg)
+        try:
+            import core.advlog as advlog
+            advlog.set_enabled(active)
+            where = advlog.log_path() or "(no writable folder)"
+        except Exception as e:
+            where = f"(failed: {e})"
+        self._status.text = ("Advanced logging ON: " + where if active
+                             else "Advanced logging OFF.")
 
     def _toggle_preload(self, inst, active):
         self._cfg["preload_bg"] = active
