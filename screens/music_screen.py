@@ -17,9 +17,10 @@ from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 from kivy.uix.filechooser import FileChooserIconView
 from kivy.uix.popup import Popup
-from kivy.uix.slider import Slider
 from kivy.clock import Clock
 from kivy.metrics import dp
+
+from core.seekbar import SeekBar
 
 try:
     import pygame
@@ -137,24 +138,29 @@ class MusicScreen(Screen):
             font_size=11, color=(0.5, 0.8, 1, 1))
         layout.add_widget(self._pl_badge)
 
-        # ── timeline ──
-        self.timeline = Slider(min=0, max=1, value=0,
-                               size_hint_y=None, height=dp(40))
-        self.timeline.bind(on_touch_up=self._on_slider_release)
+        # ── timeline: tap or drag anywhere on the bar; seeks on release ──
+        self.timeline = SeekBar()
+        self.timeline.bind(on_scrub=self._on_scrub, on_seek=self._on_seek)
         layout.add_widget(self.timeline)
-        self.time_label = Label(text="0:00 / 0:00", size_hint_y=None,
-                                height=dp(22), font_size=12)
-        layout.add_widget(self.time_label)
+        time_row = BoxLayout(size_hint_y=None, height=dp(20))
+        self.time_label = Label(text="0:00", font_size=12, halign="left")
+        self.dur_label = Label(text="0:00", font_size=12, halign="right")
+        for lbl in (self.time_label, self.dur_label):
+            lbl.bind(size=lbl.setter("text_size"))
+            time_row.add_widget(lbl)
+        layout.add_widget(time_row)
 
         # ── volume ──
-        vol_row = BoxLayout(size_hint_y=None, height=dp(32), spacing=6)
-        vol_row.add_widget(Label(text="", size_hint_x=None,
-                                 width=dp(28), font_size=16))
-        self.vol_slider = Slider(min=0, max=1, value=0.8)
-        self.vol_slider.bind(value=self._set_volume)
+        vol_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=6)
+        vol_row.add_widget(Label(text="Volume", size_hint_x=None,
+                                 width=dp(56), font_size=12))
+        self.vol_slider = SeekBar(height=dp(36), show_ticks=False)
+        self.vol_slider.value = 0.8
+        self.vol_slider.bind(on_scrub=self._set_volume, on_seek=self._set_volume)
         vol_row.add_widget(self.vol_slider)
-        vol_row.add_widget(Label(text="", size_hint_x=None,
-                                 width=dp(28), font_size=16))
+        self.vol_label = Label(text="80%", size_hint_x=None, width=dp(44),
+                               font_size=12)
+        vol_row.add_widget(self.vol_label)
         layout.add_widget(vol_row)
 
         # ── track list ──
@@ -421,6 +427,7 @@ class MusicScreen(Screen):
                             self.track_label.text = os.path.basename(track)
                             self.timeline.max = dur if dur and dur > 0 else 1.0
                             self.timeline.value = 0.0
+                            self.dur_label.text = self._fmt(self.timeline.max)
                             self._refresh_track_ui()
                             self._restart_update()
                         except Exception as e:
@@ -468,6 +475,7 @@ class MusicScreen(Screen):
         self.time_label.text = "Stopped"
 
     def _set_volume(self, slider, val):
+        self.vol_label.text = f"{int(round(val * 100))}%"
         if HAS_PYGAME:
             try:
                 pygame.mixer.music.set_volume(val)
@@ -499,15 +507,18 @@ class MusicScreen(Screen):
             pos_ms = pygame.mixer.music.get_pos()
             pos = (pos_ms / 1000.0) if pos_ms >= 0 else 0.0
             absolute = self._current_start_pos + pos
-            self.timeline.value = min(absolute, self.timeline.max)
-            self.time_label.text = (
-                f"{self._fmt(absolute)} / {self._fmt(self.timeline.max)}")
+            if not self.timeline.scrubbing:      # don't fight the finger
+                self.timeline.value = min(absolute, self.timeline.max)
+                self.time_label.text = self._fmt(absolute)
+            self.dur_label.text = self._fmt(self.timeline.max)
         except Exception:
             pass
 
-    def _on_slider_release(self, slider, touch):
-        if slider.collide_point(*touch.pos):
-            self._seek_to(slider.value)
+    def _on_scrub(self, bar, value):
+        self.time_label.text = self._fmt(value)
+
+    def _on_seek(self, bar, value):
+        self._seek_to(value)
 
     def _seek_relative(self, seconds):
         try:
@@ -529,6 +540,7 @@ class MusicScreen(Screen):
             pygame.mixer.music.set_volume(self.vol_slider.value)
             self._current_start_pos = position
             self.playing = True
+            self.paused = False
             self._restart_update()
         except Exception:
             pass
