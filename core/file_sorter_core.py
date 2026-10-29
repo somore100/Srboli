@@ -22,9 +22,10 @@
 import os
 import re
 import json
-import shutil
 import datetime
 import time
+
+from core import file_safety
 
 try:
     import send2trash
@@ -87,16 +88,15 @@ ACTION_TYPES = ["move", "copy", "rename", "delete"]
 ACTION_LABELS = {"move": "Move to folder", "copy": "Copy to folder",
                  "rename": "Rename", "delete": "Delete"}
 
-# A file is considered "still being written" (download/install in
-# progress) until its size stops changing across this many consecutive
-# polls, spaced this far apart. Apply waits this out rather than acting
-# on a partial/corrupt file - e.g. an .iso rule firing while the .iso is
-# still 8KB and downloading.
+# A file is only acted on once it looks finished - not empty, untouched for
+# SETTLE_SECONDS, no editor lock file, not open for writing by another program
+# (see core/file_safety.py for the whole list and the reasoning). A waiting
+# Apply looks again every STABLE_POLL_INTERVAL seconds.
+SETTLE_SECONDS = file_safety.SETTLE_SECONDS
 STABLE_POLL_INTERVAL = 1.0
-STABLE_CHECKS_REQUIRED = 3
-# Quick two-look check used only to flag likely-incomplete files in
-# Preview (cheap - doesn't block scanning).
-PREVIEW_QUICK_CHECK_GAP = 0.05
+# How long an interactive Apply waits for one file before skipping it (a file
+# an editor keeps open would otherwise block the whole run).
+APPLY_MAX_WAIT = 120.0
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp",
              ".tiff", ".tif"}
@@ -417,67 +417,21 @@ def _apply_rename_pattern(pattern, current_path, counter):
     return out
 
 
-def _is_locked_for_write(path):
-    """Best-effort check for another process holding the file open.
-    Reliable on Windows (exclusive-open fails while e.g. a browser or
-    installer still has the file open). On POSIX, locks aren't mandatory
-    so this mostly can't detect it - size-stability below is the real
-    signal there, this is just a bonus check when it happens to work."""
-    try:
-        f = open(path, "r+b")
-        f.close()
-        return False
-    except OSError:
-        return True
-    except Exception:
-        return False
+def wait_for_stable_file(path, log=None, stop_check=None, progress=None,
+                         poll_interval=STABLE_POLL_INTERVAL, settle=None,
+                         max_wait=None):
+    """Blocks (on a background thread - never call from the UI thread) until
+    `path` looks finished, so a rule doesn't act on a file that is still being
+    written. Returns True when it is ready, False if the file disappeared, the
+    user asked to stop (stop_check() true) or max_wait seconds passed.
 
-
-def wait_for_stable_file(path, log=None, stop_check=None,
-                          progress=None,
-                          poll_interval=STABLE_POLL_INTERVAL,
-                          checks_required=STABLE_CHECKS_REQUIRED):
-    """Blocks (on a background thread - never call from the UI thread)
-    until `path`'s size stops changing across `checks_required`
-    consecutive polls, so a rule doesn't act on a file that's still
-    downloading/installing/being written.
-
-    Returns True once the file looks finished, or False if the file
-    disappeared/got renamed out from under us, or the user requested a
-    stop while waiting (stop_check callable returning True).
-
-    `progress(elapsed_seconds, size)` is called on every poll so the
-    caller can push a live "still waiting..." status to the UI - this
-    can run for a long time (a large download) and the UI must not look
-    frozen while it does.
-    """
-    last_size = None
-    stable_count = 0
-    waited = 0.0
-    while True:
-        if stop_check and stop_check():
-            return False
-        try:
-            size = os.path.getsize(path)
-        except OSError:
-            return False  # vanished / renamed mid-wait
-
-        if size == last_size:
-            stable_count += 1
-        else:
-            if last_size is not None and log:
-                log(f"  still being written ({_fmt_size(size)} so far) - waiting...")
-            stable_count = 0
-        last_size = size
-
-        if progress:
-            progress(waited, size)
-
-        if stable_count >= checks_required and not _is_locked_for_write(path):
-            return True
-
-        time.sleep(poll_interval)
-        waited += poll_interval
+    `progress(elapsed_seconds, size)` is called on every poll so the caller can
+    show a live "still waiting..." status - this can run for a long time (a
+    large download) and the UI must not look frozen while it does."""
+    return file_safety.wait_until_ready(
+        path, settle=SETTLE_SECONDS if settle is None else settle,
+        poll_interval=poll_interval, max_wait=max_wait, log=log,
+        stop_check=stop_check, progress=progress)
 
 
 def apply_action(current_path, action, counter, log, confirm_delete=None):
@@ -494,7 +448,7 @@ def apply_action(current_path, action, counter, log, confirm_delete=None):
             dest_folder = action["dest"]
             os.makedirs(dest_folder, exist_ok=True)
             dest = _unique_path(dest_folder, os.path.basename(current_path))
-            shutil.move(current_path, dest)
+            file_safety.safe_move(current_path, dest)
             log(f"  moved -> {dest}")
             return dest, True
 
@@ -502,7 +456,7 @@ def apply_action(current_path, action, counter, log, confirm_delete=None):
             dest_folder = action["dest"]
             os.makedirs(dest_folder, exist_ok=True)
             dest = _unique_path(dest_folder, os.path.basename(current_path))
-            shutil.copy2(current_path, dest)
+            file_safety.safe_copy(current_path, dest)
             log(f"  copied -> {dest}")
             return current_path, True   # chain continues on the original
 

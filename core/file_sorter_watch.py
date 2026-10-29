@@ -7,7 +7,10 @@
 # Safety rules (nobody is at the screen to confirm anything):
 #   * delete rules only run if the rule has "Auto-delete" ticked; otherwise
 #     the delete is skipped.
-#   * files are only acted on once their size has stopped changing.
+#   * files are only acted on once they look finished (core/file_safety.py:
+#     not empty, quiet for `settle_seconds`, no editor lock file, not open for
+#     writing by another program). A file that isn't ready is skipped this pass
+#     and looked at again next poll - it never blocks the other files.
 #   * a file already handled (unchanged since) is not handled again, so a
 #     "copy" rule can't copy the same file every poll.
 #   * files already inside a rule's destination folder are ignored, so a
@@ -19,6 +22,7 @@ import datetime
 
 import app_data
 import core.file_sorter_core as fsc
+import core.file_safety as safety
 
 CONFIG_NAME = "_watch_config.json"
 STATE_NAME = "_watch_state.json"
@@ -41,7 +45,16 @@ def load_config():
     return {"enabled": bool(cfg.get("enabled", False)),
             "source_folder": cfg.get("source_folder", ""),
             "recursive": bool(cfg.get("recursive", True)),
-            "ruleset": cfg.get("ruleset", fsc.LAST_USED_KEY)}
+            "ruleset": cfg.get("ruleset", fsc.LAST_USED_KEY),
+            "settle_seconds": _settle(cfg.get("settle_seconds"))}
+
+
+def _settle(value):
+    """Seconds a file must stay unchanged; falls back to the default."""
+    try:
+        return max(0.0, min(3600.0, float(value)))
+    except (TypeError, ValueError):
+        return fsc.SETTLE_SECONDS
 
 
 def save_config(cfg):
@@ -83,6 +96,9 @@ def _log_line(msg):
             f.write(f"{stamp}  {msg}\n")
     except Exception:
         pass
+
+
+_waiting = {}        # path -> last "not ready" reason logged (so it is logged once)
 
 
 def _sig(path):
@@ -146,19 +162,27 @@ def scan_once(cfg=None, stop_check=None):
 
     fsc.clear_meta_cache()
     plan = fsc.build_plan(candidates, rules)
+    settle = cfg["settle_seconds"]
     acted = 0
     counter = 1
     for path, matched in plan:
         if stop_check and stop_check():
             break
+        ready = safety.check(path, settle)
+        if not ready.ready:
+            # not finished (or in use): leave it, try again next poll
+            if _waiting.get(path) != ready.reason:
+                _waiting[path] = ready.reason
+                _log_line(f"{path}\n  waiting: {ready.reason}")
+            continue
+        _waiting.pop(path, None)
         _log_line(path)
         current, exists = path, True
         for rule in matched:
             if not exists:
                 break
-            if not fsc.wait_for_stable_file(current, log=_log_line,
-                                            stop_check=stop_check):
-                exists = False
+            if current != path and not safety.is_ready(current, settle):
+                _log_line("  stopped: the file is no longer ready")
                 break
             current, exists = fsc.apply_action(
                 current, rule["action"], counter, _log_line,
@@ -177,5 +201,7 @@ def scan_once(cfg=None, stop_check=None):
                 state[path] = _sig(path)
             except OSError:
                 pass
+    if len(_waiting) > 1000:          # forget files that came and went
+        _waiting.clear()
     _save_state(state)
     return acted

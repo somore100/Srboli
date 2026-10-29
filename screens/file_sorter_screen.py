@@ -45,14 +45,15 @@ from kivy.utils import platform as _platform
 from core.file_sorter_core import (
     FIELDS, FIELD_ORDER, FIELD_LABELS,
     FILE_TYPE_NAMES, ACTION_TYPES, ACTION_LABELS,
-    LAST_USED_KEY, STABLE_POLL_INTERVAL,
-    PREVIEW_QUICK_CHECK_GAP, HAS_SEND2TRASH,
+    LAST_USED_KEY, STABLE_POLL_INTERVAL, SETTLE_SECONDS, APPLY_MAX_WAIT,
+    HAS_SEND2TRASH,
     _home, _rulesets_dir, _fmt_size,
     save_ruleset, load_ruleset, list_rulesets,
     export_ruleset_to_path, import_ruleset_from_path,
     build_plan, wait_for_stable_file, apply_action, clear_meta_cache,
     rule_one_liner,
 )
+from core import file_safety
 
 
 class ConditionRow(BoxLayout):
@@ -454,6 +455,19 @@ class FileSorterScreen(Screen):
                                  halign="left"))
         root.add_widget(rec_row)
 
+        # How long a file must stay unchanged before a rule touches it, so a
+        # file that is still being generated / downloaded / saved is left alone.
+        settle_row = BoxLayout(size_hint_y=None, height=dp(34), spacing=6)
+        settle_row.add_widget(Label(
+            text="Only touch files unchanged for (seconds):", font_size=12,
+            halign="left"))
+        self._settle_in = TextInput(text=f"{SETTLE_SECONDS:g}", multiline=False,
+                                    input_filter="float", font_size=13,
+                                    size_hint_x=None, width=dp(64))
+        self._settle_in.bind(text=lambda *a: self._sync_watch_cfg())
+        settle_row.add_widget(self._settle_in)
+        root.add_widget(settle_row)
+
         # Background watching (desktop): the Background service applies the
         # saved rules to this folder every ~20 s, even with the app closed.
         self._watch_syncing = False
@@ -842,13 +856,21 @@ class FileSorterScreen(Screen):
         import_btn.bind(on_release=_do_import)
         popup.open()
 
+    def _settle(self):
+        """Seconds from the box; the default if it is empty or not a number."""
+        try:
+            return max(0.0, min(3600.0, float(self._settle_in.text)))
+        except ValueError:
+            return float(SETTLE_SECONDS)
+
     def _sync_watch_cfg(self):
         try:
             from core import file_sorter_watch as fsw
             fsw.save_config({"enabled": bool(self._watch_cb.active),
                              "source_folder": self._source_folder,
                              "recursive": self._recursive_cb.active,
-                             "ruleset": LAST_USED_KEY})
+                             "ruleset": LAST_USED_KEY,
+                             "settle_seconds": self._settle()})
         except Exception as e:
             print(f"FileSorter: watch config save failed: {e}")
 
@@ -918,7 +940,9 @@ class FileSorterScreen(Screen):
         try:
             from core import file_sorter_watch as fsw
             self._watch_syncing = True
-            self._watch_cb.active = fsw.load_config()["enabled"]
+            wcfg = fsw.load_config()
+            self._watch_cb.active = wcfg["enabled"]
+            self._settle_in.text = f"{wcfg['settle_seconds']:g}"
         except Exception:
             pass
         finally:
@@ -961,32 +985,28 @@ class FileSorterScreen(Screen):
         def worker():
             files = self._collect_files()
             plan = build_plan(files, rules_snapshot)
-            # Cheap two-look size check, only on the (small) matched set -
-            # flags files that look like they might still be
-            # downloading/writing, so Apply's "wait for it to finish"
-            # behaviour isn't a surprise when it kicks in.
-            incomplete = set()
+            # Only on the (small) matched set: say which files are not ready
+            # to be touched yet (still being written, empty, open elsewhere,
+            # editor lock file ...), so Apply's waiting isn't a surprise.
+            incomplete = {}
+            settle = self._settle()
             for path, _rules in plan[:200]:
-                try:
-                    s1 = os.path.getsize(path)
-                    time.sleep(PREVIEW_QUICK_CHECK_GAP)
-                    s2 = os.path.getsize(path)
-                    if s1 != s2:
-                        incomplete.add(path)
-                except OSError:
-                    pass
+                ready = file_safety.check(path, settle)
+                if not ready.ready:
+                    incomplete[path] = ready.reason
             Clock.schedule_once(
                 lambda dt: self._on_preview_done(files, plan, incomplete))
 
         threading.Thread(target=worker, daemon=True).start()
 
-    def _on_preview_done(self, files, plan, incomplete=frozenset()):
+    def _on_preview_done(self, files, plan, incomplete=None):
+        incomplete = incomplete or {}
         self._busy = False
         self._preview_btn.disabled = False
         self._plan = plan
         self._plan_stale = False
         self._apply_btn.disabled = (len(plan) == 0)
-        note = f" - {len(incomplete)} look like they're still being written" \
+        note = f" - {len(incomplete)} aren't ready to be touched yet" \
             if incomplete else ""
         self._status.text = (
             f"Scanned {len(files)} files - {len(plan)} match at least "
@@ -994,8 +1014,8 @@ class FileSorterScreen(Screen):
         lines = []
         for path, rules in plan[:200]:
             names = " -> ".join(f"{r['name']}({r['action']['type']})" for r in rules)
-            flag = "  [!] still writing? Apply will wait for it" \
-                if path in incomplete else ""
+            flag = (f"  [!] not ready: {incomplete[path]} - Apply will wait "
+                    f"for it" if path in incomplete else "")
             lines.append(f"{path}{flag}\n    {names}")
         if len(plan) > 200:
             lines.append(f"... and {len(plan) - 200} more (not shown in preview)")
@@ -1013,6 +1033,7 @@ class FileSorterScreen(Screen):
         self._status.text = f"Applying to {len(self._plan)} files..."
         self._log_lines = []
         plan_snapshot = self._plan
+        settle = self._settle()
 
         def log(msg):
             self._log_lines.append(msg)
@@ -1054,11 +1075,16 @@ class FileSorterScreen(Screen):
                     stable = wait_for_stable_file(
                         current, log=log,
                         stop_check=lambda: self._stop_requested,
-                        progress=progress)
+                        progress=progress, settle=settle,
+                        max_wait=APPLY_MAX_WAIT)
                     if not stable:
                         if self._stop_requested:
                             log(f"  skipped rule '{rule['name']}' "
                                f"(stopped while waiting for file to finish)")
+                        elif os.path.exists(current):
+                            log(f"  skipped rule '{rule['name']}' (still in use "
+                                f"after {int(APPLY_MAX_WAIT)}s - left where it is; "
+                                f"Apply again later)")
                         else:
                             log(f"  skipped rule '{rule['name']}' "
                                f"(file disappeared while waiting for it to finish)")
