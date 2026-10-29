@@ -364,6 +364,7 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.gridlayout import GridLayout
+from kivy.uix.textinput import TextInput
 # Every folder/file picker gets a type-or-paste path bar (core/pathbar.py).
 # Must run BEFORE any screen module imports FileChooserIconView.
 try:
@@ -402,8 +403,10 @@ def try_import(module_path, class_name):
         return Placeholder
 
 
-from screens.registry import SCREENS, LABELS
-from screens.settings_screen import load_settings, effective_menu_order
+from screens.registry import SCREENS, LABELS, GROUPS
+from screens.settings_screen import (load_settings, effective_menu_order,
+                                     update_dashboard_state)
+from core import dashboard_core as dash
 
 # "settings" is a core route like "dashboard" — always eager-loaded,
 # not part of the manageable/hideable list in registry.SCREENS.
@@ -467,22 +470,91 @@ class Dashboard(Screen):
         dir_row.add_widget(chg)
         root.add_widget(dir_row)
 
+        # search: type a few letters and only matching tools are listed
+        self._search = TextInput(hint_text="Search tools...", multiline=False,
+                                 size_hint_y=None, height=dp(38), font_size=14)
+        self._search.bind(text=lambda *a: self._fill_list())
+        root.add_widget(self._search)
+
         sv = ScrollView()
-        grid = GridLayout(cols=1, spacing=5, size_hint_y=None, padding=(6,6))
-        grid.bind(minimum_height=grid.setter("height"))
-        for route, label in effective_menu_order():
-            btn = Button(text=label, size_hint_y=None, height=dp(52), font_size=14)
-            btn.bind(on_release=lambda inst, r=route: self._goto(r))
-            grid.add_widget(btn)
-        sv.add_widget(grid)
+        self._grid = GridLayout(cols=1, spacing=5, size_hint_y=None,
+                                padding=(6, 6))
+        self._grid.bind(minimum_height=self._grid.setter("height"))
+        sv.add_widget(self._grid)
         root.add_widget(sv)
+        self._list_sig = None
+        self._fill_list()
 
         root.add_widget(Label(text=f"Srboli v{_APP_VERSION}", font_size=9,
                               size_hint_y=None, height=dp(18)))
         self.add_widget(root)
         self._sig = self._signature()
 
+    # ── the tool list: search results, or Recent + collapsible sections ──
+    def _tool_button(self, route, label, font_size=14):
+        btn = Button(text=label, size_hint_y=None, height=dp(52),
+                     font_size=font_size, shorten=True, shorten_from="right")
+        btn.bind(size=lambda w, v: setattr(w, "text_size", (v[0] - dp(8), None)))
+        btn.bind(on_release=lambda inst, r=route: self._goto(r))
+        return btn
+
+    def _section_title(self, text):
+        lbl = Label(text=f"[b]{text}[/b]", markup=True, font_size=12,
+                    halign="left", size_hint_y=None, height=dp(24),
+                    color=(0.55, 0.8, 1, 1))
+        lbl.bind(size=lbl.setter("text_size"))
+        return lbl
+
+    def _fill_list(self, force=False):
+        menu = effective_menu_order()
+        query = self._search.text.strip()
+        cfg = load_settings()
+        recent = dash.visible_recent(cfg["recent"], menu)
+        sig = (tuple(menu), query, tuple(recent), tuple(cfg["collapsed"]))
+        if sig == self._list_sig and not force:
+            return                      # nothing changed: no flash on Back
+        self._list_sig = sig
+        grid = self._grid
+        grid.clear_widgets()
+
+        if query:
+            hits = dash.search(menu, query)
+            if not hits:
+                grid.add_widget(Label(text=f"No tool matches '{query}'.",
+                                      size_hint_y=None, height=dp(40),
+                                      font_size=13, color=(0.7, 0.7, 0.7, 1)))
+            for route, label in hits:
+                grid.add_widget(self._tool_button(route, label))
+            return
+
+        if recent:
+            grid.add_widget(self._section_title("Recent"))
+            row = BoxLayout(size_hint_y=None, height=dp(52), spacing=5)
+            for route, label in recent:
+                row.add_widget(self._tool_button(route, label, font_size=12))
+            grid.add_widget(row)
+
+        for key, title, members in dash.group_menu(menu, GROUPS):
+            folded = key in cfg["collapsed"]
+            head = Button(text=f"[{'+' if folded else '-'}]  {title}  "
+                               f"({len(members)})",
+                          size_hint_y=None, height=dp(40), font_size=14,
+                          halign="left", background_color=(0.2, 0.3, 0.45, 1))
+            head.bind(size=lambda w, v: setattr(w, "text_size", (v[0] - dp(12), None)))
+            head.bind(on_release=lambda inst, k=key: self._toggle_section(k))
+            grid.add_widget(head)
+            if not folded:
+                for route, label in members:
+                    grid.add_widget(self._tool_button(route, label))
+
+    def _toggle_section(self, key):
+        update_dashboard_state(collapsed=dash.toggle_collapsed(
+            load_settings()["collapsed"], key))
+        self._fill_list()
+
     def _goto(self, route):
+        update_dashboard_state(recent=dash.push_recent(
+            load_settings()["recent"], route))
         ensure_screen_loaded(self.manager, route)
         self.manager.current = route
 
@@ -497,6 +569,9 @@ class Dashboard(Screen):
         sig = self._signature()
         if sig != getattr(self, "_sig", None):
             self._build()
+        else:
+            self._search.text = ""      # leave search mode; Recent may have changed
+            self._fill_list()
 
     def _change_dir(self, *a):
         from core.android_storage import shared_storage_root

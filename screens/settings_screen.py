@@ -6,8 +6,12 @@
 #   {
 #     "order":      [route, route, ...],   # dashboard menu order
 #     "hidden":     [route, route, ...],   # routes hidden from the menu
-#     "lazy_load":  bool                   # build screens on first visit (default True)
+#     "lazy_load":  bool,                  # build screens on first visit (default True)
+#     "recent":     [route, ...],          # last used tools (Dashboard "Recent" row)
+#     "collapsed":  [group key, ...]       # Dashboard sections folded shut
 #   }
+# "recent" and "collapsed" belong to the Dashboard (update_dashboard_state);
+# this screen never overwrites them with its own, possibly stale, copy.
 #
 # Hidden screens are NOT removed from the app — they're just left out of
 # the Dashboard's button list. They stay reachable via Quick Switcher
@@ -32,7 +36,8 @@ from kivy.clock import Clock
 from kivy.metrics import dp
 
 import app_data
-from screens.registry import SCREENS, LABELS, default_route_order
+from screens.registry import SCREENS, LABELS, GROUPS, default_route_order
+from core import dashboard_core as dash
 from core.daemon_ipc import send_command, daemon_launch_cmd, spawn_detached
 import core.autostart as autostart
 
@@ -70,15 +75,38 @@ def load_settings():
         data["preload_v2"] = True
     data["preload_bg"] = bool(data.get("preload_bg", False))
     data["advanced_logging"] = bool(data.get("advanced_logging", False))
+    data["recent"], data["collapsed"] = dash.clean_state(
+        data.get("recent"), data.get("collapsed"), known,
+        [k for k, _t, _r in GROUPS] + [dash.OTHER_KEY])
     return data
 
 
-def save_settings(data):
+def _write(data):
     try:
         with open(_config_path(), "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
     except Exception as e:
         print(f"Settings save error: {e}")
+
+
+def save_settings(data):
+    """Save from the Settings screen. The Dashboard's own state ("recent",
+    "collapsed") is kept as it is on disk, so a copy loaded earlier can't
+    wipe what the Dashboard saved since."""
+    current = load_settings()
+    merged = dict(data)
+    merged["recent"], merged["collapsed"] = current["recent"], current["collapsed"]
+    _write(merged)
+
+
+def update_dashboard_state(recent=None, collapsed=None):
+    """Save the Dashboard's recent tools / folded sections (None = unchanged)."""
+    data = load_settings()
+    if recent is not None:
+        data["recent"] = recent
+    if collapsed is not None:
+        data["collapsed"] = collapsed
+    _write(data)
 
 
 def effective_menu_order():
@@ -156,9 +184,10 @@ class SettingsScreen(Screen):
                               font_size=20, size_hint_y=None, height=dp(32)))
 
         root.add_widget(Label(
-            text="Reorder or hide screens on the Dashboard. Click a row to "
-                 "select it, then use the arrows (or Up/Down keys) to move "
-                 "it. Hidden screens stay reachable via Quick Switcher.",
+            text="Reorder or hide screens on the Dashboard. Screens are listed "
+                 "in their Dashboard sections: click a row to select it, then "
+                 "use the arrows (or Up/Down keys) to move it within its "
+                 "section. Hidden screens stay reachable via Quick Switcher.",
             font_size=11, halign="left", size_hint_y=None, height=dp(48),
             color=(0.7, 0.7, 0.7, 1)))
         root.children[-1].bind(size=root.children[-1].setter("text_size"))
@@ -316,13 +345,19 @@ class SettingsScreen(Screen):
         self._grid.clear_widgets()
         self._rows = {}
         hidden = set(self._cfg["hidden"])
-        for route in self._cfg["order"]:
-            label = LABELS.get(route, route)
-            row = _Row(route, label, visible=(route not in hidden),
-                      selected=(route == self._selected),
-                      on_select=self._select, on_toggle=self._toggle_visible)
-            self._rows[route] = row
-            self._grid.add_widget(row)
+        menu = [(r, LABELS.get(r, r)) for r in self._cfg["order"]]
+        for _key, title, members in dash.group_menu(menu, GROUPS):
+            head = Label(text=f"[b]{title}[/b]", markup=True, font_size=12,
+                         halign="left", size_hint_y=None, height=dp(26),
+                         color=(0.55, 0.8, 1, 1))
+            head.bind(size=head.setter("text_size"))
+            self._grid.add_widget(head)
+            for route, label in members:
+                row = _Row(route, label, visible=(route not in hidden),
+                           selected=(route == self._selected),
+                           on_select=self._select, on_toggle=self._toggle_visible)
+                self._rows[route] = row
+                self._grid.add_widget(row)
 
     def _select(self, route):
         self._selected = route
@@ -346,10 +381,16 @@ class SettingsScreen(Screen):
             self._status.text = "Select a screen first (click a row)."
             return
         order = self._cfg["order"]
-        i = order.index(self._selected)
-        j = i + direction
-        if j < 0 or j >= len(order):
+        menu = [(r, LABELS.get(r, r)) for r in order]
+        # the Dashboard shows each section in the user's order, so a move
+        # means: swap with the neighbouring screen of the SAME section
+        section = next(([r for r, _l in members]
+                        for _k, _t, members in dash.group_menu(menu, GROUPS)
+                        if self._selected in dict(members)), [self._selected])
+        k = section.index(self._selected) + direction
+        if not 0 <= k < len(section):
             return
+        i, j = order.index(self._selected), order.index(section[k])
         order[i], order[j] = order[j], order[i]
         self._cfg["order"] = order
         save_settings(self._cfg)

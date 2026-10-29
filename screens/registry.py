@@ -35,9 +35,11 @@ SCREENS = [
     ("fast_transfer",  "screens.fast_transfer_screen",    "FastTransferScreen"),
     ("quickswitcher",  "screens.quickswitcher_screen",    "QuickSwitcherScreen"),
     ("minesweeper",    "screens.minesweeper_screen",      "MinesweeperScreen"),
+    ("chess",          "screens.chess_screen",            "ChessScreen"),
     ("touch_test",     "screens.touch_test_screen",       "TouchTestScreen"),
     ("converter",      "screens.file_converter_screen",   "FileConverterScreen"),
     ("learn",          "screens.learn_screen",            "LearnScreen"),
+    ("shortcut",       "screens.shortcut_screen",         "ShortcutScreen"),
 ]
 
 LABELS = {
@@ -65,10 +67,34 @@ LABELS = {
     "fast_transfer":  "Fast File Transfer",
     "quickswitcher":  "Quick Switcher",
     "minesweeper":    "Minesweeper",
+    "chess":          "Chess",
     "touch_test":     "Touch Test",
     "converter":      "File Converter",
     "learn":          "Learn (AI courses)",
+    "shortcut":       "Linux Shortcut Creator",
 }
+
+
+# The Dashboard shows the tools in these sections, in this order (inside a
+# section the user's own order from Settings applies). Each tool is in exactly
+# one section; a tool missing here (e.g. a screen added later) lands in an
+# automatic "Other" section, so nothing can silently disappear.
+GROUPS = [
+    ("writing", "Writing",
+     ["text_editor", "full_editor", "script_mode", "learn"]),
+    ("files", "Files",
+     ["file_sorter", "fast_transfer", "converter", "gallery", "metadata",
+      "image_text"]),
+    ("media", "Media",
+     ["music", "shape_gen"]),
+    ("math", "Math and data",
+     ["basic_tools", "plotter", "random_tools", "binary", "morse"]),
+    ("system", "System",
+     ["system_stats", "reminders", "loading_timer", "quickswitcher", "cover",
+      "shortcut", "touch_test"]),
+    ("fun", "Fun",
+     ["minesweeper", "chess", "spin", "backrooms", "unhelpful_calc"]),
+]
 
 
 def default_route_order():
