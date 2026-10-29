@@ -5,6 +5,7 @@
 # Saves internally (app data) AND can export to chosen location
 
 import os
+import json
 import time
 import math
 
@@ -234,7 +235,8 @@ class TextEditorScreen(Screen):
             text=".txt",
             values=(".txt — raw text, no styling",
                     ".html — coloured text, opens in browser",
-                    ".md — Markdown, basic formatting"),
+                    ".md — Markdown, basic formatting",
+                    ".json — checked and pretty-printed"),
             font_size=12,
         )
         self._export_fmt.bind(text=self._on_fmt_change)
@@ -482,6 +484,8 @@ class TextEditorScreen(Screen):
                      "Zoom is just for editing, it isn't saved to the file.",
             ".md": "Markdown — use the B / I / H1... buttons. No colour. Zoom is just "
                    "for editing, it isn't saved to the file.",
+            ".json": "JSON — Export checks the text is valid JSON and writes it "
+                     "indented; an error shows the line and column.",
         }
         key = text.split(" ")[0]
         self._fmt_hint.text = hints.get(key, "")
@@ -622,6 +626,8 @@ class TextEditorScreen(Screen):
             self._export_as_html()
         elif fmt_key == ".md":
             self._export_as_md()
+        elif fmt_key == ".json":
+            self._export_as_json()
         else:
             self._save_as()
 
@@ -678,6 +684,38 @@ padding:24px;line-height:1.6}}</style></head>
                 txt = _re.sub(r"\[/?color[^\]]*\]", "", self._ed.text)
                 with open(path, "w", encoding="utf-8") as f:
                     f.write(txt)
+                self._popup("Exported", f"Saved: {path}")
+            except Exception as e:
+                self._popup("Error", str(e))
+            popup.dismiss()
+        btn.bind(on_release=_do); popup.open()
+
+    def _export_as_json(self, *a):
+        # Check first so a typo is reported before any file dialog opens.
+        try:
+            pretty = json.dumps(json.loads(self._ed.text), indent=2,
+                                ensure_ascii=False) + "\n"
+        except ValueError as e:
+            where = (f" (line {e.lineno}, column {e.colno})"
+                     if isinstance(e, json.JSONDecodeError) else "")
+            msg = e.msg if isinstance(e, json.JSONDecodeError) else str(e)
+            self._popup("Not valid JSON", f"{msg}{where}")
+            return
+        chooser = FileChooserIconView(path=_home())
+        name = os.path.splitext(os.path.basename(self._file or "document"))[0]
+        name_in = TextInput(text=f"{name}.json", multiline=False,
+                            size_hint_y=None, height=dp(36), font_size=13)
+        btn = Button(text="Export JSON", size_hint_y=None, height=dp(44))
+        layout = BoxLayout(orientation="vertical", spacing=4)
+        layout.add_widget(chooser); layout.add_widget(name_in)
+        layout.add_widget(btn)
+        popup = Popup(title="Export as JSON", content=layout,
+                      size_hint=(0.92, 0.92))
+        def _do(*a):
+            path = os.path.join(chooser.path, name_in.text.strip())
+            try:
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(pretty)
                 self._popup("Exported", f"Saved: {path}")
             except Exception as e:
                 self._popup("Error", str(e))
