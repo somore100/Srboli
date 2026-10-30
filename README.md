@@ -4,7 +4,7 @@ Pocket swiss-army-knife desktop app — **29 tools in one window**, built with
 Python + Kivy. Even if you don't see a use for every feature at first, odds
 are at least one will be useful — and you might even end up using several.
 
-![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows-lightgrey)
+![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS%20%7C%20Android-lightgrey)
 
 <p align="center">
   <img width="49%" alt="Srboli main screen" src="https://github.com/user-attachments/assets/943e84d4-d894-47bc-b1f9-ec6149f3d7bf" />
@@ -19,7 +19,7 @@ tool, with global shortcuts to jump between them.
 
 | Screen | What it does |
 |---|---|
-| **Dashboard** | Quick-access hub: search box, a Recent row, and collapsible sections (Writing, Files, Media, Math and data, System, Fun) |
+| **Dashboard** | Quick-access tile hub: search (with aliases, Enter opens the first hit), pinned and Recent rows (long-press or right-click to pin), and collapsible sections (Writing, Files, Media, Math and data, System, Fun) |
 | **Loading / Timer** | Countdown timer with shutdown / suspend / notify actions |
 | **Text Editor** | Plain-text editor with Raw ⇄ Styled Markdown view, colour wheel, autosave; exports .txt / .html / .md / checked-and-indented .json |
 | **Script / Teleprompter** | Paste full text, auto-copy chunks one at a time; auto-advance on paste |
@@ -49,13 +49,12 @@ tool, with global shortcuts to jump between them.
 | **Linux Shortcut Creator** | Fill in a form to make a `.desktop` launcher for the application menu (and Desktop); lists, edits and deletes the ones it made |
 | **Touch Test** | Shows what each tap looks like to the app (finger vs. mouse duplicates) and has the duplicate-tap filter switch |
 | **File Converter** | Batch-convert images (png/jpg/webp/bmp/gif/tiff/ico/pdf), documents (txt/md/html/docx/pdf/csv/tsv/json) and - on desktop with ffmpeg - audio/video |
-| **Settings** | Reorder (within a section) / hide dashboard screens, toggle lazy-loading, manage the background service and autostart |
-| **Data Directory** | First-launch + settings screen for choosing where Srboli stores its data |
+| **Settings** | Reorder (within a section) / hide dashboard screens, toggle lazy-loading, manage the background service and autostart, move or clear your data folder safely |
 
 ## Requirements
 
 - Python 3.10+
-- Linux (Pop!OS / Ubuntu) or Windows
+- Linux (Pop!OS / Ubuntu), Windows or macOS (Android via Buildozer)
 
 Optional, per feature — install only what you need:
 
@@ -75,118 +74,127 @@ Clone:
 ```bash
 git clone https://github.com/somore100/Srboli.git
 cd Srboli
+```
 
-Create virtual environment:
-bash
+Create a virtual environment:
 
+```bash
 python3 -m venv .venv
-source .venv/bin/activate        # Linux/Mac
-.venv\Scripts\activate           # Windows
+source .venv/bin/activate        # Linux / macOS
+```
+
+```bat
+python -m venv .venv
+.venv\Scripts\activate           REM Windows
+```
 
 Install dependencies:
-bash
 
+```bash
 pip install -r requirements-desktop.txt
+```
 
 Run:
-bash
 
+```bash
 python3 main.py
+```
 
-Building an executable
+Only one copy runs at a time per config (a second launch exits). Set
+`SROBOLI_MULTI=1` to allow several, e.g. while developing.
 
-Uses PyInstaller via the included srboli.spec.
+Global hotkeys for the Cover tool need `pynput`, which is optional:
 
-Linux:
-bash
+```bash
+pip install -r requirements-hotkeys.txt
+```
 
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest -m "not display"          # Kivy-free core tests (what CI runs on every push)
+xvfb-run -a pytest               # everything, including the screen tests (Linux)
+```
+
+`python3 main.py --selftest out.txt` loads every tool and writes
+`SELFTEST OK` or the failures; the release builds run it too.
+
+## Building an executable
+
+Uses PyInstaller via the included `srboli.spec` (a one-folder build).
+
+Linux / macOS:
+
+```bash
 pip install pyinstaller
 pyinstaller srboli.spec
-# Output: dist/Srboli
+# Output: dist/Srboli/Srboli
+```
 
 Windows:
-bat
 
+```bat
 pip install pyinstaller
 pyinstaller srboli.spec
-REM Output: dist\Srboli.exe
+REM Output: dist\Srboli\Srboli.exe
+```
 
-Project structure
-text
+To include the optional global-hotkey support, install
+`requirements-hotkeys.txt` and set `SROBOLI_HOTKEYS=1` before building.
+Keyboard-hook libraries inside a packaged exe are a common antivirus false
+positive on Windows, so it is left out by default.
 
+## Project structure
+
+```text
 srboli/
-├── main.py                  # App entry point (also dispatches `--overlay`)
-├── app_data.py              # Data-directory manager
-├── requirements.txt
+├── main.py                  # App entry point (also dispatches --overlay, --daemon, --selftest)
+├── app_data.py              # Config + data-directory manager
+├── requirements-desktop.txt # Desktop dependencies
+├── requirements-dev.txt     # Test dependencies
+├── requirements-hotkeys.txt # Optional: pynput for Cover hotkeys
 ├── srboli.spec              # PyInstaller spec
-├── LICENSE
-├── core/
-│   ├── android_storage.py       # Shared-storage root helper (Android vs desktop)
-│   ├── daemon_ipc.py            # IPC with the background service
-│   ├── autostart.py             # "Start service at login" toggles
-│   ├── file_sorter_core.py      # Rule engine (Kivy-free, shared with the daemon)
+├── buildozer.spec           # Android build
+├── license.txt
+├── core/                    # Logic and helpers (most of it Kivy-free and unit-tested)
+│   ├── theme.py                 # Colour tokens + global widget styling
+│   ├── navigation.py            # Screen manager, Loading screen, Esc / Ctrl+K
+│   ├── permissions.py           # Android permission prompts, asked in context
+│   ├── kivy_patches.py          # Android workarounds for Kivy internals (version-checked)
+│   ├── single_instance.py       # One running copy per config
+│   ├── safe_math.py             # Calculator arithmetic without eval()
+│   ├── jsonio.py                # Atomic JSON writes, corrupt files quarantined
+│   ├── logs.py / toast.py       # Capped log files, bottom toast messages
+│   ├── window_state.py          # Remember window size and position
+│   ├── selftest.py              # --selftest
+│   ├── dashboard_core.py        # Dashboard sections / search / pins / recents
+│   ├── file_safety.py           # "Safe to touch yet?" check + verified copy/move
+│   ├── file_sorter_core.py      # Rule engine (shared with the daemon)
 │   ├── file_sorter_watch.py     # Folder watcher for the background service
-│   ├── reminders_core.py        # Reminder scheduling logic (shared with the daemon)
-│   ├── psutil_lite.py           # /proc-based psutil fallback for Android
-│   ├── version.py               # The one place the app version lives
-│   ├── advlog.py                # Optional advanced logging (Settings)
-│   ├── bootlog.py               # Boot breadcrumbs: where did the app get stuck?
-│   ├── chess_core.py            # Chess rules + AI (Kivy-free)
-│   ├── learn_core.py            # Course engine for the Learn screen
-│   ├── seekbar.py               # Thick tap/drag progress bar (Music Player)
-│   ├── dashboard_core.py        # Dashboard sections / search / recents (Kivy-free)
-│   ├── file_safety.py           # "Safe to touch yet?" check + verified copy/move (Kivy-free)
-│   ├── transfer_core.py         # Fast Transfer engine + auto-tune (Kivy-free)
-│   ├── desktop_entry.py         # .desktop launcher builder / installer (Kivy-free)
-│   ├── slides_core.py           # Slides derived from the Full Editor outline (Kivy-free)
-│   ├── table_core.py            # Full Editor coloured tables + formulas (Kivy-free)
-│   ├── outline_core.py          # Full Editor outline tree + Markdown/HTML output (Kivy-free)
-│   ├── cover_core.py / cover_app.py  # Cover boxes (separate tkinter process)
+│   ├── transfer_core.py         # Fast Transfer engine + auto-tune
+│   ├── reminders_core.py        # Reminder scheduling (shared with the daemon)
+│   ├── daemon.py / daemon_ipc.py / autostart.py  # Background service
+│   ├── chess_core.py            # Chess rules + AI
+│   ├── learn_core.py            # Course engine for Learn
+│   ├── outline_core.py / slides_core.py / table_core.py  # Full Editor
 │   ├── converter_core.py        # File Converter engine
+│   ├── cover_core.py / cover_app.py  # Cover boxes (separate tkinter process)
+│   ├── desktop_entry.py         # .desktop launcher builder
 │   ├── touch_dedupe.py / tap_guard.py  # Ghost-tap filters
-│   ├── notify.py                # Desktop notifications for reminders
-│   ├── pathbar.py               # Path bar for every file chooser
-│   └── tickbox.py               # Large labelled on/off toggle
-└── screens/
-    ├── __init__.py
-    ├── registry.py              # Single source of truth for the screen list
-    ├── data_dir_screen.py       # First-launch + data-directory chooser
-    ├── settings_screen.py
-    ├── _overlay_app.py          # Always-on-top stats overlay (separate process)
-    ├── sys_info.py              # Shared GPU / ping helpers
-    ├── md_parse.py              # Kivy-free Markdown parser
-    ├── md_editor.py             # Markdown text box with formatting bar (Full Editor)
-    ├── md_view.py               # Styled (rendered) Markdown view
-    ├── loading_timer_screen.py
-    ├── text_editor_screen.py
-    ├── script_mode_screen.py
-    ├── full_editor_screen.py
-    ├── basic_tools_screen.py
-    ├── system_stats_screen.py
-    ├── gallery_sorter_screen.py
-    ├── music_screen.py
-    ├── randomizer.py
-    ├── image_text_screen.py
-    ├── morse_screen.py
-    ├── binary_screen.py
-    ├── function_plotter_screen.py
-    ├── backrooms_screen.py
-    ├── spin_screen.py
-    ├── unhelpful_calc_screen.py
-    ├── shape_generator_screen.py
-    ├── metadata_screen.py
-    ├── file_sorter_screen.py
-    ├── reminders_screen.py
-    ├── fast_transfer_screen.py
-    ├── quickswitcher_screen.py
-    ├── minesweeper_screen.py
-    ├── chess_screen.py
-    ├── learn_screen.py
-    ├── shortcut_screen.py
-    ├── dialogs.py               # Shared confirm / message popups
-    ├── cover_screen.py
-    ├── touch_test_screen.py
-    └── file_converter_screen.py
+│   ├── notify.py                # Desktop notifications
+│   ├── android_storage.py / psutil_lite.py  # Android helpers
+│   ├── pathbar.py / seekbar.py / tickbox.py  # Shared widgets
+│   └── version.py               # The one place the app version lives
+├── screens/
+│   ├── registry.py              # Single source of truth for the screen list
+│   ├── dashboard_screen.py      # Tile dashboard
+│   ├── scaffold.py              # ToolScreen: shared top bar + content width
+│   ├── settings_screen.py / data_location.py / onboarding.py
+│   ├── dialogs.py               # Shared confirm / message popups
+│   └── *_screen.py              # One file per tool (see Features)
+└── tests/                       # Run with pytest; each test_*.py also runs on its own
+```
 
 ## Building for Android
 
@@ -231,13 +239,13 @@ capped at about 1.5 MB). Each line is timestamped and tagged:
 A separate `Srboli_boot.log` of start-up breadcrumbs is always kept, to show
 where the app got stuck if it freezes on launch.
 
-Contributing
+## Contributing
 
 Issues and pull requests are welcome — new tool screens, bug fixes, or
-packaging improvements (macOS build is an open gap) are all fair game.
-License
+packaging improvements are all fair game. Run `pytest -m "not display"` before opening a pull request.
+## License
 
 This project is source-available software. You are free to view, study,
 modify, fork, and share the project for non-commercial purposes. Addons,
 plugins, extensions, and integrations are also permitted under the license
-terms. See the LICENSE file for full terms.
+terms. See [license.txt](license.txt) for full terms.
