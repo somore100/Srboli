@@ -30,6 +30,14 @@ jobs:
           KIVY_GL_BACKEND: angle_sdl2
         run: |
           pyinstaller srboli.spec --clean
+      - name: Self-test (every tool loads)
+        shell: bash
+        run: |
+          rm -f selftest.txt
+          dist/Srboli/Srboli.exe --selftest selftest.txt &
+          for i in $(seq 90); do grep -q "^SELFTEST" selftest.txt 2>/dev/null && break; sleep 1; done
+          cat selftest.txt
+          grep -q "^SELFTEST OK" selftest.txt
       - name: Upload Windows build
         uses: actions/upload-artifact@v4
         with:
@@ -59,6 +67,14 @@ jobs:
           KIVY_NO_CONSOLELOG: "1"
         run: |
           xvfb-run -a pyinstaller srboli.spec
+      - name: Self-test (every tool loads)
+        shell: bash
+        run: |
+          rm -f selftest.txt
+          xvfb-run -a dist/Srboli/Srboli --selftest selftest.txt &
+          for i in $(seq 90); do grep -q "^SELFTEST" selftest.txt 2>/dev/null && break; sleep 1; done
+          cat selftest.txt
+          grep -q "^SELFTEST OK" selftest.txt
       - name: Prepare AppImage
         run: |
           mkdir -p Srboli.AppDir/usr/bin
@@ -102,6 +118,14 @@ jobs:
       - name: Build
         run: |
           pyinstaller srboli.spec --clean
+      - name: Self-test (every tool loads)
+        shell: bash
+        run: |
+          rm -f selftest.txt
+          dist/Srboli/Srboli --selftest selftest.txt &
+          for i in $(seq 90); do grep -q "^SELFTEST" selftest.txt 2>/dev/null && break; sleep 1; done
+          cat selftest.txt
+          grep -q "^SELFTEST OK" selftest.txt
       - name: Upload macOS build
         uses: actions/upload-artifact@v4
         with:

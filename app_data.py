@@ -39,7 +39,21 @@ def _user_data_root():
     return os.path.join(base, "Srboli")
 
 
-if _FROZEN:
+def _android_root():
+    """App-private storage that survives app updates, or None off Android.
+    p4a unpacks the app's code into <files>/app and replaces that folder
+    whenever the version changes; <files> itself (ANDROID_PRIVATE) is kept,
+    so config and the default data folder live beside it, not inside it."""
+    if os.environ.get("ANDROID_ARGUMENT") and os.environ.get("ANDROID_PRIVATE"):
+        return os.path.join(os.environ["ANDROID_PRIVATE"], "srboli_userdata")
+    return None
+
+
+_ANDROID = _android_root()
+
+if _ANDROID:
+    _CONFIG_FILE = os.path.join(_ANDROID, ".srboli_config.json")
+elif _FROZEN:
     _CONFIG_FILE = os.path.join(_user_data_root(), ".srboli_config.json")
 else:
     _CONFIG_FILE = os.path.join(_APP_ROOT, ".srboli_config.json")
@@ -48,6 +62,8 @@ _APP_DIR = None
 
 
 def _default_dir():
+    if _ANDROID:
+        return os.path.join(_ANDROID, "data")
     if _FROZEN:
         return os.path.join(_user_data_root(), "data")
     if sys.platform.startswith("win"):
@@ -56,10 +72,34 @@ def _default_dir():
     return os.path.join(_APP_ROOT, "srboli_data")
 
 
+def _migrate_android():
+    """One time: bring config + data from next to main.py (where older builds
+    kept them, and where an update wipes them) into the persistent folder."""
+    old_cfg = os.path.join(_APP_ROOT, ".srboli_config.json")
+    old_data = os.path.join(_APP_ROOT, "srboli_data")
+    new_data = _default_dir()
+    try:
+        os.makedirs(_ANDROID, exist_ok=True)
+        if os.path.isdir(old_data) and not os.path.exists(new_data):
+            shutil.move(old_data, new_data)
+        if os.path.exists(old_cfg) and not os.path.exists(_CONFIG_FILE):
+            cfg = read_json(old_cfg, {})
+            if isinstance(cfg, dict):
+                d = cfg.get("data_dir")
+                if d and os.path.realpath(d) == os.path.realpath(old_data):
+                    cfg["data_dir"] = new_data          # it moved with the data
+                write_json_atomic(_CONFIG_FILE, cfg)
+                os.remove(old_cfg)
+    except OSError as e:
+        print(f"Android migration skipped: {e}")
+
+
 def get_data_dir() -> str:
     global _APP_DIR
     if _APP_DIR:
         return _APP_DIR
+    if _ANDROID:
+        _migrate_android()
     cfg  = _load_config()
     path = cfg.get("data_dir") or _default_dir()
     os.makedirs(path, exist_ok=True)

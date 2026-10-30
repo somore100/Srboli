@@ -5,7 +5,7 @@ import sys, os
 # on flags it doesn't know. The boot log imports Kivy indirectly, so it only
 # runs for a normal app start.
 _HELPER_MODE = len(sys.argv) > 1 and sys.argv[1] in (
-    "--cover", "--cover-cmd", "--daemon", "--overlay")
+    "--cover", "--cover-cmd", "--daemon", "--overlay", "--selftest")
 try:
     if _HELPER_MODE:
         raise ImportError("helper mode: no boot log")
@@ -22,6 +22,14 @@ app_dir = os.path.dirname(os.path.abspath(__file__))
 for p in (app_dir, os.path.join(app_dir, "_internal")):
     if os.path.isdir(p) and p not in sys.path:
         sys.path.insert(0, p)
+
+# ── selftest dispatch ────────────────────────────────────────────────────────
+# `main.py --selftest [outfile]` imports every registered screen and exits 0/1
+# (CI runs it against the built exe/AppImage: a module PyInstaller left out
+# shows up here instead of as a "not available" screen on a user's machine).
+if len(sys.argv) > 1 and sys.argv[1] == "--selftest":
+    from core.selftest import run as _selftest_run
+    sys.exit(_selftest_run(sys.argv[2] if len(sys.argv) > 2 else None))
 
 # ── overlay dispatch ─────────────────────────────────────────────────────────
 # In a PyInstaller build, sys.executable IS Srboli itself (there's no
@@ -260,12 +268,19 @@ if _platform == "android":
             from kivy.uix.behaviors.button import ButtonBehavior as _BB2
             _orig_rel = _BB2._do_release
 
+            _marked = [False]
+
+            # Stays installed (restoring _orig_rel would also remove any
+            # wrapper added after this one, e.g. the touch trace); the flag
+            # makes mark_healthy() run once. Kivy finds the callback by
+            # __name__, so the function keeps the name _do_release.
             def _do_release(self, *a):
-                try:
-                    _td.mark_healthy()
-                    _BB2._do_release = _orig_rel      # one-shot
-                except Exception:
-                    pass
+                if not _marked[0]:
+                    _marked[0] = True
+                    try:
+                        _td.mark_healthy()
+                    except Exception:
+                        pass
                 return _orig_rel(self, *a)
             _BB2._do_release = _do_release
             if _bl:
