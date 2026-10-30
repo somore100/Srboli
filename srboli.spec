@@ -35,11 +35,13 @@ hiddenimports = ['screens', 'core'] + _modules('screens') + _modules('core') + [
     'pygame.mixer',
     'send2trash',
     'tkinter',
-    'pynput',
-    'pynput.keyboard',
-    'pynput.keyboard._xorg',
-    'pynput.keyboard._win32',
 ]
+# Global hotkeys (the Cover tool) are opt-in: keyboard-hook libraries inside a
+# PyInstaller exe are a common antivirus false positive on Windows. Build with
+# SROBOLI_HOTKEYS=1 and `pip install -r requirements-hotkeys.txt` to include them.
+if os.environ.get('SROBOLI_HOTKEYS') == '1':
+    hiddenimports += ['pynput', 'pynput.keyboard',
+                      'pynput.keyboard._xorg', 'pynput.keyboard._win32']
 a = Analysis(
     ['main.py'],
     pathex=['.'],

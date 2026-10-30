@@ -28,6 +28,7 @@ from kivy.uix.widget import Widget
 from kivy.graphics import Color, Rectangle
 from kivy.metrics import dp, sp
 from kivy.clock import Clock
+from kivy.core.window import Window
 
 import core.reminders_core as rc
 from core.daemon_ipc import send_command
@@ -332,6 +333,15 @@ class RemindersScreen(Screen):
         new_btn.bind(on_release=lambda *a: self._open_editor(None))
         header.add_widget(new_btn)
         root.add_widget(header)
+
+        from kivy.utils import platform as _platform
+        if _platform == "android":
+            root.add_widget(Label(
+                text="On Android, reminders only fire while Srboli is running "
+                     "(open or in the background). Closing the app stops them.",
+                font_size=sp(11), color=(0.95, 0.75, 0.35, 1), halign="left",
+                valign="middle", size_hint_y=None, height=dp(34),
+                text_size=(Window.width - dp(20), None)))
 
         self._empty_lbl = Label(
             text="Nothing here yet. \"+ New\" adds a to-do, or a reminder "

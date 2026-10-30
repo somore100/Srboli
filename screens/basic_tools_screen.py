@@ -1,6 +1,7 @@
 # screens/basic_tools_screen.py
 # Basic Tools: Clock, Stopwatch, Alarm, Real Calculator — all in one screen
 
+from core.safe_math import arith
 import time
 import math
 
@@ -502,7 +503,7 @@ class BasicToolsScreen(Screen):
         try:
             import re
             safe   = re.sub(r"[^0-9+\-*/().eE%]", "", expr)
-            result = eval(safe)
+            result = arith(safe)
             self._calc_expr_lbl.text = expr + " ="
             self._calc_hist.text     = f"{expr} = {self._fmt_num(result)}"
             self._calc_disp.text     = self._fmt_num(result)

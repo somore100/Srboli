@@ -1,0 +1,3 @@
+# Optional: global hotkeys for the Cover tool (X11 / Windows).
+# Not installed by default; see srboli.spec for including it in a build.
+pynput>=1.7.6

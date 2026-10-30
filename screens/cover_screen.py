@@ -240,7 +240,7 @@ class CoverScreen(Screen):
             self.body.add_widget(row)
         if cc.global_hotkeys_supported():
             if not cc.pynput_available():
-                self._note("Global hotkeys need:  pip install pynput", 24)
+                self._note("Global hotkeys are optional:  pip install -r requirements-hotkeys.txt", 24)
             else:
                 self._note("Needs at least one modifier (ctrl / alt / shift "
                            "/ win). Per-box hotkeys are set on each box.", 30)

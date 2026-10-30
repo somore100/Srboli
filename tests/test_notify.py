@@ -70,7 +70,14 @@ ok = N.send_notification("x", "y", runner=FakeRunner(raise_exc=RuntimeError("boo
 check("unexpected runner error handled, no crash", ok, False)
 
 # ---- real call against the real subprocess.run, real (missing) binary on this box
-ok = N.send_notification("Real call test", "no notify-send here", system="Linux")
+# (PATH is emptied so the result doesn't depend on the host having notify-send,
+# and no real notification pops up)
+_path = os.environ.get("PATH")
+os.environ["PATH"] = ""
+try:
+    ok = N.send_notification("Real call test", "no notify-send here", system="Linux")
+finally:
+    os.environ["PATH"] = _path
 check("real subprocess.run + missing notify-send doesn't raise, returns False", ok, False)
 
 print("\nFAILURES:", fails)

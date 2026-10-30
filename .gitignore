@@ -25,3 +25,6 @@ dist/
 bin/
 .buildozer/
 *.log
+
+# Syncthing conflict copies
+*.sync-conflict-*
