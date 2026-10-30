@@ -41,6 +41,7 @@ except ImportError:
     HAS_PIL = False
 
 import app_data
+from core.jsonio import read_json, write_json_atomic
 
 RULESETS_DIR = "file_sorter_rulesets"
 LAST_USED_KEY = "_last_used"
@@ -124,8 +125,7 @@ def _fmt_size(n):
 def save_ruleset(name, rules):
     path = os.path.join(_rulesets_dir(), f"{name}.json")
     try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump({"rules": rules}, f, indent=2)
+        write_json_atomic(path, {"rules": rules})
         return True
     except Exception as e:
         print(f"FileSorter: save ruleset failed: {e}")
@@ -134,11 +134,8 @@ def save_ruleset(name, rules):
 
 def load_ruleset(name):
     path = os.path.join(_rulesets_dir(), f"{name}.json")
-    try:
-        with open(path, encoding="utf-8") as f:
-            return json.load(f).get("rules", [])
-    except Exception:
-        return []
+    data = read_json(path, {})
+    return data.get("rules", []) if isinstance(data, dict) else []
 
 
 def list_rulesets():
@@ -181,8 +178,7 @@ def export_ruleset_to_path(path, rules):
     what makes a ruleset actually shareable/backupable outside the app."""
     try:
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump({"rules": rules}, f, indent=2)
+        write_json_atomic(path, {"rules": rules})
         return True, None
     except Exception as e:
         return False, str(e)

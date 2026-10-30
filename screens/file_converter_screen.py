@@ -34,6 +34,7 @@ from kivy.metrics import dp
 from kivy.clock import Clock
 
 import app_data
+from core.jsonio import read_json, write_json_atomic
 import core.converter_core as cc
 from core.android_storage import shared_storage_root
 
@@ -165,19 +166,15 @@ class FileConverterScreen(Screen):
         return os.path.join(app_data.subdir("converter"), "settings.json")
 
     def _load_out_dir(self):
-        try:
-            with open(self._settings_path(), encoding="utf-8") as f:
-                p = json.load(f).get("out_dir")
-            if p:
-                return p
-        except Exception:
-            pass
+        data = read_json(self._settings_path(), {})
+        p = data.get("out_dir") if isinstance(data, dict) else None
+        if p:
+            return p
         return _default_out_dir()
 
     def _save_out_dir(self):
         try:
-            with open(self._settings_path(), "w", encoding="utf-8") as f:
-                json.dump({"out_dir": self._out_dir}, f)
+            write_json_atomic(self._settings_path(), {"out_dir": self._out_dir})
         except OSError:
             pass
 

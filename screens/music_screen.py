@@ -5,6 +5,7 @@
 import os
 import sys
 import json
+from core.jsonio import read_json, write_json_atomic
 import subprocess
 
 from kivy.uix.screenmanager import Screen
@@ -76,14 +77,15 @@ def _open_external(path):
 
 def _save_playlist(name, tracks):
     path = os.path.join(PLAYLISTS_DIR, f"{name}.json")
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump({"name": name, "tracks": tracks}, f, indent=2)
+    write_json_atomic(path, {"name": name, "tracks": tracks})
 
 
 def _load_playlist(name):
     path = os.path.join(PLAYLISTS_DIR, f"{name}.json")
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
+    data = read_json(path, None)
+    if data is None:
+        raise OSError(f"playlist {name!r} is missing or unreadable")
+    return data
 
 
 def _list_playlists():

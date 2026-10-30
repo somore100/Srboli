@@ -458,18 +458,6 @@ class Dashboard(Screen):
         hdr.add_widget(gear)
         root.add_widget(hdr)
 
-        dir_row = BoxLayout(size_hint_y=None, height=dp(28), spacing=6)
-        self._dir_lbl = Label(
-            text=f"Data: {app_data.get_data_dir()}",
-            font_size=10, halign="left", color=(0.5, 0.8, 1, 1))
-        self._dir_lbl.bind(size=self._dir_lbl.setter("text_size"))
-        chg = Button(text="Change", size_hint_x=None,
-                     width=dp(72), font_size=11)
-        chg.bind(on_release=self._change_dir)
-        dir_row.add_widget(self._dir_lbl)
-        dir_row.add_widget(chg)
-        root.add_widget(dir_row)
-
         # search: type a few letters and only matching tools are listed
         self._search = TextInput(hint_text="Search tools...", multiline=False,
                                  size_hint_y=None, height=dp(38), font_size=14)
@@ -572,52 +560,6 @@ class Dashboard(Screen):
         else:
             self._search.text = ""      # leave search mode; Recent may have changed
             self._fill_list()
-
-    def _change_dir(self, *a):
-        from core.android_storage import shared_storage_root
-        chooser = FileChooserIconView(
-            path=shared_storage_root(), dirselect=True)
-        name_lbl = Label(
-            text=f"Current: {app_data.get_data_dir()}",
-            size_hint_y=None, height=dp(22), font_size=11,
-            color=(0.5, 0.9, 1, 1))
-        move_btn  = Button(text="Move data here", size_hint_y=None,
-                           height=dp(44), font_size=14,
-                           background_color=(0.2, 0.6, 0.2, 1))
-        cache_btn = Button(text="Clear cache", size_hint_y=None,
-                           height=dp(34), font_size=12,
-                           background_color=(0.5, 0.35, 0.1, 1))
-        all_btn   = Button(text="Clear ALL data", size_hint_y=None,
-                           height=dp(34), font_size=12,
-                           background_color=(0.65, 0.1, 0.1, 1))
-        status    = Label(text="", size_hint_y=None, height=dp(22),
-                          font_size=11, color=(0.4, 1, 0.4, 1))
-        layout = BoxLayout(orientation="vertical", spacing=4, padding=6)
-        for w in (name_lbl, chooser, move_btn, cache_btn, all_btn, status):
-            layout.add_widget(w)
-        popup = Popup(title="Data Directory", content=layout,
-                      size_hint=(0.92, 0.92))
-
-        def _move(*a):
-            folder = (chooser.selection[0]
-                      if chooser.selection and os.path.isdir(chooser.selection[0])
-                      else chooser.path)
-            try:
-                new = app_data.set_data_dir(folder, move_old=True)
-                name_lbl.text = f"Moved to: {new}"
-                status.text   = f"Done: {new}"
-                self._dir_lbl.text = f"Data: {new}"
-            except Exception as e:
-                status.text = f"Error: {e}"
-
-        move_btn.bind(on_release=_move)
-        cache_btn.bind(on_release=lambda *a: setattr(
-            status, "text",
-            f"Freed {app_data.clear_cache()//1024} KB"))
-        all_btn.bind(on_release=lambda *a: (
-            app_data.clear_all_data(),
-            setattr(status, "text", "All data cleared.")))
-        popup.open()
 
     def on_touch_down(self, touch):
         if hasattr(touch, "button"):

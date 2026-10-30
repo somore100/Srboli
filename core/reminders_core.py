@@ -27,6 +27,7 @@ import uuid
 import datetime
 
 import app_data
+from core.jsonio import read_json, write_json_atomic
 
 REMINDERS_DIR = "reminders"
 REMINDERS_FILE = "reminders.json"
@@ -40,18 +41,11 @@ def _dir():
 
 
 def _atomic_write_json(path, data):
-    tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
-    os.replace(tmp, path)      # atomic on POSIX and Windows alike
+    write_json_atomic(path, data)
 
 
 def _read_json(path, default):
-    try:
-        with open(path, encoding="utf-8") as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return default
+    return read_json(path, default)
 
 
 # ── CRUD (source-of-truth file) ─────────────────────────────────────────────

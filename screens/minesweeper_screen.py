@@ -37,6 +37,7 @@ from kivy.metrics import dp
 from kivy.clock import Clock
 
 import app_data
+from core.jsonio import read_json, write_json_atomic
 
 # name -> (rows, cols, mines)
 LEVELS = {
@@ -452,12 +453,8 @@ class MinesweeperScreen(Screen):
         return os.path.join(app_data.subdir("minesweeper"), "scores.json")
 
     def _load_scores(self):
-        try:
-            with open(self._scores_path(), encoding="utf-8") as f:
-                data = json.load(f)
-            return data if isinstance(data, dict) else {}
-        except Exception:
-            return {}
+        data = read_json(self._scores_path(), {})
+        return data if isinstance(data, dict) else {}
 
     def _best_time(self):
         v = self._load_scores().get(self.level)
@@ -467,7 +464,6 @@ class MinesweeperScreen(Screen):
         scores = self._load_scores()
         scores[self.level] = int(seconds)
         try:
-            with open(self._scores_path(), "w", encoding="utf-8") as f:
-                json.dump(scores, f)
+            write_json_atomic(self._scores_path(), scores)
         except OSError:
             pass

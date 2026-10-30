@@ -16,6 +16,7 @@ import os
 import re
 
 import app_data
+from core.jsonio import read_json, write_json_atomic
 
 LEARN_DIR = "learn"
 PROGRESS_FILE = "progress.json"
@@ -259,10 +260,7 @@ def _plans_dir():
 
 
 def _atomic_write_json(path, data):
-    tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=1)
-    os.replace(tmp, path)
+    write_json_atomic(path, data, ensure_ascii=False, indent=1)
 
 
 def save_plan(plan):
@@ -271,12 +269,7 @@ def save_plan(plan):
 
 
 def load_plan(pid):
-    try:
-        with open(os.path.join(_plans_dir(), pid + ".json"),
-                  encoding="utf-8") as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return None
+    return read_json(os.path.join(_plans_dir(), pid + ".json"), None)
 
 
 def list_plans():
@@ -300,11 +293,7 @@ def delete_plan(pid):
 
 
 def load_progress():
-    try:
-        with open(os.path.join(_dir(), PROGRESS_FILE), encoding="utf-8") as f:
-            st = json.load(f)
-    except (OSError, ValueError):
-        st = {}
+    st = read_json(os.path.join(_dir(), PROGRESS_FILE), {})
     if not isinstance(st, dict):
         st = {}
     st.setdefault("xp", 0)

@@ -16,7 +16,9 @@
 # Remembers choice in .srboli_config.json (same directory logic as above).
 # MOVES data (not copies) when changing location.
 
-import os, json, shutil, sys
+import os, shutil, sys
+
+from core.jsonio import read_json, write_json_atomic
 
 _APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 _FROZEN   = getattr(sys, "frozen", False)
@@ -65,35 +67,123 @@ def get_data_dir() -> str:
     return path
 
 
-def set_data_dir(new_base: str, move_old: bool = True) -> str:
-    """Change data dir to new_base/srboli_data. MOVES existing data."""
+class DataDirError(Exception):
+    """The chosen folder can't be used (e.g. inside the current data)."""
+
+
+class DataDirExists(DataDirError):
+    """The target already holds data; nothing was changed."""
+    def __init__(self, path):
+        super().__init__(f"{path} already contains data")
+        self.path = path
+
+
+class MoveFailed(DataDirError):
+    """Some files could not be copied; the app stays on the old location."""
+    def __init__(self, failures):
+        super().__init__(f"{len(failures)} file(s) could not be copied")
+        self.failures = failures        # [(path, reason)]
+
+
+def _nested(a, b):
+    """True if a is b, or one lies inside the other (different drives: no)."""
+    a, b = os.path.realpath(a), os.path.realpath(b)
+    try:
+        return os.path.commonpath([a, b]) in (a, b)
+    except ValueError:
+        return False
+
+
+def _tree(root):
+    """(dirs, files) below root as relative paths; symlinks count as files."""
+    dirs, files = [], []
+    for cur, dnames, fnames in os.walk(root):
+        rel = os.path.relpath(cur, root)
+        rel = "" if rel == "." else rel
+        for d in list(dnames):
+            full = os.path.join(cur, d)
+            (files if os.path.islink(full) else dirs).append(os.path.join(rel, d))
+            if os.path.islink(full):
+                dnames.remove(d)
+        files += [os.path.join(rel, f) for f in fnames]
+    return dirs, files
+
+
+def set_data_dir(new_base: str, move_old: bool = True, use_existing: bool = False,
+                 progress=None) -> str:
+    """Change the data dir to new_base/srboli_data.
+
+    Existing data is copied with verification (core.file_safety) and the
+    originals are deleted only after EVERY file is verified; the config
+    switches only then. On any failure the app stays on the old location with
+    all data intact and MoveFailed lists what went wrong. A target that
+    already holds data raises DataDirExists; call again with use_existing=True
+    to switch to it without moving anything. progress(done, total) is optional.
+    """
     global _APP_DIR
-    old  = get_data_dir()
-    new  = os.path.join(os.path.abspath(new_base), "srboli_data")
-    if os.path.abspath(old) == os.path.abspath(new):
+    from core import file_safety
+    old = get_data_dir()
+    new = os.path.join(os.path.abspath(new_base), "srboli_data")
+    if os.path.abspath(old) == new:
         return new
+    has_old = move_old and os.path.isdir(old) and not use_existing
+    if has_old:
+        if _nested(old, new):
+            raise DataDirError("Pick a folder outside the current data folder "
+                               "(and not one that contains it).")
+        if os.path.isdir(new) and os.listdir(new):
+            raise DataDirExists(new)
+    created_dir = not os.path.exists(new)
     os.makedirs(new, exist_ok=True)
-    if move_old and os.path.isdir(old):
-        for item in os.listdir(old):
-            src = os.path.join(old, item)
-            dst = os.path.join(new, item)
+    if has_old:
+        dirs, files = _tree(old)
+        done, failures, copied = 0, [], []
+        for d in dirs:
+            os.makedirs(os.path.join(new, d), exist_ok=True)
+        for rel in files:
+            src, dst = os.path.join(old, rel), os.path.join(new, rel)
             try:
-                if os.path.isdir(src):
-                    if os.path.exists(dst):
-                        shutil.rmtree(dst)
-                    shutil.move(src, dst)
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                if os.path.islink(src):
+                    os.symlink(os.readlink(src), dst)
                 else:
-                    shutil.move(src, dst)
+                    file_safety.safe_copy(src, dst)
+                copied.append(rel)
             except Exception as e:
-                print(f"Move warning: {e}")
-        # remove old folder if empty
-        try:
-            if not os.listdir(old):
-                os.rmdir(old)
-        except Exception:
-            pass
-    _APP_DIR = new
+                failures.append((src, str(e)))
+            done += 1
+            if progress:
+                progress(done, len(files))
+        if failures:
+            for rel in copied:          # target was empty: remove only our copies
+                try:
+                    os.remove(os.path.join(new, rel))
+                except OSError:
+                    pass
+            for d in sorted(dirs, reverse=True):
+                try:
+                    os.rmdir(os.path.join(new, d))
+                except OSError:
+                    pass
+            if created_dir:
+                try:
+                    os.rmdir(new)
+                except OSError:
+                    pass
+            raise MoveFailed(failures)
     _save_config({"data_dir": new})
+    _APP_DIR = new
+    if has_old:                         # everything is verified in the new place
+        for rel in files:
+            try:
+                os.remove(os.path.join(old, rel))
+            except OSError:
+                pass
+        for d in sorted(dirs, reverse=True) + [""]:
+            try:
+                os.rmdir(os.path.join(old, d) if d else old)
+            except OSError:
+                pass
     return new
 
 
@@ -102,17 +192,22 @@ def is_configured() -> bool:
     return os.path.exists(_CONFIG_FILE) and bool(_load_config().get("data_dir"))
 
 
+CACHE_DIRS = ("gallery_cache", "metadata_cache")
+
+
 def clear_cache() -> int:
+    """Delete only the cache folders' contents (never other data)."""
     freed = 0
-    d = get_data_dir()
-    for root, dirs, files in os.walk(d):
-        for f in files:
-            if "thumb" in f or f.endswith(".tmp"):
+    for name in CACHE_DIRS:
+        folder = os.path.join(get_data_dir(), name)
+        for root, _dirs, files in os.walk(folder):
+            for f in files:
                 p = os.path.join(root, f)
                 try:
-                    freed += os.path.getsize(p)
+                    size = os.path.getsize(p)
                     os.remove(p)
-                except Exception:
+                    freed += size
+                except OSError:
                     pass
     return freed
 
@@ -131,17 +226,15 @@ def subdir(name: str) -> str:
 
 
 def _load_config():
-    try:
-        with open(_CONFIG_FILE, encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
+    data = read_json(_CONFIG_FILE, {})
+    return data if isinstance(data, dict) else {}
 
 
 def _save_config(data: dict):
+    """Read-modify-write, so other keys in the file are kept."""
     try:
-        os.makedirs(os.path.dirname(_CONFIG_FILE), exist_ok=True)
-        with open(_CONFIG_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
+        cfg = _load_config()
+        cfg.update(data)
+        write_json_atomic(_CONFIG_FILE, cfg)
     except Exception as e:
         print(f"Config save error: {e}")

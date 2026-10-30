@@ -29,6 +29,7 @@ from kivy.metrics import dp
 from kivy.core.clipboard import Clipboard
 
 import app_data
+from core.jsonio import read_json, write_json_atomic
 from core import outline_core as O
 from core import slides_core as S
 from core import table_core as T
@@ -1292,8 +1293,7 @@ class FullEditorScreen(Screen):
 
     def _write(self, path):
         try:
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(self.doc.to_dict(), f, indent=2, ensure_ascii=False)
+            write_json_atomic(path, self.doc.to_dict(), ensure_ascii=False)
             self.doc.dirty = False
             self._status.text = f"Saved: {os.path.basename(path)}"
             return True

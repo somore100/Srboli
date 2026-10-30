@@ -19,7 +19,7 @@
 # hiding a screen from silently breaking any keybind someone already set
 # up for it.
 
-import os, json, threading, time
+import copy, os, json, threading, time
 
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
@@ -36,6 +36,7 @@ from kivy.clock import Clock
 from kivy.metrics import dp
 
 import app_data
+from core.jsonio import read_json, write_json_atomic
 from screens.registry import SCREENS, LABELS, GROUPS, default_route_order
 from core import dashboard_core as dash
 from core.daemon_ipc import send_command, daemon_launch_cmd, spawn_detached
@@ -48,12 +49,21 @@ def _config_path():
     return os.path.join(app_data.subdir("config"), CONFIG_FILE_NAME)
 
 
+_cache = {"path": None, "data": None}
+
+
+def _raw_settings():
+    """The saved settings, read from disk once and then kept in memory (it is
+    called on every search keystroke). Writes go through _write."""
+    path = _config_path()
+    if _cache["path"] != path:
+        data = read_json(path, {})
+        _cache["path"], _cache["data"] = path, data if isinstance(data, dict) else {}
+    return copy.deepcopy(_cache["data"])
+
+
 def load_settings():
-    try:
-        with open(_config_path(), encoding="utf-8") as f:
-            data = json.load(f)
-    except Exception:
-        data = {}
+    data = _raw_settings()
     order  = data.get("order")  or default_route_order()
     hidden = data.get("hidden") or []
     # reconcile against the current registry: keep known routes only,
@@ -83,8 +93,8 @@ def load_settings():
 
 def _write(data):
     try:
-        with open(_config_path(), "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
+        write_json_atomic(_config_path(), data)
+        _cache["path"], _cache["data"] = _config_path(), copy.deepcopy(data)
     except Exception as e:
         print(f"Settings save error: {e}")
 
@@ -228,6 +238,9 @@ class SettingsScreen(Screen):
         # ── other settings ──────────────────────────────────────────────
         content.add_widget(Label(text="[b]Other settings[/b]", markup=True,
                               font_size=15, size_hint_y=None, height=dp(26)))
+
+        from screens.data_location import DataLocation
+        content.add_widget(DataLocation())
 
         lazy_row = BoxLayout(size_hint_y=None, height=dp(60), spacing=8)
         self._lazy_cb = CheckBox(active=self._cfg.get("lazy_load", True),

@@ -44,6 +44,7 @@ except ImportError:
     HAS_CV2 = False
 
 import app_data
+from core.jsonio import read_json, write_json_atomic
 from core.android_storage import shared_storage_root
 from kivy.utils import platform as _plat
 ANDROID = (_plat == "android")
@@ -630,15 +631,11 @@ class GallerySorterScreen(Screen):
         dcim = os.path.join(_home(), "DCIM")
         if not os.path.isdir(dcim):
             return              # PC / no DCIM: the tip would just be noise
+        seen = read_json(self._hint_file(), {})
+        if isinstance(seen, dict) and seen.get("dcim_hint"):
+            return
         try:
-            with open(self._hint_file(), encoding="utf-8") as f:
-                if json.load(f).get("dcim_hint"):
-                    return
-        except Exception:
-            pass
-        try:
-            with open(self._hint_file(), "w", encoding="utf-8") as f:
-                json.dump({"dcim_hint": True}, f)
+            write_json_atomic(self._hint_file(), {"dcim_hint": True})
         except Exception:
             pass
         layout = BoxLayout(orientation="vertical", padding=dp(10),

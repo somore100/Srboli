@@ -19,6 +19,7 @@ import socket
 import platform
 
 import app_data
+from core.jsonio import read_json, write_json_atomic
 
 CONTROL_HOST = "127.0.0.1"
 CONTROL_PORT = 47613
@@ -227,20 +228,14 @@ def normalize_config(cfg):
 
 
 def load_config():
-    try:
-        with open(config_path(), encoding="utf-8") as f:
-            return normalize_config(json.load(f))
-    except (OSError, ValueError):
-        return default_config()
+    data = read_json(config_path(), None)
+    return normalize_config(data) if data is not None else default_config()
 
 
 def save_config(cfg):
     cfg = normalize_config(cfg)
     path = config_path()
-    tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, indent=2)
-    os.replace(tmp, path)
+    write_json_atomic(path, cfg)
     return cfg
 
 

@@ -22,6 +22,7 @@
 # here (move/delete especially) aren't easily undoable.
 
 import os, json, time, threading
+from core.jsonio import read_json, write_json_atomic
 
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
@@ -903,9 +904,8 @@ class FileSorterScreen(Screen):
         self._sync_watch_cfg()
         cfg_path = os.path.join(_rulesets_dir(), f"{LAST_USED_KEY}_folder.json")
         try:
-            with open(cfg_path, "w", encoding="utf-8") as f:
-                json.dump({"source_folder": self._source_folder,
-                          "recursive": self._recursive_cb.active}, f)
+            write_json_atomic(cfg_path, {"source_folder": self._source_folder,
+                                         "recursive": self._recursive_cb.active})
         except Exception:
             pass
 
@@ -919,12 +919,9 @@ class FileSorterScreen(Screen):
         def worker():
             rules = load_ruleset(LAST_USED_KEY)
             cfg_path = os.path.join(_rulesets_dir(), f"{LAST_USED_KEY}_folder.json")
-            cfg = {}
-            try:
-                with open(cfg_path, encoding="utf-8") as f:
-                    cfg = json.load(f)
-            except Exception:
-                pass
+            cfg = read_json(cfg_path, {})
+            if not isinstance(cfg, dict):
+                cfg = {}
             Clock.schedule_once(lambda dt: self._apply_last_used(rules, cfg))
 
         threading.Thread(target=worker, daemon=True).start()

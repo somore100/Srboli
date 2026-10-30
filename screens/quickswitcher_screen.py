@@ -21,6 +21,7 @@ from kivy.clock import Clock
 from kivy.metrics import dp
 
 import app_data
+from core.jsonio import read_json, write_json_atomic
 from screens.registry import SCREENS as _REG_SCREENS, LABELS as _REG_LABELS
 
 # All available Srboli routes — sourced from the same registry main.py
@@ -298,17 +299,13 @@ def _normalize_mod(mod_str):
 
 def _load_config():
     path = os.path.join(app_data.subdir("config"), CONFIG_FILE_NAME)
-    try:
-        with open(path, encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {"binds": [], "enabled": True}
+    data = read_json(path, None)
+    return data if isinstance(data, dict) else {"binds": [], "enabled": True}
 
 
 def _save_config(data):
     path = os.path.join(app_data.subdir("config"), CONFIG_FILE_NAME)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
+    write_json_atomic(path, data)
 
 
 class QuickSwitcherScreen(Screen):

@@ -33,6 +33,7 @@ except ImportError:
     HAS_CV2 = False
 
 import app_data
+from core.jsonio import read_json, write_json_atomic
 
 
 def _start_dir():
@@ -512,8 +513,7 @@ class MetadataScreen(Screen):
                          for f in self._findings],
         }
         try:
-            with open(out_path, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
+            write_json_atomic(out_path, data, ensure_ascii=False)
             Popup(title="Exported",
                   content=Label(text=f"Saved:\n{out_path}"),
                   size_hint=(0.75, 0.35)).open()
