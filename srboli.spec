@@ -15,12 +15,13 @@ def _modules(pkg):
 datas = [
     ('screens', 'screens'),
     ('app_data.py', '.'),
+    ('feedback.json', '.'),
     ('backrooms_data.json', '.'),
     ('backrooms_data.json', 'screens'),
 ]
 datas += collect_data_files('kivy')
 datas += collect_data_files('ffpyplayer')
-hiddenimports = ['screens', 'core'] + _modules('screens') + _modules('core') + [
+hiddenimports = ['screens', 'core', 'feedback_kit'] + _modules('screens') + _modules('core') + _modules('feedback_kit') + [
     'kivy',
     'kivy.core.window',
     'kivy.core.text.markup',

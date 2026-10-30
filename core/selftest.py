@@ -30,6 +30,13 @@ def check_data_files():
             problems.append("backrooms_data.json not found")
     except Exception as e:
         problems.append(f"backrooms data check: {e}")
+    try:
+        from core.feedback import make_config
+        cfg = make_config()
+        if not cfg.endpoint:
+            problems.append("feedback.json missing or has no endpoint")
+    except Exception as e:
+        problems.append(f"feedback check: {e}")
     return problems
 
 

@@ -3,3 +3,4 @@
 # `version =` in buildozer.spec (Android derives its versionCode from that,
 # and a higher versionCode is what lets a new APK install over the old one).
 VERSION = "4.2"
+APP_NAME = "Srboli"

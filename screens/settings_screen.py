@@ -249,6 +249,12 @@ class SettingsScreen(Screen):
         from screens.data_location import DataLocation
         content.add_widget(DataLocation())
 
+        from screens.feedback_popup import open_feedback
+        fb_btn = Button(text="Leave Feedback", size_hint_y=None, height=dp(40),
+                        font_size=sp(13))
+        fb_btn.bind(on_release=open_feedback)
+        content.add_widget(fb_btn)
+
         lazy_row = BoxLayout(size_hint_y=None, height=dp(60), spacing=8)
         self._lazy_cb = CheckBox(active=self._cfg.get("lazy_load", True),
                                  size_hint=(None, None), size=(dp(24), dp(24)))
