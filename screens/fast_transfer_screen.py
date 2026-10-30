@@ -130,7 +130,7 @@ class FastTransferScreen(Screen):
         self._overwrite_cb = CheckBox(active=False, size_hint=(None, None),
                                       size=(dp(24), dp(24)))
         opt_row.add_widget(self._overwrite_cb)
-        opt_row.add_widget(Label(text="Overwrite existing", font_size=12))
+        opt_row.add_widget(Label(text="Overwrite", font_size=12))
         root.add_widget(opt_row)
 
         # concurrency

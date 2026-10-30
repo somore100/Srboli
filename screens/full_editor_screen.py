@@ -32,9 +32,7 @@ import app_data
 from core import outline_core as O
 from core import slides_core as S
 from core import table_core as T
-from screens.md_editor import (ColorStrip, MarkdownEditor, RECENT_COLORS, hex_rgba,
-                               on_recent_change, open_color_wheel,
-                               remember_color)
+from screens.md_editor import ColorStrip, MarkdownEditor, hex_rgba
 from screens.dialogs import confirm_popup
 from screens.md_parse import kivy_escape
 
@@ -562,19 +560,20 @@ class SlidesPanel(BoxLayout):
         right.add_widget(self._preview)
 
         r2 = row()
+        r2.add_widget(Label(text="Colour:", font_size=12, size_hint_x=None,
+                            width=dp(52)))
         self._bg_btn = ToggleButton(text="Bg", group="slide_target",
                                     state="down", allow_no_selection=False,
-                                    font_size=12, size_hint_x=None, width=dp(44))
+                                    font_size=12)
         self._fg_btn = ToggleButton(text="Text", group="slide_target",
-                                    allow_no_selection=False, font_size=12,
-                                    size_hint_x=None, width=dp(48))
+                                    allow_no_selection=False, font_size=12)
         r2.add_widget(self._bg_btn)
         r2.add_widget(self._fg_btn)
-        r2.add_widget(ColorStrip(self._pick_color))
-        reset = Button(text="Reset", font_size=12, size_hint_x=None, width=dp(52))
+        reset = Button(text="Reset", font_size=12)
         reset.bind(on_release=self._reset_colors)
         r2.add_widget(reset)
         right.add_widget(r2)
+        right.add_widget(ColorStrip(self._pick_color))   # its own row: tappable swatches
 
         r3 = row()
         for text, cb in (("Image...", self._pick_image),
@@ -839,30 +838,19 @@ class TablesPanel(BoxLayout):
         r2.add_widget(self._scope_sp)
         self.add_widget(r2)
 
-        # ── row 3: colours ──
+        # ── row 3: what the colour applies to; row 4: the colours ──
         r3 = row()
         self._fill_btn = ToggleButton(text="Fill", group="tbl_target",
                                       state="down", allow_no_selection=False,
-                                      font_size=12, size_hint_x=None,
-                                      width=dp(52))
+                                      font_size=12)
         self._text_btn = ToggleButton(text="Text", group="tbl_target",
-                                      allow_no_selection=False, font_size=12,
-                                      size_hint_x=None, width=dp(52))
+                                      allow_no_selection=False, font_size=12)
         r3.add_widget(self._fill_btn)
         r3.add_widget(self._text_btn)
-        r3.add_widget(btn("Wheel", lambda *a: open_color_wheel(self._wheel_picked),
-                          size_hint_x=None, width=dp(58)))
-        r3.add_widget(btn("Clear", self._clear_colors, size_hint_x=None,
-                          width=dp(52)))
-        self._swatches = []
-        for i in range(len(RECENT_COLORS)):
-            sw = Button(text="", background_normal="", background_down="")
-            sw.bind(on_release=lambda inst, k=i: self._apply_color(RECENT_COLORS[k]))
-            self._swatches.append(sw)
-            r3.add_widget(sw)
-        self._paint_swatches()
-        on_recent_change(self._paint_swatches)
+        r3.add_widget(btn("Clear", self._clear_colors))
         self.add_widget(r3)
+        self._strip = ColorStrip(self._apply_color)
+        self.add_widget(self._strip)
 
         # ── formula bar ──
         fbar = row()
@@ -900,10 +888,6 @@ class TablesPanel(BoxLayout):
 
     def _fg(self, cell):
         return hex_rgba(cell["fg"]) if cell["fg"] else self.DEFAULT_FG
-
-    def _paint_swatches(self):
-        for sw, hex_ in zip(self._swatches, RECENT_COLORS):
-            sw.background_color = hex_rgba(hex_)
 
     def _refresh(self):
         """Reload everything from the document (after Open / New / edits)."""
@@ -1101,10 +1085,6 @@ class TablesPanel(BoxLayout):
             self._repaint(changed)
             self.doc.touch()
 
-    def _wheel_picked(self, hex_str):
-        remember_color(hex_str)
-        self._apply_color(hex_str)
-
     def _clear_colors(self, *a):
         t = self._table
         if t is None:
@@ -1129,26 +1109,25 @@ class FullEditorScreen(Screen):
 
         root = BoxLayout(orientation="vertical", padding=dp(4), spacing=dp(4))
 
-        # ── file bar ──
-        fbar = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(5))
+        # ── file bar: title and status on one row, the buttons share the next ──
+        top = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(5))
         self._doc_title = TextInput(text="Untitled", multiline=False,
-                                    font_size=14, size_hint_x=0.35,
+                                    font_size=14, size_hint_x=0.7,
                                     hint_text="Document title")
         self._doc_title.bind(text=self._title_changed)
-        fbar.add_widget(self._doc_title)
+        top.add_widget(self._doc_title)
+        self._status = Label(text="", font_size=11, halign="left", size_hint_x=0.3)
+        self._status.bind(size=self._status.setter("text_size"))
+        top.add_widget(self._status)
+        root.add_widget(top)
 
+        fbar = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(5))
         for lbl, cb in [("New", self._new), ("Open", self._open),
                          ("Save", self._save), ("Save As", self._save_as),
                          ("Export HTML", self._export_html)]:
-            b = Button(text=lbl, font_size=12,
-                       size_hint_x=None,
-                       width=dp(90) if "Export" in lbl else dp(70))
+            b = Button(text=lbl, font_size=12)
             b.bind(on_release=cb)
             fbar.add_widget(b)
-
-        self._status = Label(text="", font_size=11, halign="left")
-        self._status.bind(size=self._status.setter("text_size"))
-        fbar.add_widget(self._status)
         root.add_widget(fbar)
 
         # ── tabs ──

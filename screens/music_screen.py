@@ -172,7 +172,7 @@ class MusicScreen(Screen):
 
         # ── load row ──
         load_row = BoxLayout(size_hint_y=None, height=dp(40), spacing=5)
-        add_files_btn  = Button(text="➕ Files",   font_size=12)
+        add_files_btn  = Button(text="+ Files",   font_size=12)
         add_folder_btn = Button(text=" Folder",  font_size=12)
         clear_btn      = Button(text="Del Clear",   font_size=12,
                                 size_hint_x=None, width=dp(80))
@@ -188,9 +188,9 @@ class MusicScreen(Screen):
         ctrl = BoxLayout(size_hint_y=None, height=dp(48), spacing=4)
         btns = [
             ("<<", self._prev_track),
-            ("> Play",  self._play_current),
-            ("|| Pause", self._toggle_pause),
-            ("[] Stop",  self._stop),
+            ("Play",  self._play_current),
+            ("Pause", self._toggle_pause),
+            ("Stop",  self._stop),
             (">>", self._next_track),
             ("-10s", lambda *a: self._seek_relative(-10)),
             ("+10s", lambda *a: self._seek_relative(10)),

@@ -183,43 +183,53 @@ class SettingsScreen(Screen):
         root.add_widget(Label(text="[b]Settings[/b]", markup=True,
                               font_size=20, size_hint_y=None, height=dp(32)))
 
-        root.add_widget(Label(
+        # Everything between the title and the Back button scrolls: on a phone
+        # the settings are taller than the screen, and the screen list used to
+        # be squeezed to nothing. The list keeps its own fixed-height scroll.
+        scroll = ScrollView(do_scroll_x=False)
+        content = BoxLayout(orientation="vertical", spacing=8, size_hint_y=None)
+        content.bind(minimum_height=content.setter("height"))
+        scroll.add_widget(content)
+        root.add_widget(scroll)
+
+        content.add_widget(Label(
             text="Reorder or hide screens on the Dashboard. Screens are listed "
                  "in their Dashboard sections: click a row to select it, then "
                  "use the arrows (or Up/Down keys) to move it within its "
                  "section. Hidden screens stay reachable via Quick Switcher.",
-            font_size=11, halign="left", size_hint_y=None, height=dp(48),
-            color=(0.7, 0.7, 0.7, 1)))
-        root.children[-1].bind(size=root.children[-1].setter("text_size"))
+            font_size=11, halign="left", valign="top", size_hint_y=None,
+            height=dp(64), color=(0.7, 0.7, 0.7, 1)))
+        blurb = content.children[0]
+        blurb.bind(size=blurb.setter("text_size"))
 
         # ── reorder controls ────────────────────────────────────────────
         move_row = BoxLayout(size_hint_y=None, height=dp(38), spacing=6)
-        up_btn = Button(text="\u25b2 Move Up", font_size=12)
-        down_btn = Button(text="\u25bc Move Down", font_size=12)
+        up_btn = Button(text="Move Up", font_size=12)
+        down_btn = Button(text="Move Down", font_size=12)
         up_btn.bind(on_release=lambda *a: self._move_selected(-1))
         down_btn.bind(on_release=lambda *a: self._move_selected(1))
         move_row.add_widget(up_btn)
         move_row.add_widget(down_btn)
-        root.add_widget(move_row)
+        content.add_widget(move_row)
 
         # ── screen list ──────────────────────────────────────────────────
-        sv = ScrollView()
+        sv = ScrollView(size_hint_y=None, height=dp(300))
         self._grid = GridLayout(cols=1, spacing=2, size_hint_y=None, padding=(0, 4))
         self._grid.bind(minimum_height=self._grid.setter("height"))
         sv.add_widget(self._grid)
-        root.add_widget(sv)
+        content.add_widget(sv)
 
         reset_btn = Button(text="Reset screen list to defaults",
                            size_hint_y=None, height=dp(38), font_size=12,
                            background_color=(0.45, 0.3, 0.1, 1))
         reset_btn.bind(on_release=self._reset_defaults)
-        root.add_widget(reset_btn)
+        content.add_widget(reset_btn)
 
         # ── other settings ──────────────────────────────────────────────
-        root.add_widget(Label(text="[b]Other settings[/b]", markup=True,
+        content.add_widget(Label(text="[b]Other settings[/b]", markup=True,
                               font_size=15, size_hint_y=None, height=dp(26)))
 
-        lazy_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=8)
+        lazy_row = BoxLayout(size_hint_y=None, height=dp(60), spacing=8)
         self._lazy_cb = CheckBox(active=self._cfg.get("lazy_load", True),
                                  size_hint=(None, None), size=(dp(24), dp(24)))
         self._lazy_cb.bind(active=self._toggle_lazy)
@@ -231,9 +241,9 @@ class SettingsScreen(Screen):
             font_size=11, halign="left", valign="middle")
         lazy_lbl.bind(size=lazy_lbl.setter("text_size"))
         lazy_row.add_widget(lazy_lbl)
-        root.add_widget(lazy_row)
+        content.add_widget(lazy_row)
 
-        pre_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=8)
+        pre_row = BoxLayout(size_hint_y=None, height=dp(80), spacing=8)
         self._pre_cb = CheckBox(active=self._cfg.get("preload_bg", False),
                                 size_hint=(None, None), size=(dp(24), dp(24)))
         self._pre_cb.bind(active=self._toggle_preload)
@@ -247,9 +257,9 @@ class SettingsScreen(Screen):
             font_size=11, halign="left", valign="middle")
         pre_lbl.bind(size=pre_lbl.setter("text_size"))
         pre_row.add_widget(pre_lbl)
-        root.add_widget(pre_row)
+        content.add_widget(pre_row)
 
-        adv_row = BoxLayout(size_hint_y=None, height=dp(56), spacing=8)
+        adv_row = BoxLayout(size_hint_y=None, height=dp(72), spacing=8)
         self._adv_cb = CheckBox(active=self._cfg.get("advanced_logging", False),
                                 size_hint=(None, None), size=(dp(24), dp(24)))
         self._adv_cb.bind(active=self._toggle_adv_log)
@@ -262,10 +272,10 @@ class SettingsScreen(Screen):
             font_size=11, halign="left", valign="middle")
         adv_lbl.bind(size=adv_lbl.setter("text_size"))
         adv_row.add_widget(adv_lbl)
-        root.add_widget(adv_row)
+        content.add_widget(adv_row)
 
         # ── background service ──────────────────────────────────────────
-        root.add_widget(Label(text="[b]Background service[/b]", markup=True,
+        content.add_widget(Label(text="[b]Background service[/b]", markup=True,
                               font_size=15, size_hint_y=None, height=dp(26)))
         svc_desc = Label(
             text="A small process that can run reminders, watch folders, "
@@ -275,7 +285,7 @@ class SettingsScreen(Screen):
             font_size=11, halign="left", valign="top",
             size_hint_y=None, height=dp(46), color=(0.7, 0.7, 0.7, 1))
         svc_desc.bind(size=svc_desc.setter("text_size"))
-        root.add_widget(svc_desc)
+        content.add_widget(svc_desc)
 
         svc_row = BoxLayout(size_hint_y=None, height=dp(40), spacing=6)
         self._daemon_status_lbl = Label(text="Checking...", font_size=12,
@@ -298,7 +308,7 @@ class SettingsScreen(Screen):
         svc_row.add_widget(self._daemon_refresh_btn)
         svc_row.add_widget(self._daemon_start_btn)
         svc_row.add_widget(self._daemon_stop_btn)
-        root.add_widget(svc_row)
+        content.add_widget(svc_row)
 
         if autostart.is_supported():
             auto_row = BoxLayout(size_hint_y=None, height=dp(40), spacing=6)
@@ -311,7 +321,7 @@ class SettingsScreen(Screen):
                 font_size=12, halign="left", valign="middle")
             auto_lbl.bind(size=auto_lbl.setter("text_size"))
             auto_row.add_widget(auto_lbl)
-            root.add_widget(auto_row)
+            content.add_widget(auto_row)
         else:
             self._autostart_cb = None
 
@@ -322,12 +332,12 @@ class SettingsScreen(Screen):
         if _p_ == "android":
             feat_btn.disabled = True
             feat_btn.text = "Background service: desktop only (not on Android yet)"
-        root.add_widget(feat_btn)
+        content.add_widget(feat_btn)
 
         tt_btn = Button(text="Touch Test (are my taps arriving twice?)",
                         size_hint_y=None, height=dp(40), font_size=12)
         tt_btn.bind(on_release=self._open_touch_test)
-        root.add_widget(tt_btn)
+        content.add_widget(tt_btn)
 
         self._status = Label(text="", size_hint_y=None, height=dp(22),
                              font_size=11, color=(0.4, 1, 0.4, 1))

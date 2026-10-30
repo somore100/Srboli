@@ -451,7 +451,7 @@ class Dashboard(Screen):
         title_col.add_widget(Label(text="your pocket swiss-knife",
                              font_size=11, size_hint_y=None, height=dp(18)))
         hdr.add_widget(title_col)
-        gear = Button(text="\u2699 Settings", size_hint=(None, None),
+        gear = Button(text="Settings", size_hint=(None, None),
                      width=dp(100), height=dp(40), font_size=12,
                      pos_hint={"center_y": 0.5})
         gear.bind(on_release=lambda *a: setattr(self.manager, "current", "settings"))

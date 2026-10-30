@@ -644,9 +644,9 @@ class FileSorterScreen(Screen):
         lbl.bind(size=lbl.setter("text_size"))
         card.add_widget(lbl)
 
-        up = Button(text="\u25b2", size_hint_x=None, width=dp(32))
+        up = Button(text="Up", font_size=11, size_hint_x=None, width=dp(40))
         up.bind(on_release=lambda *a: self._move_rule(index, -1))
-        down = Button(text="\u25bc", size_hint_x=None, width=dp(32))
+        down = Button(text="Dn", font_size=11, size_hint_x=None, width=dp(40))
         down.bind(on_release=lambda *a: self._move_rule(index, 1))
         edit = Button(text="Edit", size_hint_x=None, width=dp(50))
         edit.bind(on_release=lambda *a: self._open_rule_editor(index))

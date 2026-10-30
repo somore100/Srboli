@@ -156,7 +156,7 @@ assert tuple(tp._cells[(0, 3)].background_color[:3]) != tp.DEFAULT_BG[:3]
 tp._scope_sp.text = "Cell"; tp._fill_btn.state = "normal"; tp._text_btn.state = "down"
 tp._apply_color("#112233")
 assert t0["cells"][0][1]["fg"] == "#112233" and t0["cells"][0][2]["fg"] == ""
-tp._wheel_picked("#abcdef")                      # wheel pick: applied + remembered
+tp._strip._wheel_picked("#abcdef")              # wheel pick: applied + remembered
 assert t0["cells"][0][1]["fg"] == "#ABCDEF"
 from screens.md_editor import RECENT_COLORS
 assert RECENT_COLORS[0] == "#ABCDEF"
