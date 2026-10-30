@@ -19,3 +19,9 @@ build/
 
 srboli_data/
 .srboli_config.json
+
+# Build output
+dist/
+bin/
+.buildozer/
+*.log
