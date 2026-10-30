@@ -1,14 +1,16 @@
 # screens/binary_screen.py — Text <-> Binary / Hex / Decimal converter (offline)
 
 import re
-from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.textinput import TextInput
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.spinner import Spinner
 from kivy.core.clipboard import Clipboard
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
+
+from core import theme
+from screens.scaffold import ToolScreen
 
 BASES = {"Binary": (2, 8), "Hex": (16, 2), "Decimal": (10, 0)}
 
@@ -46,33 +48,30 @@ def codes_to_text(raw, base_name):
     return data.decode("utf-8", errors="replace")
 
 
-class BinaryScreen(Screen):
+class BinaryScreen(ToolScreen):
+    title = "Binary / Hex / Decimal"
+
     def __init__(self, **kw):
         super().__init__(**kw)
-        root = BoxLayout(orientation="vertical", padding=10, spacing=8)
-        root.add_widget(Label(text="[b]Binary / Hex / Decimal[/b]", markup=True,
-                              size_hint_y=None, height=dp(34),
-                              font_size=18))
+        root = self.body
 
         row = BoxLayout(size_hint_y=None, height=dp(44), spacing=8)
         row.add_widget(Label(text="Format:", size_hint_x=None, width=dp(60),
-                             font_size=13))
+                             font_size=sp(13)))
         self._base = Spinner(text="Binary", values=list(BASES),
-                             font_size=14)
+                             font_size=sp(14))
         row.add_widget(self._base)
         root.add_widget(row)
 
         self.input = TextInput(hint_text="Type text or codes here…",
-                               size_hint_y=0.35,
-                               background_color=(0.12, 0.12, 0.14, 1),
-                               foreground_color=(0.9, 0.9, 0.9, 1))
+                               size_hint_y=0.35)
         root.add_widget(self.input)
 
         btns = BoxLayout(size_hint_y=None, height=dp(46), spacing=8)
-        a = Button(text="Text > Code", font_size=14)
-        b = Button(text="Code > Text", font_size=14)
+        a = Button(text="Text > Code", font_size=sp(14))
+        b = Button(text="Code > Text", font_size=sp(14))
         c = Button(text="Clear", size_hint_x=None, width=dp(70),
-                   font_size=13)
+                   font_size=sp(13))
         a.bind(on_release=self._enc)
         b.bind(on_release=self._dec)
         c.bind(on_release=lambda *x: (setattr(self.input, "text", ""),
@@ -82,19 +81,13 @@ class BinaryScreen(Screen):
         root.add_widget(btns)
 
         self.output = TextInput(readonly=True, size_hint_y=0.35,
-                                background_color=(0.10, 0.10, 0.12, 1),
-                                foreground_color=(0.85, 0.95, 0.85, 1))
+                                background_color=theme.SURFACE2,
+                                foreground_color=theme.TEXT)
         root.add_widget(self.output)
 
         cp = Button(text="Copy Output", size_hint_y=None, height=dp(42))
         cp.bind(on_release=lambda *x: Clipboard.copy(self.output.text))
         root.add_widget(cp)
-
-        back = Button(text="< Back", size_hint_y=None, height=dp(44))
-        back.bind(on_release=lambda *x: setattr(
-            self.manager, "current", "dashboard"))
-        root.add_widget(back)
-        self.add_widget(root)
 
     def _enc(self, *a):
         self.output.text = text_to_codes(self.input.text, self._base.text)

@@ -31,11 +31,11 @@ for _ in range(5): Clock.tick()
 s.level = "Easy"
 s._tap(52); assert len(s.targets) == 2, s.targets          # e2 -> e3/e4
 s._tap(36)
-assert s.pos.turn == "b" and s._thinking
+assert s.game.turn == "b" and s._thinking
 t0 = time.time()
 while s._thinking and time.time() - t0 < 10:
     Clock.tick(); time.sleep(0.01)
-assert s.pos.turn == "w" and len(s.history) == 2, (s.pos.turn, len(s.history))
-s._undo(); assert len(s.history) == 0 and s.pos.turn == "w"
+assert s.game.turn == "w" and len(s.history) == 2, (s.game.turn, len(s.history))
+s._undo(); assert len(s.history) == 0 and s.game.turn == "w"
 s._toggle_mode(); s._tap(52); s._tap(36); assert s._flipped() and s._cells
 print("screen OK")

@@ -14,6 +14,7 @@ _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if _SCRIPT_DIR not in sys.path:
     sys.path.insert(0, _SCRIPT_DIR)
 
+from kivy.metrics import sp
 from kivy.config import Config
 Config.set("graphics", "width",          "320")
 Config.set("graphics", "height",         "260")
@@ -90,7 +91,7 @@ class OverlayApp(App):
         # while this is left open on top of whatever's being tested) ─────
         top_row = BoxLayout(size_hint_y=None, height=24, spacing=4)
         self._collapse_btn = Button(text="\u25b2 hide options",
-                                    size_hint_x=None, width=110, font_size=10)
+                                    size_hint_x=None, width=110, font_size=sp(10))
         self._collapse_btn.bind(on_release=self._toggle_collapse)
         top_row.add_widget(self._collapse_btn)
         root.add_widget(top_row)
@@ -102,7 +103,7 @@ class OverlayApp(App):
             cb.bind(active=lambda inst, v, key=k: self._set_show(key, v))
             self._checkboxes[k] = cb
             self._tog.add_widget(cb)
-            self._tog.add_widget(Label(text=k, font_size=10,
+            self._tog.add_widget(Label(text=k, font_size=sp(10),
                                        size_hint_x=None, width=32))
         root.add_widget(self._tog)
 
@@ -113,7 +114,7 @@ class OverlayApp(App):
         self._rows_box = BoxLayout(orientation="vertical", size_hint_y=None)
         self._rows_box.bind(minimum_height=self._rows_box.setter("height"))
         for k in STAT_KEYS:
-            lbl = Label(text=f"{k}: --", font_size=13, halign="left",
+            lbl = Label(text=f"{k}: --", font_size=sp(13), halign="left",
                        size_hint_y=None,
                        height=ROW_HEIGHT if SHOW[k] else 0,
                        opacity=1 if SHOW[k] else 0)
@@ -122,7 +123,7 @@ class OverlayApp(App):
             self._rows_box.add_widget(lbl)
         root.add_widget(self._rows_box)
 
-        self._status = Label(text="Overlay running", font_size=10,
+        self._status = Label(text="Overlay running", font_size=sp(10),
                              size_hint_y=None, height=20,
                              color=(0.5, 0.7, 0.5, 1))
         root.add_widget(self._status)

@@ -1325,7 +1325,7 @@ class FunctionRow(BoxLayout):
 
         self.mode_sp = Spinner(
             text="y =", values=("y =", "x,y(t)", "r(\u03b8)"),
-            size_hint_x=None, width=dp(72), font_size=11)
+            size_hint_x=None, width=dp(72), font_size=sp(11))
         self.mode_sp.bind(text=self._on_mode_pick)
         self.add_widget(self.mode_sp)
 
@@ -1335,7 +1335,7 @@ class FunctionRow(BoxLayout):
 
         self.add_widget(ColorDot(color))
         del_btn = Button(text="X", size_hint_x=None, width=dp(30),
-                         font_size=13, background_color=(0.55, 0.12, 0.12, 1))
+                         font_size=sp(13), background_color=(0.55, 0.12, 0.12, 1))
         del_btn.bind(on_release=lambda *a: on_delete(self))
         self.add_widget(del_btn)
 
@@ -1355,24 +1355,24 @@ class FunctionRow(BoxLayout):
 
         if self.mode == "y":
             self.lhs = self._bind(_DarkInput(
-                text="f(x)", multiline=False, font_size=13,
+                text="f(x)", multiline=False, font_size=sp(13),
                 size_hint_x=None, width=dp(52)))
             self.rhs = self._bind(_DarkInput(
-                multiline=False, font_size=13, hint_text="sin(x)/x"))
+                multiline=False, font_size=sp(13), hint_text="sin(x)/x"))
             self.body.add_widget(self.lhs)
             self.body.add_widget(Label(text="=", size_hint_x=None, width=dp(10)))
             self.body.add_widget(self.rhs)
 
         elif self.mode == "param":
             self.lhs = self._bind(_DarkInput(
-                text="x(t)", multiline=False, font_size=12,
+                text="x(t)", multiline=False, font_size=sp(12),
                 size_hint_x=None, width=dp(50)))
             self.rhs = self._bind(_DarkInput(
-                multiline=False, font_size=12, hint_text="cos(t)"))
+                multiline=False, font_size=sp(12), hint_text="cos(t)"))
             self.rhs2 = self._bind(_DarkInput(
-                multiline=False, font_size=12, hint_text="sin(t)"))
+                multiline=False, font_size=sp(12), hint_text="sin(t)"))
             self.range_in = self._bind(_DarkInput(
-                text="0, 6.283", multiline=False, font_size=11,
+                text="0, 6.283", multiline=False, font_size=sp(11),
                 size_hint_x=None, width=dp(76)))
             self.body.add_widget(self.lhs)
             self.body.add_widget(Label(text="=", size_hint_x=None, width=dp(10)))
@@ -1383,13 +1383,13 @@ class FunctionRow(BoxLayout):
 
         else:  # polar
             self.lhs = self._bind(_DarkInput(
-                text="r(\u03b8)", multiline=False, font_size=12,
+                text="r(\u03b8)", multiline=False, font_size=sp(12),
                 size_hint_x=None, width=dp(50)))
             self.rhs = self._bind(_DarkInput(
-                multiline=False, font_size=12,
+                multiline=False, font_size=sp(12),
                 hint_text="1 + cos(\u03b8)"))
             self.range_in = self._bind(_DarkInput(
-                text="0, 6.283", multiline=False, font_size=11,
+                text="0, 6.283", multiline=False, font_size=sp(11),
                 size_hint_x=None, width=dp(76)))
             self.body.add_widget(self.lhs)
             self.body.add_widget(Label(text="=", size_hint_x=None, width=dp(10)))
@@ -1463,19 +1463,19 @@ class SplineRow(BoxLayout):
 
         self.add_widget(Label(text="spline",
                               size_hint_x=None, width=dp(70),
-                              font_size=13, color=(0.9, 0.9, 0.6, 1)))
+                              font_size=sp(13), color=(0.9, 0.9, 0.6, 1)))
         self.add_widget(Label(text=f"{len(points)} pts",
-                              font_size=12,
+                              font_size=sp(12),
                               color=(0.7, 0.75, 0.8, 1)))
         if on_expr:
             eb = Button(text="Expr", size_hint_x=None, width=dp(52),
-                        font_size=12, background_color=(0.25, 0.5, 0.35, 1))
+                        font_size=sp(12), background_color=(0.25, 0.5, 0.35, 1))
             eb.bind(on_release=lambda *a: on_expr(self))
             self.add_widget(eb)
         self.add_widget(ColorDot(color))
 
         del_btn = Button(text="X", size_hint_x=None, width=dp(30),
-                         font_size=13, background_color=(0.55, 0.12, 0.12, 1))
+                         font_size=sp(13), background_color=(0.55, 0.12, 0.12, 1))
         del_btn.bind(on_release=lambda *a: on_delete(self))
         self.add_widget(del_btn)
 
@@ -1502,18 +1502,18 @@ class PathRow(BoxLayout):
 
         self.add_widget(Label(text="curve",
                               size_hint_x=None, width=dp(70),
-                              font_size=13, color=(0.9, 0.9, 0.6, 1)))
+                              font_size=sp(13), color=(0.9, 0.9, 0.6, 1)))
         self.add_widget(Label(text=f"{len(points)} pts",
-                              font_size=12,
+                              font_size=sp(12),
                               color=(0.7, 0.75, 0.8, 1)))
         if on_expr:
             eb = Button(text="Expr", size_hint_x=None, width=dp(52),
-                        font_size=12, background_color=(0.25, 0.5, 0.35, 1))
+                        font_size=sp(12), background_color=(0.25, 0.5, 0.35, 1))
             eb.bind(on_release=lambda *a: on_expr(self))
             self.add_widget(eb)
         self.add_widget(ColorDot(color))
         del_btn = Button(text="X", size_hint_x=None, width=dp(30),
-                         font_size=13, background_color=(0.55, 0.12, 0.12, 1))
+                         font_size=sp(13), background_color=(0.55, 0.12, 0.12, 1))
         del_btn.bind(on_release=lambda *a: on_delete(self))
         self.add_widget(del_btn)
 
@@ -1555,19 +1555,19 @@ class PiecewiseRow(BoxLayout):
         n = len(self.pieces)
         self.add_widget(Label(text=f"piecewise \u00b7 {n}",
                               size_hint_x=None, width=dp(120),
-                              font_size=13, color=(0.9, 0.9, 0.6, 1)))
+                              font_size=sp(13), color=(0.9, 0.9, 0.6, 1)))
         self.add_widget(Label(text=f"{sum(len(p) for p in self.pieces)} pts",
-                              font_size=12,
+                              font_size=sp(12),
                               color=(0.7, 0.75, 0.8, 1)))
         self.add_widget(ColorDot(color))
         if on_convert is not None:
             conv = Button(text="->expr", size_hint_x=None, width=dp(52),
-                          font_size=11,
+                          font_size=sp(11),
                           background_color=(0.3, 0.3, 0.5, 1))
             conv.bind(on_release=lambda *a: on_convert(self))
             self.add_widget(conv)
         del_btn = Button(text="X", size_hint_x=None, width=dp(30),
-                         font_size=13, background_color=(0.55, 0.12, 0.12, 1))
+                         font_size=sp(13), background_color=(0.55, 0.12, 0.12, 1))
         del_btn.bind(on_release=lambda *a: on_delete(self))
         self.add_widget(del_btn)
 
@@ -1635,7 +1635,7 @@ class FunctionPlotterScreen(Screen):
         root.add_widget(self.graph)
 
         tb = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(4))
-        b_view = Button(text="View v  (0/0)", font_size=11)
+        b_view = Button(text="View v  (0/0)", font_size=sp(11))
         b_view.bind(on_release=lambda *a: self._open_view_menu())
         self._b_view = b_view
         tb.add_widget(b_view)
@@ -1646,19 +1646,19 @@ class FunctionPlotterScreen(Screen):
             ("Fill", lambda *a: self._open_fill_popup()),
             ("PNG", lambda *a: self._export_png()),
         ):
-            b = Button(text=label, font_size=11)
+            b = Button(text=label, font_size=sp(11))
             b.bind(on_release=cb)
             tb.add_widget(b)
         root.add_widget(tb)
 
         mode_bar = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(4))
-        b_undo = Button(text="Undo", font_size=12, size_hint_x=None,
+        b_undo = Button(text="Undo", font_size=sp(12), size_hint_x=None,
                         width=dp(54))
         b_undo.bind(on_release=lambda *a: self._do_undo())
-        b_redo = Button(text="Redo", font_size=12, size_hint_x=None,
+        b_redo = Button(text="Redo", font_size=sp(12), size_hint_x=None,
                         width=dp(54))
         b_redo.bind(on_release=lambda *a: self._do_redo())
-        b_hist = Button(text="Hist", font_size=12, size_hint_x=None,
+        b_hist = Button(text="Hist", font_size=sp(12), size_hint_x=None,
                         width=dp(54))
         b_hist.bind(on_release=lambda *a: self._open_history())
         mode_bar.add_widget(b_undo)
@@ -1666,7 +1666,7 @@ class FunctionPlotterScreen(Screen):
         mode_bar.add_widget(b_hist)
         for mode_name, label in (("pan", "Pan"), ("drag", "Drag"),
                                  ("point", "Point"), ("pencil", "Pencil")):
-            b = ToggleButton(text=label, font_size=11, group="mode")
+            b = ToggleButton(text=label, font_size=sp(11), group="mode")
             if mode_name == "pan":
                 b.state = "down"
             b.bind(on_release=lambda btn, m=mode_name: self._set_mode(m))
@@ -1680,17 +1680,17 @@ class FunctionPlotterScreen(Screen):
         sv.add_widget(self.rows_box)
         root.add_widget(sv)
 
-        self.fit_lbl = Label(text="", font_size=11, size_hint_y=None,
+        self.fit_lbl = Label(text="", font_size=sp(11), size_hint_y=None,
                              height=dp(20), color=(0.6, 1, 0.7, 1))
         root.add_widget(self.fit_lbl)
 
         bb = BoxLayout(size_hint_y=None, height=dp(46), spacing=dp(4))
-        b_add = Button(text="+ Add function", font_size=12,
+        b_add = Button(text="+ Add function", font_size=sp(12),
                        background_color=(0.2, 0.5, 0.25, 1))
         b_add.bind(on_release=lambda *a: self._add_row())
-        b_help = Button(text="?", font_size=14, size_hint_x=None, width=dp(40))
+        b_help = Button(text="?", font_size=sp(14), size_hint_x=None, width=dp(40))
         b_help.bind(on_release=lambda *a: self._show_help())
-        b_back = Button(text="Back", font_size=12, size_hint_x=None, width=dp(70))
+        b_back = Button(text="Back", font_size=sp(12), size_hint_x=None, width=dp(70))
         b_back.bind(on_release=lambda *a: setattr(
             self.manager, "current", "dashboard"))
         bb.add_widget(b_add)
@@ -1989,7 +1989,7 @@ class FunctionPlotterScreen(Screen):
 
         def make_row(text, enabled, on_click=None, bg=(0.2, 0.25, 0.32, 1)):
             b = Button(text=text, size_hint_y=None, height=dp(34),
-                       font_size=11, halign="left", valign="middle",
+                       font_size=sp(11), halign="left", valign="middle",
                        background_color=bg)
             b.bind(size=lambda *a: setattr(
                 b, "text_size", (b.width - dp(10), None)))
@@ -2099,7 +2099,7 @@ class FunctionPlotterScreen(Screen):
             ("Reset to default", self._do_view_reset, (0.28, 0.35, 0.2, 1)),
         ):
             b = Button(text=label, size_hint_y=None, height=dp(42),
-                       font_size=13, background_color=bg)
+                       font_size=sp(13), background_color=bg)
             b.bind(on_release=lambda inst, fn=cb: (popup.dismiss(), fn()))
             layout.add_widget(b)
         popup = Popup(title="View history", content=layout,
@@ -2173,13 +2173,13 @@ class FunctionPlotterScreen(Screen):
             info_text = (f"Captured {len(world_pts)} samples. Loops/backtracking "
                          f"found: use Free curve to keep them.")
         info = Label(text=info_text, size_hint_y=None, height=dp(40),
-                     font_size=12, halign="center", valign="middle")
+                     font_size=sp(12), halign="center", valign="middle")
         info.bind(size=lambda w, *_: setattr(w, "text_size", (w.width, None)))
 
         free_btn = Button(
             text="Free curve (keeps loops)" + ("" if func_like
                                                else "  - recommended"),
-            font_size=13, size_hint_y=None, height=dp(44),
+            font_size=sp(13), size_hint_y=None, height=dp(44),
             background_color=(0.2, 0.45, 0.7, 1) if not func_like
             else (0.25, 0.4, 0.55, 1), disabled=not can_path)
 
@@ -2187,7 +2187,7 @@ class FunctionPlotterScreen(Screen):
                         else "Function y(x), smooth")
         if not func_like:
             spline_label += " (flattens loops)"
-        spline_btn = Button(text=spline_label, font_size=13,
+        spline_btn = Button(text=spline_label, font_size=sp(13),
                             size_hint_y=None, height=dp(44),
                             background_color=(0.2, 0.45, 0.7, 1)
                             if func_like else (0.3, 0.3, 0.35, 1),
@@ -2195,19 +2195,19 @@ class FunctionPlotterScreen(Screen):
 
         deg_sp = Spinner(text="6",
                          values=("2", "3", "4", "5", "6", "7", "8", "10", "12"),
-                         size_hint_x=None, width=dp(60), font_size=13)
-        poly_btn = Button(text="Polynomial fit", font_size=13,
+                         size_hint_x=None, width=dp(60), font_size=sp(13))
+        poly_btn = Button(text="Polynomial fit", font_size=sp(13),
                           size_hint_y=None, height=dp(44),
                           background_color=(0.25, 0.55, 0.3, 1),
                           disabled=not segments)
         poly_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
         poly_row.add_widget(Label(text="deg", size_hint_x=None,
-                                  width=dp(34), font_size=12))
+                                  width=dp(34), font_size=sp(12)))
         poly_row.add_widget(deg_sp)
         poly_row.add_widget(poly_btn)
 
         cancel = Button(text="Cancel", size_hint_y=None, height=dp(38),
-                        font_size=12)
+                        font_size=sp(12))
 
         layout = BoxLayout(orientation="vertical", spacing=dp(6),
                            padding=dp(8))
@@ -2418,29 +2418,29 @@ class FunctionPlotterScreen(Screen):
         txt = ("Keep warped curve as:" if func_like else
                "The curve folded, so only Free curve can hold it:")
         info = Label(text=txt, size_hint_y=None, height=dp(30),
-                     font_size=12)
+                     font_size=sp(12))
         free_btn = Button(text="Free curve (exact shape)",
-                          size_hint_y=None, height=dp(44), font_size=13,
+                          size_hint_y=None, height=dp(44), font_size=sp(13),
                           background_color=(0.2, 0.45, 0.7, 1))
         spline_btn = Button(text="Function spline (y of x)",
-                            size_hint_y=None, height=dp(44), font_size=13,
+                            size_hint_y=None, height=dp(44), font_size=sp(13),
                             background_color=(0.3, 0.4, 0.55, 1),
                             disabled=not func_like)
         deg_sp = Spinner(text="6",
                          values=("2", "3", "4", "5", "6", "7", "8", "10", "12"),
-                         size_hint_x=None, width=dp(60), font_size=13)
+                         size_hint_x=None, width=dp(60), font_size=sp(13))
         poly_btn = Button(text="Polynomial", size_hint_y=None,
-                          height=dp(44), font_size=13,
+                          height=dp(44), font_size=sp(13),
                           background_color=(0.25, 0.55, 0.3, 1),
                           disabled=not func_like)
         poly_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
         poly_row.add_widget(Label(text="deg", size_hint_x=None,
-                                  width=dp(34), font_size=12))
+                                  width=dp(34), font_size=sp(12)))
         poly_row.add_widget(deg_sp)
         poly_row.add_widget(poly_btn)
 
         cancel = Button(text="Cancel (revert)", size_hint_y=None,
-                        height=dp(38), font_size=12)
+                        height=dp(38), font_size=sp(12))
 
         layout = BoxLayout(orientation="vertical", spacing=dp(6),
                            padding=dp(8))
@@ -2491,19 +2491,19 @@ class FunctionPlotterScreen(Screen):
         info = Label(
             text=("Fit x(t), y(t) polynomials (t from -1 to 1)."
                   if is_path else "Fit y = polynomial in x."),
-            size_hint_y=None, height=dp(30), font_size=12)
+            size_hint_y=None, height=dp(30), font_size=sp(12))
         deg_sp = Spinner(text="8" if is_path else "6",
                          values=("3", "4", "5", "6", "8", "10", "12"),
-                         size_hint_x=None, width=dp(60), font_size=13)
-        go = Button(text="Make formula", font_size=13,
+                         size_hint_x=None, width=dp(60), font_size=sp(13))
+        go = Button(text="Make formula", font_size=sp(13),
                     background_color=(0.25, 0.55, 0.3, 1))
         line = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
         line.add_widget(Label(text="deg", size_hint_x=None, width=dp(34),
-                              font_size=12))
+                              font_size=sp(12)))
         line.add_widget(deg_sp)
         line.add_widget(go)
         cancel = Button(text="Cancel", size_hint_y=None, height=dp(38),
-                        font_size=12)
+                        font_size=sp(12))
         layout = BoxLayout(orientation="vertical", spacing=dp(6),
                            padding=dp(8))
         for wdg in (info, line, cancel):
@@ -2582,19 +2582,19 @@ class FunctionPlotterScreen(Screen):
         g = self.graph
         xs_, ys_ = g.x_max - g.x_min, g.y_max - g.y_min
         info = Label(text=f"Connect {len(pts)} points in the order placed:",
-                     size_hint_y=None, height=dp(30), font_size=12)
+                     size_hint_y=None, height=dp(30), font_size=sp(12))
         smooth_btn = Button(text="Smooth curve", size_hint_y=None,
-                            height=dp(44), font_size=13,
+                            height=dp(44), font_size=sp(13),
                             background_color=(0.2, 0.45, 0.7, 1),
                             disabled=len(pts) < 3)
         line_btn = Button(text="Straight lines", size_hint_y=None,
-                          height=dp(44), font_size=13,
+                          height=dp(44), font_size=sp(13),
                           background_color=(0.25, 0.55, 0.3, 1))
         close_tb = ToggleButton(text="Close the loop", size_hint_y=None,
-                                height=dp(40), font_size=12,
+                                height=dp(40), font_size=sp(12),
                                 disabled=len(pts) < 3)
         cancel = Button(text="Cancel", size_hint_y=None, height=dp(38),
-                        font_size=12)
+                        font_size=sp(12))
         layout = BoxLayout(orientation="vertical", spacing=dp(6),
                            padding=dp(8))
         for wdg in (info, smooth_btn, line_btn, close_tb, cancel):
@@ -2628,33 +2628,33 @@ class FunctionPlotterScreen(Screen):
             return
         labels = [f"#{i} {r.lhs.text.strip() or 'f(x)'}"
                   for i, r in candidates]
-        sp_a = Spinner(text=labels[0], values=labels, font_size=11,
+        sp_a = Spinner(text=labels[0], values=labels, font_size=sp(11),
                        size_hint_y=None, height=dp(34))
-        sp_b = Spinner(text=labels[1], values=labels, font_size=11,
+        sp_b = Spinner(text=labels[1], values=labels, font_size=sp(11),
                        size_hint_y=None, height=dp(34))
         lo_in = TextInput(text=f"{self.graph.x_min:g}", multiline=False,
-                          font_size=12, size_hint_y=None, height=dp(32))
+                          font_size=sp(12), size_hint_y=None, height=dp(32))
         hi_in = TextInput(text=f"{self.graph.x_max:g}", multiline=False,
-                          font_size=12, size_hint_y=None, height=dp(32))
-        apply_btn = Button(text="Shade + integrate", font_size=13,
+                          font_size=sp(12), size_hint_y=None, height=dp(32))
+        apply_btn = Button(text="Shade + integrate", font_size=sp(13),
                            size_hint_y=None, height=dp(42),
                            background_color=(0.25, 0.5, 0.3, 1))
-        remove_btn = Button(text="Remove fill", font_size=12,
+        remove_btn = Button(text="Remove fill", font_size=sp(12),
                             size_hint_y=None, height=dp(34),
                             background_color=(0.45, 0.25, 0.2, 1))
-        cancel = Button(text="Cancel", font_size=12, size_hint_y=None,
+        cancel = Button(text="Cancel", font_size=sp(12), size_hint_y=None,
                         height=dp(34))
 
         layout = BoxLayout(orientation="vertical", spacing=dp(6),
                            padding=dp(8))
         for w in (Label(text="Upper curve:", size_hint_y=None,
-                        height=dp(20), font_size=11), sp_a,
+                        height=dp(20), font_size=sp(11)), sp_a,
                   Label(text="Lower curve:", size_hint_y=None,
-                        height=dp(20), font_size=11), sp_b,
+                        height=dp(20), font_size=sp(11)), sp_b,
                   Label(text="Interval x_lo:", size_hint_y=None,
-                        height=dp(20), font_size=11), lo_in,
+                        height=dp(20), font_size=sp(11)), lo_in,
                   Label(text="Interval x_hi:", size_hint_y=None,
-                        height=dp(20), font_size=11), hi_in,
+                        height=dp(20), font_size=sp(11)), hi_in,
                   apply_btn, remove_btn, cancel):
             layout.add_widget(w)
         popup = Popup(title="Fill between curves", content=layout,
@@ -2873,7 +2873,7 @@ class FunctionPlotterScreen(Screen):
             "• Fill — shade ∫(a−b) dx between two y=f(x) curves\n"
             "• PNG — export the current view\n"
         )
-        lbl = Label(text=txt, markup=True, font_size=12, halign="left",
+        lbl = Label(text=txt, markup=True, font_size=sp(12), halign="left",
                     valign="top", size_hint_y=None, padding=(dp(8), dp(8)))
         lbl.bind(width=lambda *a: lbl.setter("text_size")(
             lbl, (lbl.width, None)))

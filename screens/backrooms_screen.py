@@ -4,6 +4,7 @@
 import os
 import json
 
+from kivy.metrics import sp
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
@@ -78,7 +79,7 @@ class BackroomsScreen(Screen):
         root.add_widget(top)
 
         self.info_label = Label(text="", size_hint_y=None, height=26,
-                                font_size=11)
+                                font_size=sp(11))
         root.add_widget(self.info_label)
 
         sv = ScrollView()

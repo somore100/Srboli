@@ -41,7 +41,7 @@ from kivy.uix.filechooser import FileChooserIconView
 from kivy.uix.popup import Popup
 from kivy.core.clipboard import Clipboard
 from kivy.clock import Clock
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 
 try:
     from PIL import Image as PILImage
@@ -93,24 +93,24 @@ class ImageTextScreen(Screen):
 
         layout.add_widget(Label(
             text="[b]Convert a file to a Base64 string[/b] (any file type)",
-            markup=True, size_hint_y=None, height=dp(32), font_size=15,
+            markup=True, size_hint_y=None, height=dp(32), font_size=sp(15),
         ))
 
         self.img_preview = KivyImage(size_hint_y=0.28, fit_mode="contain")
         layout.add_widget(self.img_preview)
 
         select_btn = Button(text="Select File", size_hint_y=None,
-                            height=dp(48), font_size=15)
+                            height=dp(48), font_size=sp(15))
         select_btn.bind(on_release=self._pick_file)
         layout.add_widget(select_btn)
 
         self._encode_status = Label(text="No file selected.", size_hint_y=None,
-                                    height=dp(22), font_size=12,
+                                    height=dp(22), font_size=sp(12),
                                     color=(0.6, 0.6, 0.6, 1))
         layout.add_widget(self._encode_status)
 
         layout.add_widget(Label(text="Base64 output:", size_hint_y=None,
-                                height=dp(20), font_size=12))
+                                height=dp(20), font_size=sp(12)))
 
         self.img_text_output = TextInput(
             multiline=True, readonly=True, size_hint_y=0.30,
@@ -138,12 +138,12 @@ class ImageTextScreen(Screen):
 
         layout.add_widget(Label(
             text="[b]Convert a Base64 string back to a file[/b]", markup=True,
-            size_hint_y=None, height=dp(32), font_size=15,
+            size_hint_y=None, height=dp(32), font_size=sp(15),
         ))
 
         layout.add_widget(Label(text="Paste Base64 string here (small/medium "
                                      "strings only — see note below):",
-                                size_hint_y=None, height=dp(20), font_size=12))
+                                size_hint_y=None, height=dp(20), font_size=sp(12)))
 
         self.text_input_box = TextInput(
             multiline=True, size_hint_y=0.25,
@@ -164,18 +164,18 @@ class ImageTextScreen(Screen):
                  "can be slow (that's a text-box rendering limit, not this "
                  "app hanging) - for anything past a few hundred KB, use "
                  "\"Load from .txt file\" instead.",
-            font_size=10, size_hint_y=None, height=dp(38),
+            font_size=sp(10), size_hint_y=None, height=dp(38),
             halign="left", valign="top", color=(0.55, 0.55, 0.55, 1))
         note_lbl.bind(size=note_lbl.setter("text_size"))
         layout.add_widget(note_lbl)
 
         self._decode_btn = Button(text="Convert to File", size_hint_y=None,
-                                  height=dp(48), font_size=15)
+                                  height=dp(48), font_size=sp(15))
         self._decode_btn.bind(on_release=self._convert_to_file)
         layout.add_widget(self._decode_btn)
 
         self._decode_status = Label(text="", size_hint_y=None, height=dp(22),
-                                    font_size=12, color=(0.6, 0.6, 0.6, 1))
+                                    font_size=sp(12), color=(0.6, 0.6, 0.6, 1))
         layout.add_widget(self._decode_status)
 
         self.text_preview = KivyImage(size_hint_y=0.26, fit_mode="contain")
@@ -183,19 +183,19 @@ class ImageTextScreen(Screen):
 
         save_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=6)
         save_row.add_widget(Label(text="Save as:", size_hint_x=None,
-                                  width=dp(70), font_size=12))
+                                  width=dp(70), font_size=sp(12)))
         self._filename_input = TextInput(text="output.bin", multiline=False,
-                                         font_size=12)
+                                         font_size=sp(12))
         save_row.add_widget(self._filename_input)
         layout.add_widget(save_row)
 
         out_row = BoxLayout(size_hint_y=None, height=dp(46), spacing=6)
-        self.save_btn = Button(text="Save As...", disabled=True, font_size=13)
+        self.save_btn = Button(text="Save As...", disabled=True, font_size=sp(13))
         self.save_btn.bind(on_release=self._pick_save_location)
-        self.dl_btn = Button(text="Download", disabled=True, font_size=13)
+        self.dl_btn = Button(text="Download", disabled=True, font_size=sp(13))
         self.dl_btn.bind(on_release=self._quick_download)
         self.copy_img_btn = Button(text="Copy image", disabled=True,
-                                   font_size=13)
+                                   font_size=sp(13))
         self.copy_img_btn.bind(on_release=self._copy_image)
         for b in (self.save_btn, self.dl_btn, self.copy_img_btn):
             out_row.add_widget(b)

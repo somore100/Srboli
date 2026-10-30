@@ -9,7 +9,7 @@
 import os
 
 from kivy.clock import Clock
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.filechooser import FileChooserIconView
@@ -94,7 +94,7 @@ class ColorStrip(BoxLayout):
         kw.setdefault("spacing", dp(3))
         super().__init__(**kw)
         self._on_pick = on_pick
-        wheel = Button(text="Wheel", font_size=12, size_hint_x=None, width=dp(58))
+        wheel = Button(text="Wheel", font_size=sp(12), size_hint_x=None, width=dp(58))
         wheel.bind(on_release=lambda *a: open_color_wheel(self._wheel_picked))
         self.add_widget(wheel)
         self._swatches = []
@@ -131,7 +131,7 @@ class MarkdownEditor(BoxLayout):
             return BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(3))
 
         def fmt(label, kind, a, b):
-            btn = Button(text=label, font_size=13, shorten=True,
+            btn = Button(text=label, font_size=sp(13), shorten=True,
                          bold=(label == "B"), italic=(label == "I"),
                          strikethrough=(label == "S"))
             btn.bind(on_release=lambda inst: self._apply_fmt(kind, a, b))
@@ -141,7 +141,7 @@ class MarkdownEditor(BoxLayout):
         r1 = row()
         for spec in ROW1:
             r1.add_widget(fmt(*spec))
-        self._prev_btn = ToggleButton(text="Preview", font_size=12)
+        self._prev_btn = ToggleButton(text="Preview", font_size=sp(12))
         self._prev_btn.bind(state=lambda i, st: self._set_preview(st == "down"))
         r1.add_widget(self._prev_btn)
         self.add_widget(r1)
@@ -149,9 +149,9 @@ class MarkdownEditor(BoxLayout):
         r2 = row()
         for spec in ROW2:
             r2.add_widget(fmt(*spec))
-        img = Button(text="Image", font_size=13)
+        img = Button(text="Image", font_size=sp(13))
         img.bind(on_release=lambda *a: self._pick_image())
-        wheel = Button(text="Wheel", font_size=13)
+        wheel = Button(text="Wheel", font_size=sp(13))
         wheel.bind(on_release=lambda *a: self._open_wheel())
         for b in (img, wheel):
             self._fmt_buttons.append(b)
@@ -171,7 +171,7 @@ class MarkdownEditor(BoxLayout):
         self.add_widget(r3)
 
         self.ed = TextInput(
-            multiline=True, font_size=15,
+            multiline=True, font_size=sp(15),
             background_color=(0.10, 0.10, 0.12, 1),
             foreground_color=(0.92, 0.92, 0.88, 1),
             cursor_color=(0.4, 0.8, 1, 1),

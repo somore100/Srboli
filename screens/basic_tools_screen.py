@@ -14,7 +14,7 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.togglebutton import ToggleButton
 from kivy.clock import Clock
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.core.clipboard import Clipboard
 
 try:
@@ -91,11 +91,11 @@ class BasicToolsScreen(Screen):
         tab = TabbedPanelItem(text=" Clock")
         layout = BoxLayout(orientation="vertical", padding=16, spacing=10)
 
-        self._time_lbl = Label(text="00:00:00", font_size=64, bold=True,
+        self._time_lbl = Label(text="00:00:00", font_size=sp(64), bold=True,
                                size_hint_y=None, height=dp(90))
-        self._date_lbl = Label(text="", font_size=20,
+        self._date_lbl = Label(text="", font_size=sp(20),
                                size_hint_y=None, height=dp(36))
-        self._week_lbl = Label(text="", font_size=14,
+        self._week_lbl = Label(text="", font_size=sp(14),
                                size_hint_y=None, height=dp(26),
                                color=(0.6, 0.8, 1, 1))
 
@@ -103,9 +103,9 @@ class BasicToolsScreen(Screen):
         fmt_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=8)
         self._fmt_24 = ToggleButton(text="24h", state="down",
                                     size_hint_x=None, width=dp(70),
-                                    font_size=13)
+                                    font_size=sp(13))
         self._fmt_12 = ToggleButton(text="12h", size_hint_x=None,
-                                    width=dp(70), font_size=13)
+                                    width=dp(70), font_size=sp(13))
         self._fmt_24.bind(on_release=lambda *a: self._set_fmt(24))
         self._fmt_12.bind(on_release=lambda *a: self._set_fmt(12))
         fmt_row.add_widget(self._fmt_24)
@@ -150,18 +150,18 @@ class BasicToolsScreen(Screen):
         tab = TabbedPanelItem(text=" Stopwatch")
         layout = BoxLayout(orientation="vertical", padding=10, spacing=8)
 
-        self._sw_lbl = Label(text="00:00.000", font_size=52, bold=True,
+        self._sw_lbl = Label(text="00:00.000", font_size=sp(52), bold=True,
                              size_hint_y=None, height=dp(80))
         layout.add_widget(self._sw_lbl)
 
         ctrl = BoxLayout(size_hint_y=None, height=dp(48), spacing=8)
-        self._sw_start_btn = Button(text="> Start", font_size=16)
+        self._sw_start_btn = Button(text="> Start", font_size=sp(16))
         self._sw_start_btn.bind(on_release=self._sw_toggle)
-        lap_btn   = Button(text="Lap Lap",   font_size=16)
+        lap_btn   = Button(text="Lap Lap",   font_size=sp(16))
         lap_btn.bind(on_release=self._sw_lap)
-        reset_btn = Button(text="↺ Reset",  font_size=16)
+        reset_btn = Button(text="↺ Reset",  font_size=sp(16))
         reset_btn.bind(on_release=self._sw_reset)
-        copy_btn  = Button(text="Copy Copy",  font_size=14,
+        copy_btn  = Button(text="Copy Copy",  font_size=sp(14),
                            size_hint_x=None, width=dp(80))
         copy_btn.bind(on_release=lambda *a: Clipboard.copy(self._sw_lbl.text))
         for b in (self._sw_start_btn, lap_btn, reset_btn, copy_btn):
@@ -169,7 +169,7 @@ class BasicToolsScreen(Screen):
         layout.add_widget(ctrl)
 
         layout.add_widget(Label(text="Laps:", size_hint_y=None,
-                                height=dp(22), font_size=13))
+                                height=dp(22), font_size=sp(13)))
         sv = ScrollView(size_hint=(1, 0.45))
         self._lap_grid = GridLayout(cols=1, spacing=2, size_hint_y=None)
         self._lap_grid.bind(minimum_height=self._lap_grid.setter("height"))
@@ -206,7 +206,7 @@ class BasicToolsScreen(Screen):
         t = self._fmt_sw(elapsed)
         self._sw_laps.append(t)
         lbl = Label(text=f"Lap {n:3d}  {t}", size_hint_y=None,
-                    height=dp(24), font_size=12, halign="left")
+                    height=dp(24), font_size=sp(12), halign="left")
         lbl.bind(size=lbl.setter("text_size"))
         self._lap_grid.add_widget(lbl)
 
@@ -236,19 +236,19 @@ class BasicToolsScreen(Screen):
         layout = BoxLayout(orientation="vertical", padding=12, spacing=8)
 
         layout.add_widget(Label(text="[b]Set alarm time[/b]", markup=True,
-                                size_hint_y=None, height=dp(28), font_size=15))
+                                size_hint_y=None, height=dp(28), font_size=sp(15)))
 
         # H:M:S inputs
         time_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=8)
         self._al_h = TextInput(hint_text="H",  multiline=False,
-                               input_filter="int", font_size=16)
+                               input_filter="int", font_size=sp(16))
         self._al_m = TextInput(hint_text="MM", multiline=False,
-                               input_filter="int", font_size=16)
+                               input_filter="int", font_size=sp(16))
         self._al_s = TextInput(hint_text="SS", multiline=False,
-                               input_filter="int", font_size=16)
+                               input_filter="int", font_size=sp(16))
         for lbl, ti in (("h:", self._al_h),("m:", self._al_m),("s:", self._al_s)):
             time_row.add_widget(Label(text=lbl, size_hint_x=None,
-                                     width=dp(22), font_size=14))
+                                     width=dp(22), font_size=sp(14)))
             time_row.add_widget(ti)
         layout.add_widget(time_row)
 
@@ -256,7 +256,7 @@ class BasicToolsScreen(Screen):
         pre_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=5)
         for lbl, h, m, s in [("5m",0,5,0),("10m",0,10,0),
                                ("30m",0,30,0),("1h",1,0,0)]:
-            b = Button(text=lbl, font_size=13)
+            b = Button(text=lbl, font_size=sp(13))
             b.bind(on_release=lambda inst, hh=h, mm=m, ss=s:
                    self._set_alarm_preset(hh, mm, ss))
             pre_row.add_widget(b)
@@ -265,25 +265,25 @@ class BasicToolsScreen(Screen):
         # label input
         lbl_row = BoxLayout(size_hint_y=None, height=dp(38), spacing=6)
         lbl_row.add_widget(Label(text="Label:", size_hint_x=None,
-                                 width=dp(54), font_size=13))
+                                 width=dp(54), font_size=sp(13)))
         self._al_label = TextInput(hint_text="Wake up!",
-                                   multiline=False, font_size=13)
+                                   multiline=False, font_size=sp(13))
         lbl_row.add_widget(self._al_label)
         layout.add_widget(lbl_row)
 
         ctrl = BoxLayout(size_hint_y=None, height=dp(48), spacing=8)
-        self._al_start_btn = Button(text=" Start Alarm", font_size=15)
+        self._al_start_btn = Button(text=" Start Alarm", font_size=sp(15))
         self._al_start_btn.bind(on_release=self._start_alarm)
-        self._al_stop_btn  = Button(text="[] Stop", font_size=15,
+        self._al_stop_btn  = Button(text="[] Stop", font_size=sp(15),
                                     disabled=True)
         self._al_stop_btn.bind(on_release=self._stop_alarm)
         ctrl.add_widget(self._al_start_btn)
         ctrl.add_widget(self._al_stop_btn)
         layout.add_widget(ctrl)
 
-        self._al_display = Label(text="—", font_size=40, bold=True,
+        self._al_display = Label(text="—", font_size=sp(40), bold=True,
                                  size_hint_y=None, height=dp(70))
-        self._al_status  = Label(text="", font_size=13,
+        self._al_status  = Label(text="", font_size=sp(13),
                                  size_hint_y=None, height=dp(28),
                                  color=(0.4, 1, 0.4, 1))
         layout.add_widget(self._al_display)
@@ -357,21 +357,21 @@ class BasicToolsScreen(Screen):
 
         # expression display
         self._calc_expr_lbl = Label(
-            text="", font_size=13, halign="right", valign="middle",
+            text="", font_size=sp(13), halign="right", valign="middle",
             size_hint_y=None, height=dp(24),
             color=(0.55, 0.55, 0.55, 1))
         self._calc_expr_lbl.bind(size=self._calc_expr_lbl.setter("text_size"))
         layout.add_widget(self._calc_expr_lbl)
 
         self._calc_disp = Label(
-            text="0", font_size=34, bold=True,
+            text="0", font_size=sp(34), bold=True,
             halign="right", valign="middle",
             size_hint_y=None, height=dp(54))
         self._calc_disp.bind(size=self._calc_disp.setter("text_size"))
         layout.add_widget(self._calc_disp)
 
         # history
-        self._calc_hist = Label(text="", font_size=11,
+        self._calc_hist = Label(text="", font_size=sp(11),
                                 size_hint_y=None, height=dp(18),
                                 halign="right", color=(0.5,0.7,0.5,1))
         self._calc_hist.bind(size=self._calc_hist.setter("text_size"))
@@ -420,7 +420,7 @@ class BasicToolsScreen(Screen):
         layout.add_widget(grid)
 
         copy_btn = Button(text="Copy Copy result", size_hint_y=None,
-                          height=dp(36), font_size=13)
+                          height=dp(36), font_size=sp(13))
         copy_btn.bind(on_release=lambda *a: Clipboard.copy(self._calc_disp.text))
         layout.add_widget(copy_btn)
 

@@ -86,6 +86,11 @@ else:
     except Exception:
         pass
 Config.set("kivy", "exit_on_escape", "0")
+try:
+    from core import window_state as _ws
+    _ws.restore(Config, _ON_ANDROID)        # desktop: last size / position
+except Exception as _e:
+    print(f"window state skipped: {_e}")
 
 from kivy.core.window import Window
 # Fixes a Kivy/Android interaction bug: when a TextInput has focus and the
@@ -97,28 +102,9 @@ from kivy.core.window import Window
 # dismiss. See screens/script_mode_screen.py for the matching defocus fix.
 # (softinput_mode left at Kivy default - see global Spinner fix below)
 
-# Kivy treats plain-int font_size as pixels, so on a high-density phone the
-# app's font_size=12/14 text is tiny (and rows look cramped/cut off). The
-# code sizes widgets in dp(), so scale ints by screen density on Android to
-# match. Must run before any screen module creates widgets.
 from kivy.utils import platform as _platform
 if _platform == "android":
-    from kivy.metrics import Metrics as _Metrics
-    from kivy.uix.label import Label as _Label
     from kivy.uix.textinput import TextInput as _TextInput
-
-    def _scale_font_ints(cls):
-        _orig = cls.__init__
-
-        def __init__(self, *a, **kw):
-            fs = kw.get("font_size")
-            if isinstance(fs, (int, float)):
-                kw["font_size"] = int(round(fs * _Metrics.density))
-            _orig(self, *a, **kw)
-        cls.__init__ = __init__
-
-    _scale_font_ints(_Label)
-    _scale_font_ints(_TextInput)
 
     try:
         # Kivy shows the Select All / Paste bubble after a 0.5 s hold, which a
@@ -180,7 +166,7 @@ if _platform == "android":
         from kivy.uix.scrollview import ScrollView as _SV
         from kivy.uix.boxlayout import BoxLayout as _BL
         from kivy.uix.button import Button as _Btn
-        from kivy.metrics import dp as _dp
+        from kivy.metrics import dp as _dp, sp as _sp
 
         def _spinner_pick_list(self, *a):
             values = list(self.values or [])
@@ -201,7 +187,7 @@ if _platform == "android":
 
             for v in values:
                 b = _Btn(text=str(v), size_hint_y=None, height=row_h,
-                         font_size=14, halign="left", valign="middle",
+                         font_size=_sp(14), halign="left", valign="middle",
                          background_color=((0.2, 0.55, 0.8, 1)
                                            if v == self.text
                                            else (0.25, 0.25, 0.25, 1)))
@@ -313,7 +299,8 @@ if _platform == "android":
         _root2 = _ssr2()
         if os.path.exists(os.path.join(_root2, "Srboli_debug_touch")):
             import time as _t
-            _tl = open(os.path.join(_root2, "Srboli_touch.log"), "a", buffering=1)
+            from core.logs import logs_dir as _logs_dir
+            _tl = open(os.path.join(_logs_dir(), "Srboli_touch.log"), "a", buffering=1)
             _tl.write("\n=== touch trace start ===\n")
 
             def _mk(kind):
@@ -352,13 +339,17 @@ if _platform == "android":
         class _CrashLogger(ExceptionHandler):
             def handle_exception(self, inst):
                 try:
-                    from core.android_storage import shared_storage_root
-                    path = os.path.join(shared_storage_root(),
-                                        "Srboli_crash.log")
-                    with open(path, "a", encoding="utf-8") as f:
-                        f.write(f"\n--- {_dt.datetime.now()} ---\n")
-                        f.write("".join(_tb.format_exception(
-                            type(inst), inst, inst.__traceback__)))
+                    from core.logs import append_capped
+                    append_capped("Srboli_crash.log",
+                                  f"\n--- {_dt.datetime.now()} ---\n"
+                                  + "".join(_tb.format_exception(
+                                      type(inst), inst, inst.__traceback__)))
+                except Exception:
+                    pass
+                try:
+                    from core.toast import toast
+                    toast(f"Something went wrong: {type(inst).__name__}. "
+                          "The app kept running (see Settings > logs).")
                 except Exception:
                     pass
                 return ExceptionManager.PASS
@@ -389,9 +380,11 @@ except Exception as _e:
     print(f"pathbar install skipped: {_e}")
 from kivy.uix.filechooser import FileChooserIconView
 from kivy.uix.popup import Popup
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 
 import app_data
+from core import theme
+theme.install()
 
 
 def try_import(module_path, class_name):
@@ -402,6 +395,12 @@ def try_import(module_path, class_name):
         return cls
     except Exception as exc:
         msg = str(exc)
+        if isinstance(exc, ModuleNotFoundError) and exc.name:
+            pkg = {"PIL": "Pillow", "cv2": "opencv-python",
+                   "yaml": "PyYAML"}.get(exc.name.split(".")[0],
+                                         exc.name.split(".")[0])
+            msg = (f"Needs the '{exc.name}' module.\n"
+                   f"Install it with:  pip install {pkg}")
         print(f"!!  {class_name}: {msg}")
         class Placeholder(Screen):
             def __init__(self, **kw):
@@ -409,8 +408,8 @@ def try_import(module_path, class_name):
                 b = BoxLayout(orientation="vertical", padding=20, spacing=10)
                 b.add_widget(Label(
                     text=f"[b]{class_name}[/b]\nnot available\n\n{msg}",
-                    markup=True, font_size=13, halign="center"))
-                btn = Button(text="Back", size_hint_y=None, height=48)
+                    markup=True, font_size=sp(13), halign="center"))
+                btn = Button(text="Back", size_hint_y=None, height=dp(48))
                 btn.bind(on_release=lambda *a: setattr(
                     self.manager, "current", "dashboard"))
                 b.add_widget(btn)
@@ -419,9 +418,11 @@ def try_import(module_path, class_name):
 
 
 from screens.registry import SCREENS, LABELS, GROUPS
+from screens.dashboard_screen import Dashboard
+from core.navigation import GuardedScreenManager, open_screen, install_keys
+from core import permissions
 from screens.settings_screen import (load_settings, effective_menu_order,
                                      update_dashboard_state)
-from core import dashboard_core as dash
 
 # "settings" is a core route like "dashboard" — always eager-loaded,
 # not part of the manageable/hideable list in registry.SCREENS.
@@ -450,142 +451,63 @@ def ensure_screen_loaded(sm, route):
     return False
 
 
-class Dashboard(Screen):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        self._build()
-
-    def _build(self):
-        self.clear_widgets()
-        root = BoxLayout(orientation="vertical", padding=10, spacing=8)
-
-        hdr = BoxLayout(size_hint_y=None, height=dp(70))
-        title_col = BoxLayout(orientation="vertical")
-        title_col.add_widget(Label(text="[b]Srboli[/b]", markup=True,
-                             font_size=30, size_hint_y=None, height=dp(48)))
-        title_col.add_widget(Label(text="your pocket swiss-knife",
-                             font_size=11, size_hint_y=None, height=dp(18)))
-        hdr.add_widget(title_col)
-        gear = Button(text="Settings", size_hint=(None, None),
-                     width=dp(100), height=dp(40), font_size=12,
-                     pos_hint={"center_y": 0.5})
-        gear.bind(on_release=lambda *a: setattr(self.manager, "current", "settings"))
-        hdr.add_widget(gear)
-        root.add_widget(hdr)
-
-        # search: type a few letters and only matching tools are listed
-        self._search = TextInput(hint_text="Search tools...", multiline=False,
-                                 size_hint_y=None, height=dp(38), font_size=14)
-        self._search.bind(text=lambda *a: self._fill_list())
-        root.add_widget(self._search)
-
-        sv = ScrollView()
-        self._grid = GridLayout(cols=1, spacing=5, size_hint_y=None,
-                                padding=(6, 6))
-        self._grid.bind(minimum_height=self._grid.setter("height"))
-        sv.add_widget(self._grid)
-        root.add_widget(sv)
-        self._list_sig = None
-        self._fill_list()
-
-        root.add_widget(Label(text=f"Srboli v{_APP_VERSION}", font_size=9,
-                              size_hint_y=None, height=dp(18)))
-        self.add_widget(root)
-        self._sig = self._signature()
-
-    # ── the tool list: search results, or Recent + collapsible sections ──
-    def _tool_button(self, route, label, font_size=14):
-        btn = Button(text=label, size_hint_y=None, height=dp(52),
-                     font_size=font_size, shorten=True, shorten_from="right")
-        btn.bind(size=lambda w, v: setattr(w, "text_size", (v[0] - dp(8), None)))
-        btn.bind(on_release=lambda inst, r=route: self._goto(r))
-        return btn
-
-    def _section_title(self, text):
-        lbl = Label(text=f"[b]{text}[/b]", markup=True, font_size=12,
-                    halign="left", size_hint_y=None, height=dp(24),
-                    color=(0.55, 0.8, 1, 1))
-        lbl.bind(size=lbl.setter("text_size"))
-        return lbl
-
-    def _fill_list(self, force=False):
-        menu = effective_menu_order()
-        query = self._search.text.strip()
-        cfg = load_settings()
-        recent = dash.visible_recent(cfg["recent"], menu)
-        sig = (tuple(menu), query, tuple(recent), tuple(cfg["collapsed"]))
-        if sig == self._list_sig and not force:
-            return                      # nothing changed: no flash on Back
-        self._list_sig = sig
-        grid = self._grid
-        grid.clear_widgets()
-
-        if query:
-            hits = dash.search(menu, query)
-            if not hits:
-                grid.add_widget(Label(text=f"No tool matches '{query}'.",
-                                      size_hint_y=None, height=dp(40),
-                                      font_size=13, color=(0.7, 0.7, 0.7, 1)))
-            for route, label in hits:
-                grid.add_widget(self._tool_button(route, label))
-            return
-
-        if recent:
-            grid.add_widget(self._section_title("Recent"))
-            row = BoxLayout(size_hint_y=None, height=dp(52), spacing=5)
-            for route, label in recent:
-                row.add_widget(self._tool_button(route, label, font_size=12))
-            grid.add_widget(row)
-
-        for key, title, members in dash.group_menu(menu, GROUPS):
-            folded = key in cfg["collapsed"]
-            head = Button(text=f"[{'+' if folded else '-'}]  {title}  "
-                               f"({len(members)})",
-                          size_hint_y=None, height=dp(40), font_size=14,
-                          halign="left", background_color=(0.2, 0.3, 0.45, 1))
-            head.bind(size=lambda w, v: setattr(w, "text_size", (v[0] - dp(12), None)))
-            head.bind(on_release=lambda inst, k=key: self._toggle_section(k))
-            grid.add_widget(head)
-            if not folded:
-                for route, label in members:
-                    grid.add_widget(self._tool_button(route, label))
-
-    def _toggle_section(self, key):
-        update_dashboard_state(collapsed=dash.toggle_collapsed(
-            load_settings()["collapsed"], key))
-        self._fill_list()
-
-    def _goto(self, route):
-        update_dashboard_state(recent=dash.push_recent(
-            load_settings()["recent"], route))
-        ensure_screen_loaded(self.manager, route)
-        self.manager.current = route
-
-    def _signature(self):
-        return (tuple(effective_menu_order()), app_data.get_data_dir())
-
-    def on_enter(self, *a):
-        # Rebuild only when something the dashboard shows has changed
-        # (screen order/hidden list from Settings, or the data dir).
-        # Rebuilding on every return tore down and recreated every button,
-        # which showed up as a visible flash when pressing Back.
-        sig = self._signature()
-        if sig != getattr(self, "_sig", None):
-            self._build()
-        else:
-            self._search.text = ""      # leave search mode; Recent may have changed
-            self._fill_list()
-
-    def on_touch_down(self, touch):
-        if hasattr(touch, "button"):
-            if getattr(touch, "is_mouse_scrolling", False):
-                return super().on_touch_down(touch)
-            if touch.button != "left":
-                return True
-        return super().on_touch_down(touch)
-
-
 class SrboliApp(App):
+    _asked_permissions = set()
+
+    def _open_route(self, route):
+        """Open a tool: 'Loading...' first if it must be built, then ask for
+        the Android permission it needs (in context, once)."""
+        open_screen(self.root, route,
+                    lambda r: ensure_screen_loaded(self.root, r),
+                    after=self._ask_permission)
+
+    def _ask_permission(self, route):
+        try:
+            from core import android_storage as _as
+            kind = permissions.needed(
+                route, _ON_ANDROID, _as.has_full_storage_access(), False,
+                self._asked_permissions)
+            if not kind:
+                return
+            self._asked_permissions.add(kind)
+            from screens.dialogs import confirm_popup
+
+            def allow():
+                if kind == "storage":
+                    _as.request_basic_permissions()
+                    _as.request_full_storage_access()
+                else:
+                    _as.request_notification_permission()
+            confirm_popup("Permission needed", permissions.REASONS[kind],
+                          allow, yes_text="Allow")
+        except Exception as e:
+            print(f"permission prompt skipped: {e}")
+
+    def _first_run_setup(self, dt):
+        """First launch: choose which tools the Dashboard shows (Settings can
+        change it later; hidden tools stay reachable via the Quick Switcher)."""
+        try:
+            if load_settings().get("onboarded"):
+                return
+            from screens.onboarding import open_onboarding
+            open_onboarding(on_done=lambda: self.root.get_screen(
+                "dashboard").on_enter())
+        except Exception as e:
+            print(f"first-run setup skipped: {e}")
+
+    def on_stop(self):
+        try:
+            from core import window_state
+            window_state.save(Window, _ON_ANDROID)
+        except Exception as e:
+            print(f"window state not saved: {e}")
+
+    def _back_at_home(self):
+        if _platform == "android":
+            self.stop()
+            return True
+        return False
+
     def _android_reminder_tick(self, dt):
         try:
             import datetime
@@ -609,8 +531,9 @@ class SrboliApp(App):
             _bl.log("App.build start")
             _bl.start_watchdog()
         self.title = "Srboli"
-        sm = ScreenManager(transition=NoTransition())
-        sm.add_widget(Dashboard(name="dashboard"))
+        sm = GuardedScreenManager(transition=NoTransition())
+        sm.add_widget(Dashboard(open_route=self._open_route,
+                                version=_APP_VERSION, name="dashboard"))
         sm.add_widget(try_import(SETTINGS_ROUTE[1], SETTINGS_ROUTE[2])(
             name=SETTINGS_ROUTE[0]))
 
@@ -678,21 +601,8 @@ class SrboliApp(App):
             _PClock.schedule_once(
                 lambda dt: _PClock.schedule_interval(_preload_step, 0.5), 3.0)
 
-        # Ask for real filesystem access (Fast Transfer, Gallery Sorter,
-        # File Sorter, and the data-dir picker all need this). No-op off
-        # Android, and no-op if already granted. This opens a one-time
-        # system settings screen rather than a normal popup — see
-        # core/android_storage.py for why.
-        try:
-            from core.android_storage import (
-                request_basic_permissions, request_full_storage_access,
-                has_full_storage_access,
-            )
-            request_basic_permissions()
-            if not has_full_storage_access():
-                request_full_storage_access()
-        except Exception as e:
-            print(f"Storage permission request skipped: {e}")
+        # Android permissions are no longer requested here: a tool asks the
+        # first time it is opened (SrboliApp._ask_permission), with a reason.
 
         # Android has no background daemon, so check for due reminders from
         # inside the app (works while the app is open or still alive in the
@@ -700,8 +610,6 @@ class SrboliApp(App):
         if _platform == "android":
             try:
                 from kivy.clock import Clock
-                from core.android_storage import request_notification_permission
-                request_notification_permission()
                 Clock.schedule_interval(self._android_reminder_tick, 20)
             except Exception as e:
                 print(f"Android reminder ticker not started: {e}")
@@ -710,9 +618,16 @@ class SrboliApp(App):
         try:
             from screens.quickswitcher_screen import install_global_switcher
             install_global_switcher(
-                sm, ensure_loader=(lambda r: ensure_screen_loaded(sm, r)))
+                sm, ensure_loader=(lambda r: ensure_screen_loaded(sm, r)),
+                opener=self._open_route)
         except Exception as e:
             print(f"QuickSwitcher not installed: {e}")
+
+        install_keys(Window, sm,
+                     focus_search=lambda: sm.get_screen("dashboard").focus_search(),
+                     on_back_at_home=self._back_at_home)
+        from kivy.clock import Clock as _OC
+        _OC.schedule_once(self._first_run_setup, 0.5)
 
         if _bl:
             _bl.log("App.build end (dashboard ready)")

@@ -9,7 +9,7 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.core.clipboard import Clipboard
 from kivy.clock import Clock
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 
 FAKE_ERRORS = [
     "Stnax Error: Unexpected cheese slice.",
@@ -56,12 +56,12 @@ class UnhelpfulCalcScreen(Screen):
 
         root.add_widget(Label(
             text="[b]Unhelpful Calculator[/b]", markup=True,
-            size_hint_y=None, height=dp(32), font_size=17,
+            size_hint_y=None, height=dp(32), font_size=sp(17),
         ))
 
         # ── expression display (small) ──
         self.expr_label = Label(
-            text="", font_size=14, halign="right", valign="middle",
+            text="", font_size=sp(14), halign="right", valign="middle",
             color=(0.6, 0.6, 0.6, 1),
             size_hint_y=None, height=dp(26),
         )
@@ -70,7 +70,7 @@ class UnhelpfulCalcScreen(Screen):
 
         # ── main display ──
         self.display = Label(
-            text="0", font_size=30, halign="right", valign="middle",
+            text="0", font_size=sp(30), halign="right", valign="middle",
             size_hint_y=None, height=dp(56),
         )
         self.display.bind(size=self.display.setter("text_size"))
@@ -102,7 +102,7 @@ class UnhelpfulCalcScreen(Screen):
         ]
         for row in layout_rows:
             for text, cb, color in row:
-                kw = dict(text=text, font_size=20)
+                kw = dict(text=text, font_size=sp(20))
                 if color:
                     kw["background_color"] = color
                 b = Button(**kw)
@@ -113,9 +113,9 @@ class UnhelpfulCalcScreen(Screen):
 
         # ── copy & back ──
         bot = BoxLayout(size_hint_y=None, height=dp(42), spacing=8)
-        copy_btn = Button(text="Copy Copy", font_size=13)
+        copy_btn = Button(text="Copy Copy", font_size=sp(13))
         copy_btn.bind(on_release=lambda *a: Clipboard.copy(self.display.text))
-        back_btn = Button(text="< Back", font_size=13)
+        back_btn = Button(text="< Back", font_size=sp(13))
         back_btn.bind(on_release=self._go_back)
         bot.add_widget(copy_btn)
         bot.add_widget(back_btn)

@@ -5,7 +5,7 @@
 import os
 import shlex
 
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.filechooser import FileChooserIconView
@@ -39,7 +39,7 @@ class ShortcutScreen(Screen):
         self._editing = None          # file name of the launcher being edited
         root = BoxLayout(orientation="vertical", padding=dp(8), spacing=dp(6))
         root.add_widget(Label(text="[b]Linux shortcut creator[/b]", markup=True,
-                              size_hint_y=None, height=dp(32), font_size=18))
+                              size_hint_y=None, height=dp(32), font_size=sp(18)))
 
         if not D.is_supported():
             root.add_widget(Label(
@@ -57,11 +57,11 @@ class ShortcutScreen(Screen):
         def field(label, hint="", extra=None):
             row = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(4))
             row.add_widget(Label(text=label, size_hint_x=None, width=dp(86),
-                                 font_size=13, halign="right"))
-            ti = TextInput(multiline=False, font_size=14, hint_text=hint)
+                                 font_size=sp(13), halign="right"))
+            ti = TextInput(multiline=False, font_size=sp(14), hint_text=hint)
             row.add_widget(ti)
             for text, cb in extra or ():
-                b = Button(text=text, font_size=12, size_hint_x=None,
+                b = Button(text=text, font_size=sp(12), size_hint_x=None,
                            width=dp(76))
                 b.bind(on_release=cb)
                 row.add_widget(b)
@@ -78,13 +78,13 @@ class ShortcutScreen(Screen):
         self._path = field("Run in", "Working folder (optional)")
 
         form.add_widget(Label(text="Categories (where it shows in the menu)",
-                              size_hint_y=None, height=dp(24), font_size=12,
+                              size_hint_y=None, height=dp(24), font_size=sp(12),
                               halign="left"))
         grid = GridLayout(cols=4, spacing=dp(3), size_hint_y=None,
                           height=dp(36) * ((len(D.CATEGORIES) + 3) // 4))
         self._cats = {}
         for cat in D.CATEGORIES:
-            tb = ToggleButton(text=cat, font_size=11,
+            tb = ToggleButton(text=cat, font_size=sp(11),
                               state="down" if cat == "Utility" else "normal")
             self._cats[cat] = tb
             grid.add_widget(tb)
@@ -100,12 +100,12 @@ class ShortcutScreen(Screen):
         acts = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
         for text, cb in (("Preview", self._preview), ("Create shortcut", self._create),
                          ("New", self._clear)):
-            b = Button(text=text, font_size=13)
+            b = Button(text=text, font_size=sp(13))
             b.bind(on_release=cb)
             acts.add_widget(b)
         form.add_widget(acts)
 
-        self._status = Label(text="", font_size=12, size_hint_y=None,
+        self._status = Label(text="", font_size=sp(12), size_hint_y=None,
                              height=dp(60), halign="left", valign="top")
         self._status.bind(size=lambda w, v: setattr(w, "text_size", (v[0], None)))
         form.add_widget(self._status)
@@ -113,7 +113,7 @@ class ShortcutScreen(Screen):
         root.add_widget(sv)
 
         bottom = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
-        mine = Button(text="My shortcuts", font_size=13)
+        mine = Button(text="My shortcuts", font_size=sp(13))
         mine.bind(on_release=self._show_mine)
         bottom.add_widget(mine)
         bottom.add_widget(self._back_button())
@@ -213,7 +213,7 @@ class ShortcutScreen(Screen):
             message_popup("Can't preview yet", problems)
             return
         box = TextInput(text=text, readonly=True, font_name="RobotoMono-Regular",
-                        font_size=12)
+                        font_size=sp(12))
         Popup(title="This is the file that will be written", content=box,
               size_hint=(0.92, 0.7)).open()
 

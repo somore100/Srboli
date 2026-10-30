@@ -19,7 +19,7 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.filechooser import FileChooserIconView
 from kivy.uix.popup import Popup
 from kivy.clock import Clock
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 
 from core.seekbar import SeekBar
 
@@ -131,13 +131,13 @@ class MusicScreen(Screen):
         # ── now playing ──
         self.track_label = Label(
             text="— no track —", size_hint_y=None, height=dp(26),
-            font_size=13, shorten=True, shorten_from="left")
+            font_size=sp(13), shorten=True, shorten_from="left")
         layout.add_widget(self.track_label)
 
         # ── playlist name badge ──
         self._pl_badge = Label(
             text="", size_hint_y=None, height=dp(20),
-            font_size=11, color=(0.5, 0.8, 1, 1))
+            font_size=sp(11), color=(0.5, 0.8, 1, 1))
         layout.add_widget(self._pl_badge)
 
         # ── timeline: tap or drag anywhere on the bar; seeks on release ──
@@ -145,8 +145,8 @@ class MusicScreen(Screen):
         self.timeline.bind(on_scrub=self._on_scrub, on_seek=self._on_seek)
         layout.add_widget(self.timeline)
         time_row = BoxLayout(size_hint_y=None, height=dp(20))
-        self.time_label = Label(text="0:00", font_size=12, halign="left")
-        self.dur_label = Label(text="0:00", font_size=12, halign="right")
+        self.time_label = Label(text="0:00", font_size=sp(12), halign="left")
+        self.dur_label = Label(text="0:00", font_size=sp(12), halign="right")
         for lbl in (self.time_label, self.dur_label):
             lbl.bind(size=lbl.setter("text_size"))
             time_row.add_widget(lbl)
@@ -155,13 +155,13 @@ class MusicScreen(Screen):
         # ── volume ──
         vol_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=6)
         vol_row.add_widget(Label(text="Volume", size_hint_x=None,
-                                 width=dp(56), font_size=12))
+                                 width=dp(56), font_size=sp(12)))
         self.vol_slider = SeekBar(height=dp(36), show_ticks=False)
         self.vol_slider.value = 0.8
         self.vol_slider.bind(on_scrub=self._set_volume, on_seek=self._set_volume)
         vol_row.add_widget(self.vol_slider)
         self.vol_label = Label(text="80%", size_hint_x=None, width=dp(44),
-                               font_size=12)
+                               font_size=sp(12))
         vol_row.add_widget(self.vol_label)
         layout.add_widget(vol_row)
 
@@ -174,9 +174,9 @@ class MusicScreen(Screen):
 
         # ── load row ──
         load_row = BoxLayout(size_hint_y=None, height=dp(40), spacing=5)
-        add_files_btn  = Button(text="+ Files",   font_size=12)
-        add_folder_btn = Button(text=" Folder",  font_size=12)
-        clear_btn      = Button(text="Del Clear",   font_size=12,
+        add_files_btn  = Button(text="+ Files",   font_size=sp(12))
+        add_folder_btn = Button(text=" Folder",  font_size=sp(12))
+        clear_btn      = Button(text="Del Clear",   font_size=sp(12),
                                 size_hint_x=None, width=dp(80))
         add_files_btn.bind(on_release=self._load_files)
         add_folder_btn.bind(on_release=self._load_folder)
@@ -198,10 +198,10 @@ class MusicScreen(Screen):
             ("+10s", lambda *a: self._seek_relative(10)),
         ]
         for txt, cb in btns:
-            b = Button(text=txt, font_size=12)
+            b = Button(text=txt, font_size=sp(12))
             b.bind(on_release=cb)
             ctrl.add_widget(b)
-        self.autonext_btn = Button(text="AutoNext: ON", font_size=11,
+        self.autonext_btn = Button(text="AutoNext: ON", font_size=sp(11),
                                    size_hint_x=None, width=dp(110))
         self.autonext_btn.bind(on_release=self._toggle_autonext)
         ctrl.add_widget(self.autonext_btn)
@@ -220,11 +220,11 @@ class MusicScreen(Screen):
         # save current as playlist
         save_row = BoxLayout(size_hint_y=None, height=dp(40), spacing=6)
         save_row.add_widget(Label(text="Save current as:",
-                                  size_hint_x=None, width=dp(130), font_size=13))
+                                  size_hint_x=None, width=dp(130), font_size=sp(13)))
         self._pl_name_input = TextInput(
-            hint_text="Playlist name", multiline=False, font_size=13)
+            hint_text="Playlist name", multiline=False, font_size=sp(13))
         save_btn = Button(text="Save Save", size_hint_x=None, width=dp(80),
-                          font_size=13)
+                          font_size=sp(13))
         save_btn.bind(on_release=self._save_current_playlist)
         save_row.add_widget(self._pl_name_input)
         save_row.add_widget(save_btn)
@@ -232,7 +232,7 @@ class MusicScreen(Screen):
 
         # saved playlists list
         layout.add_widget(Label(text="Saved playlists:",
-                                size_hint_y=None, height=dp(24), font_size=13))
+                                size_hint_y=None, height=dp(24), font_size=sp(13)))
         sv = ScrollView()
         self._pl_grid = GridLayout(cols=1, spacing=4, size_hint_y=None)
         self._pl_grid.bind(minimum_height=self._pl_grid.setter("height"))
@@ -240,7 +240,7 @@ class MusicScreen(Screen):
         layout.add_widget(sv)
 
         refresh_btn = Button(text=" Refresh list", size_hint_y=None,
-                             height=dp(38), font_size=13)
+                             height=dp(38), font_size=sp(13))
         refresh_btn.bind(on_release=lambda *a: self._refresh_playlists_ui())
         layout.add_widget(refresh_btn)
 
@@ -277,10 +277,10 @@ class MusicScreen(Screen):
         self._pl_grid.clear_widgets()
         for pl_name in sorted(_list_playlists()):
             row = BoxLayout(size_hint_y=None, height=dp(38), spacing=5)
-            lbl = Button(text=pl_name, font_size=13, halign="left")
+            lbl = Button(text=pl_name, font_size=sp(13), halign="left")
             lbl.bind(on_release=lambda inst, n=pl_name: self._load_saved_playlist(n))
             del_btn = Button(text="x", size_hint_x=None, width=dp(36),
-                             font_size=13)
+                             font_size=sp(13))
             del_btn.bind(on_release=lambda inst, n=pl_name: self._delete_playlist(n))
             row.add_widget(lbl)
             row.add_widget(del_btn)
@@ -380,9 +380,9 @@ class MusicScreen(Screen):
             name = os.path.basename(p)
             # highlight current
             color = (0.2, 0.6, 1, 1) if idx == self.current_index else (1,1,1,1)
-            btn = Button(text=name, font_size=11, color=color, halign="left")
+            btn = Button(text=name, font_size=sp(11), color=color, halign="left")
             btn.bind(on_release=lambda inst, i=idx: self._select_and_play(i))
-            rm = Button(text="x", size_hint_x=None, width=dp(30), font_size=11)
+            rm = Button(text="x", size_hint_x=None, width=dp(30), font_size=sp(11))
             rm.bind(on_release=lambda inst, i=idx: self._remove_track(i))
             row.add_widget(btn)
             row.add_widget(rm)

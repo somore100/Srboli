@@ -14,43 +14,34 @@ import screens.settings_screen as st
 from screens.registry import GROUPS, LABELS
 from core import dashboard_core as dash
 
-# pull the real Dashboard class out of main.py
-src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "main.py")).read()
-tree = ast.parse(src)
-cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "Dashboard")
-code = ast.get_source_segment(src, cls)
-from kivy.uix.screenmanager import Screen
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.label import Label
 from kivy.uix.button import Button
-from kivy.uix.textinput import TextInput
 from kivy.uix.gridlayout import GridLayout
-from kivy.uix.scrollview import ScrollView
-from kivy.uix.filechooser import FileChooserIconView
-from kivy.uix.popup import Popup
-from kivy.metrics import dp
+from kivy.core.window import Window
 visited = []
-ns = dict(globals(), _APP_VERSION="t", effective_menu_order=st.effective_menu_order, load_settings=st.load_settings,
-          update_dashboard_state=st.update_dashboard_state, dash=dash, GROUPS=GROUPS,
-          ensure_screen_loaded=lambda sm, r: visited.append(r))
-exec(code, ns)
-Dashboard = ns["Dashboard"]
+from screens.dashboard_screen import Dashboard as _D
 
-def buttons(d): return [w for w in d._grid.children if isinstance(w, Button)]
+def Dashboard(**kw):
+    return _D(open_route=visited.append, version="t", **kw)
+
 def tool_labels(d, include_heads=False):
-    out = []
+    """Tile texts in order; the Pinned / Recent tiles are prefixed P: / R:."""
+    out, mode = [], ""
     for w in reversed(d._grid.children):
-        if w.children:                                     # the Recent row
-            out += ["R:" + b.text for b in reversed(w.children)]
-        elif w.text and (include_heads or not w.text.startswith("[")) and not w.text.startswith("No tool") and not w.text.startswith("Recent") and "[b]" not in w.text:
-            out.append(w.text)
+        if isinstance(w, GridLayout):
+            pre = {"Pinned": "P:", "Recent": "R:"}.get(mode, "")
+            out += [pre + b.text.lstrip("* ") for b in reversed(w.children)]
+        elif isinstance(w, Button):
+            mode = ""
+        elif getattr(w, "text", "").startswith("[b]"):
+            mode = w.text[3:-4]
     return out
 
 d = Dashboard(name="dashboard")
 d.manager = MagicMock()
+assert Window.width >= 700   # tests assume a desktop-sized window
 heads = [w.text for w in reversed(d._grid.children) if isinstance(w, Button) and w.text.startswith("[")]
 assert heads[0].startswith("[-]  Writing  (4)") and len(heads) == 6, heads
-L = [t for t in tool_labels(d) if not t.startswith("R:")]; assert len(L) == 29
+L = [t for t in tool_labels(d) if not t[:2] in ("R:", "P:")]; assert len(L) == 29, len(L)
 
 
 # using a tool puts it in Recent after coming back
@@ -110,3 +101,30 @@ assert sec == ["script_mode", "text_editor", "full_editor", "learn"], sec
 assert [x for x in o if x not in ("text_editor", "script_mode")] == [x for x in order0 if x not in ("text_editor", "script_mode")], "other tools must not move"
 sc._selected = "learn"; sc._move_selected(1); assert sc._cfg["order"] == o, "last of a section can't move down"
 print("settings move within section OK")
+
+
+# pins: toggled, remembered, shown first, survive a stale Settings save
+d3 = Dashboard(name="d3"); d3.manager = MagicMock()
+d3._toggle_pin("minesweeper"); d3._toggle_pin("learn")
+assert tool_labels(d3)[:2] == ["P:Minesweeper", "P:Learn (AI courses)"], tool_labels(d3)[:3]
+d3._toggle_pin("minesweeper")
+assert tool_labels(d3)[0] == "P:Learn (AI courses)" and st.load_settings()["pinned"] == ["learn"]
+stale = st.load_settings(); stale["pinned"] = []; st.save_settings(stale)
+assert st.load_settings()["pinned"] == ["learn"]
+print("pins OK")
+
+# search by alias, Enter opens the first hit
+d3._search.text = "base64"
+assert tool_labels(d3) == ["File to Base64"], tool_labels(d3)
+visited.clear(); d3._open_first_hit(); assert visited == ["image_text"]
+d3._search.text = ""
+print("alias search + Enter OK")
+
+# long press / right click pin; a normal tap opens
+from screens.dashboard_screen import ToolButton
+calls = []
+tb = ToolButton("music", lambda r: calls.append(("open", r)), lambda r: calls.append(("pin", r)), text="x")
+tb._released(); assert calls == [("open", "music")]
+calls.clear(); tb._long(0); tb._released(); assert calls == [("pin", "music")]
+tb._released(); assert calls[-1] == ("open", "music")
+print("tool button OK")

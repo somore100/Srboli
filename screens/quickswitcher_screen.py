@@ -18,7 +18,7 @@ from kivy.uix.filechooser import FileChooserIconView
 from kivy.uix.popup import Popup
 from kivy.core.window import Window
 from kivy.clock import Clock
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 
 import app_data
 from core.jsonio import read_json, write_json_atomic
@@ -184,7 +184,7 @@ def open_app_launcher_popup():
     apps = _get_apps()
     layout = BoxLayout(orientation="vertical", spacing=dp(4), padding=dp(6))
     search = TextInput(hint_text="Search installed apps...", multiline=False,
-                       size_hint_y=None, height=dp(40), font_size=14)
+                       size_hint_y=None, height=dp(40), font_size=sp(14))
     layout.add_widget(search)
     results_sv = ScrollView()
     results_grid = GridLayout(cols=1, spacing=dp(2), size_hint_y=None)
@@ -193,7 +193,7 @@ def open_app_launcher_popup():
     layout.add_widget(results_sv)
     status = Label(text=(f"{len(apps)} apps found" if apps else
                         "No apps found on this system"),
-                  size_hint_y=None, height=dp(20), font_size=11,
+                  size_hint_y=None, height=dp(20), font_size=sp(11),
                   color=(0.6, 0.6, 0.6, 1))
     layout.add_widget(status)
     popup = Popup(title="App Launcher", content=layout, size_hint=(0.7, 0.75))
@@ -204,7 +204,7 @@ def open_app_launcher_popup():
         results_grid.clear_widgets()
         for a in state["filtered"][:40]:
             b = Button(text=a["name"], size_hint_y=None, height=dp(36),
-                      font_size=13)
+                      font_size=sp(13))
             b.bind(on_release=lambda inst, app=a: (launch_app(app),
                                                     popup.dismiss()))
             results_grid.add_widget(b)
@@ -319,12 +319,12 @@ class QuickSwitcherScreen(Screen):
         # ── header ────────────────────────────────────────────────────────
         hdr = BoxLayout(size_hint_y=None, height=dp(38), spacing=dp(8))
         hdr.add_widget(Label(
-            text="Quick Switcher", font_size=17, bold=True,
+            text="Quick Switcher", font_size=sp(17), bold=True,
             size_hint_x=0.5))
         self._enable_btn = ToggleButton(
             text="Enabled" if self._enabled else "Disabled",
             state="down" if self._enabled else "normal",
-            size_hint_x=None, width=dp(100), font_size=13)
+            size_hint_x=None, width=dp(100), font_size=sp(13))
         self._enable_btn.bind(on_release=self._toggle_enabled)
         hdr.add_widget(self._enable_btn)
         root.add_widget(hdr)
@@ -333,17 +333,17 @@ class QuickSwitcherScreen(Screen):
             text="Assign keyboard shortcuts to jump to a screen or launch "
                  "an external app/script.\n"
                  "Shortcuts work from any screen when Quick Switcher is enabled.",
-            size_hint_y=None, height=dp(36), font_size=11, halign="left"))
+            size_hint_y=None, height=dp(36), font_size=sp(11), halign="left"))
 
         # ── target type ───────────────────────────────────────────────────
         self._target_type = "screen"
         type_row = BoxLayout(size_hint_y=None, height=dp(34), spacing=dp(5))
         type_row.add_widget(Label(text="Target:", size_hint_x=None,
-                                  width=dp(56), font_size=12))
+                                  width=dp(56), font_size=sp(12)))
         self._type_spinner = Spinner(
             text=TARGET_TYPES[0][1],
             values=[label for _, label in TARGET_TYPES],
-            font_size=12)
+            font_size=sp(12))
         self._type_spinner.bind(text=self._on_type_spinner)
         type_row.add_widget(self._type_spinner)
         root.add_widget(type_row)
@@ -352,20 +352,20 @@ class QuickSwitcherScreen(Screen):
         add_box = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(5))
 
         add_box.add_widget(Label(text="Modifier:", size_hint_x=None,
-                                 width=dp(66), font_size=12))
+                                 width=dp(66), font_size=sp(12)))
         self._mod_sp = Spinner(text="ctrl", values=MODIFIERS,
-                               size_hint_x=None, width=dp(110), font_size=12)
+                               size_hint_x=None, width=dp(110), font_size=sp(12))
         add_box.add_widget(self._mod_sp)
 
         add_box.add_widget(Label(text="+", size_hint_x=None,
-                                 width=dp(14), font_size=16))
+                                 width=dp(14), font_size=sp(16)))
 
         self._key_sp = Spinner(text="1", values=ALL_KEYS,
-                               size_hint_x=None, width=dp(72), font_size=12)
+                               size_hint_x=None, width=dp(72), font_size=sp(12))
         add_box.add_widget(self._key_sp)
 
         add_box.add_widget(Label(text="->", size_hint_x=None,
-                                 width=dp(22), font_size=14))
+                                 width=dp(22), font_size=sp(14)))
 
         # this container swaps between the screen spinner and the
         # external-file picker depending on the target type toggle above
@@ -375,12 +375,12 @@ class QuickSwitcherScreen(Screen):
         self._dest_sp = Spinner(
             text="basic_tools",
             values=ALL_ROUTES,
-            font_size=12)
+            font_size=sp(12))
 
         self._ext_path = ""
-        self._ext_pick_btn = Button(text="Pick app/script...", font_size=12)
+        self._ext_pick_btn = Button(text="Pick app/script...", font_size=sp(12))
         self._ext_pick_btn.bind(on_release=self._pick_external)
-        self._ext_path_lbl = Label(text="(none chosen)", font_size=10,
+        self._ext_path_lbl = Label(text="(none chosen)", font_size=sp(10),
                                    halign="left", color=(0.7, 0.9, 0.7, 1))
         self._ext_path_lbl.bind(size=self._ext_path_lbl.setter("text_size"))
         # Built once and reused: rebuilding a fresh wrapper BoxLayout around
@@ -394,14 +394,14 @@ class QuickSwitcherScreen(Screen):
         self._external_col.add_widget(self._ext_path_lbl)
 
         self._cmd_input = TextInput(
-            text="", multiline=False, font_size=12,
+            text="", multiline=False, font_size=sp(12),
             hint_text="e.g. code . / notepad / htop")
         self._cmd_visible_cb = CheckBox(size_hint=(None, None), size=(dp(20), dp(20)))
         self._command_col = BoxLayout(orientation="vertical", spacing=dp(2))
         self._command_col.add_widget(self._cmd_input)
         _vis_row = BoxLayout(size_hint_y=None, height=dp(24), spacing=dp(4))
         _vis_row.add_widget(self._cmd_visible_cb)
-        _vis_lbl = Label(text="Show terminal window", font_size=11, halign="left")
+        _vis_lbl = Label(text="Show terminal window", font_size=sp(11), halign="left")
         _vis_lbl.bind(size=_vis_lbl.setter("text_size"))
         _vis_row.add_widget(_vis_lbl)
         self._command_col.add_widget(_vis_row)
@@ -409,7 +409,7 @@ class QuickSwitcherScreen(Screen):
         self._dest_container.add_widget(self._dest_sp)
 
         add_btn = Button(text="Add", size_hint_x=None, width=dp(60),
-                         font_size=13, background_color=(0.2,0.6,0.2,1))
+                         font_size=sp(13), background_color=(0.2,0.6,0.2,1))
         add_btn.bind(on_release=self._add_bind)
         add_box.add_widget(add_btn)
         root.add_widget(add_box)
@@ -418,30 +418,30 @@ class QuickSwitcherScreen(Screen):
         logout_box = BoxLayout(size_hint_y=None, height=dp(38), spacing=dp(5))
         logout_box.add_widget(Label(text="Log out / Home bind:",
                                     size_hint_x=None, width=dp(150),
-                                    font_size=12))
+                                    font_size=sp(12)))
         self._logout_mod = Spinner(text="ctrl", values=MODIFIERS,
                                    size_hint_x=None, width=dp(100),
-                                   font_size=12)
+                                   font_size=sp(12))
         logout_box.add_widget(self._logout_mod)
         logout_box.add_widget(Label(text="+", size_hint_x=None,
-                                    width=dp(12), font_size=14))
+                                    width=dp(12), font_size=sp(14)))
         self._logout_key = Spinner(text="q", values=ALL_KEYS,
                                    size_hint_x=None, width=dp(66),
-                                   font_size=12)
+                                   font_size=sp(12))
         logout_box.add_widget(self._logout_key)
         set_lo = Button(text="Set", size_hint_x=None, width=dp(54),
-                        font_size=12)
+                        font_size=sp(12))
         set_lo.bind(on_release=self._set_logout)
         logout_box.add_widget(set_lo)
         self._logout_lbl = Label(
-            text=self._logout_bind_str(), font_size=11,
+            text=self._logout_bind_str(), font_size=sp(11),
             color=(0.8, 0.8, 0.5, 1))
         logout_box.add_widget(self._logout_lbl)
         root.add_widget(logout_box)
 
         # ── binds list ────────────────────────────────────────────────────
         root.add_widget(Label(text="Current shortcuts:", size_hint_y=None,
-                              height=dp(22), font_size=13, bold=True))
+                              height=dp(22), font_size=sp(13), bold=True))
         sv = ScrollView()
         self._binds_grid = GridLayout(cols=1, spacing=dp(3), size_hint_y=None)
         self._binds_grid.bind(minimum_height=self._binds_grid.setter("height"))
@@ -450,7 +450,7 @@ class QuickSwitcherScreen(Screen):
 
         # ── status ────────────────────────────────────────────────────────
         self._status = Label(text="", size_hint_y=None, height=dp(24),
-                             font_size=12, color=(0.4, 1, 0.4, 1))
+                             font_size=sp(12), color=(0.4, 1, 0.4, 1))
         root.add_widget(self._status)
 
         back = Button(text="Back", size_hint_y=None, height=dp(42))
@@ -476,12 +476,12 @@ class QuickSwitcherScreen(Screen):
             self._dest_container.add_widget(Label(
                 text="Opens a file browser when triggered - nothing to "
                      "set up here.",
-                font_size=11, halign="left", color=(0.7, 0.9, 0.7, 1)))
+                font_size=sp(11), halign="left", color=(0.7, 0.9, 0.7, 1)))
         elif kind == "app_launcher":
             self._dest_container.add_widget(Label(
                 text="Opens a searchable app launcher when triggered - "
                      "nothing to set up here.",
-                font_size=11, halign="left", color=(0.7, 0.9, 0.7, 1)))
+                font_size=sp(11), halign="left", color=(0.7, 0.9, 0.7, 1)))
         elif kind == "command":
             self._dest_container.add_widget(self._command_col)
 
@@ -592,7 +592,7 @@ class QuickSwitcherScreen(Screen):
         if not binds:
             self._binds_grid.add_widget(Label(
                 text="No shortcuts set. Add one above.",
-                size_hint_y=None, height=dp(26), font_size=12))
+                size_hint_y=None, height=dp(26), font_size=sp(12)))
             return
         for i, bind in enumerate(binds):
             mod   = bind.get("modifier", "")
@@ -614,19 +614,19 @@ class QuickSwitcherScreen(Screen):
             row.add_widget(Label(
                 text=f"{mod}+{key}",
                 size_hint_x=None, width=dp(120),
-                font_size=13, bold=True, color=(0.9, 0.9, 0.4, 1)))
+                font_size=sp(13), bold=True, color=(0.9, 0.9, 0.4, 1)))
             row.add_widget(Label(
                 text=f"-> {target_label}",
-                font_size=12, halign="left"))
+                font_size=sp(12), halign="left"))
             rm = Button(text="Remove", size_hint_x=None, width=dp(78),
-                        font_size=11, background_color=(0.6,0.15,0.15,1))
+                        font_size=sp(11), background_color=(0.6,0.15,0.15,1))
             rm.bind(on_release=lambda inst, idx=i: self._remove_bind(idx))
             row.add_widget(rm)
             self._binds_grid.add_widget(row)
 
 
 # ── Global switcher installer — call this from main.py build() ───────────────
-def install_global_switcher(screen_manager, ensure_loader=None):
+def install_global_switcher(screen_manager, ensure_loader=None, opener=None):
     """
     Installs a global key handler on the Window that responds to quick
     switcher binds from any screen.
@@ -635,6 +635,9 @@ def install_global_switcher(screen_manager, ensure_loader=None):
     screen loading is on and a bind targets a screen that hasn't been
     built yet. If not provided, only already-loaded screens are reachable
     (matches the pre-lazy-loading behaviour).
+
+    opener: optional callable(route) that shows a screen (with the "Loading..."
+    step); preferred over ensure_loader when given.
     """
     def _on_key(window, key, scancode, codepoint, modifiers):
         config = _load_config()
@@ -686,6 +689,9 @@ def install_global_switcher(screen_manager, ensure_loader=None):
                 elif btype == "command":
                     run_terminal_command(dest, visible=bind.get("visible", False))
                 else:  # "screen"
+                    if opener:
+                        opener(dest)
+                        return
                     if ensure_loader:
                         ensure_loader(dest)
                     if dest in [s.name for s in screen_manager.screens]:

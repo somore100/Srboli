@@ -22,7 +22,7 @@ from kivy.uix.widget import Widget
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.graphics import Color, Ellipse, Rectangle
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.clock import Clock
 
 import core.touch_dedupe as td
@@ -77,12 +77,12 @@ class TouchTestScreen(Screen):
             text=("Tap the dark pad with ONE finger, one tap at a time.\n"
                   "1 dot per tap = good.  A green AND a red dot per tap = "
                   "duplicate-tap bug."),
-            font_size=12, size_hint_y=None, height=dp(48), halign="left",
+            font_size=sp(12), size_hint_y=None, height=dp(48), halign="left",
             valign="middle")
         self._help.bind(size=lambda i, s: setattr(i, "text_size", (s[0], None)))
         root.add_widget(self._help)
 
-        self._summary = Label(text="", font_size=13, size_hint_y=None,
+        self._summary = Label(text="", font_size=sp(13), size_hint_y=None,
                               height=dp(44), halign="left", valign="middle",
                               color=(0.7, 0.9, 1, 1))
         self._summary.bind(size=lambda i, s: setattr(i, "text_size", (s[0], None)))
@@ -91,12 +91,12 @@ class TouchTestScreen(Screen):
         self._pad = _Pad(self)
         root.add_widget(self._pad)
 
-        self._log = Label(text="", font_size=11, size_hint_y=None,
+        self._log = Label(text="", font_size=sp(11), size_hint_y=None,
                           height=dp(96), halign="left", valign="top")
         self._log.bind(size=lambda i, s: setattr(i, "text_size", (s[0], None)))
         root.add_widget(self._log)
 
-        self._filter_lbl = Label(text="", font_size=12, size_hint_y=None,
+        self._filter_lbl = Label(text="", font_size=sp(12), size_hint_y=None,
                                  height=dp(34), halign="left",
                                  valign="middle")
         self._filter_lbl.bind(
@@ -104,9 +104,9 @@ class TouchTestScreen(Screen):
         root.add_widget(self._filter_lbl)
 
         row = BoxLayout(size_hint_y=None, height=dp(46), spacing=dp(6))
-        clear = Button(text="Clear", font_size=13)
+        clear = Button(text="Clear", font_size=sp(13))
         clear.bind(on_release=lambda *a: self._clear())
-        self._filter_btn = Button(text="", font_size=12)
+        self._filter_btn = Button(text="", font_size=sp(12))
         self._filter_btn.bind(on_release=lambda *a: self._toggle_filter())
         row.add_widget(clear)
         row.add_widget(self._filter_btn)

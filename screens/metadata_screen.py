@@ -16,7 +16,7 @@ from kivy.uix.image import Image as KivyImage
 from kivy.uix.textinput import TextInput
 from kivy.uix.checkbox import CheckBox
 from kivy.clock import Clock
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.core.clipboard import Clipboard
 
 try:
@@ -319,13 +319,13 @@ class MetadataScreen(Screen):
 
         root.add_widget(Label(
             text="Media Metadata Inspector",
-            size_hint_y=None, height=dp(30), font_size=17, bold=True))
+            size_hint_y=None, height=dp(30), font_size=sp(17), bold=True))
 
         # ── pick file ──────────────────────────────────────────────────────
         pick_row = BoxLayout(size_hint_y=None, height=dp(42), spacing=6)
-        pick_btn = Button(text="Open Image / Video", font_size=14)
+        pick_btn = Button(text="Open Image / Video", font_size=sp(14))
         pick_btn.bind(on_release=self._pick_file)
-        self._file_lbl = Label(text="No file selected", font_size=11,
+        self._file_lbl = Label(text="No file selected", font_size=sp(11),
                                halign="left", color=(0.6, 0.8, 1, 1))
         self._file_lbl.bind(size=self._file_lbl.setter("text_size"))
         pick_row.add_widget(pick_btn)
@@ -340,13 +340,13 @@ class MetadataScreen(Screen):
         # ── verdict banner ─────────────────────────────────────────────────
         self._verdict_lbl = Label(
             text="", size_hint_y=None, height=dp(36),
-            font_size=16, bold=True, halign="center")
+            font_size=sp(16), bold=True, halign="center")
         self._verdict_lbl.bind(size=self._verdict_lbl.setter("text_size"))
         root.add_widget(self._verdict_lbl)
 
         # ── findings ───────────────────────────────────────────────────────
         root.add_widget(Label(text="AI Indicators:", size_hint_y=None,
-                              height=dp(20), font_size=13, bold=True))
+                              height=dp(20), font_size=sp(13), bold=True))
         sv_find = ScrollView(size_hint=(1, 0.22))
         self._find_grid = GridLayout(cols=1, spacing=2, size_hint_y=None)
         self._find_grid.bind(minimum_height=self._find_grid.setter("height"))
@@ -355,18 +355,18 @@ class MetadataScreen(Screen):
 
         # ── raw metadata ───────────────────────────────────────────────────
         meta_hdr = BoxLayout(size_hint_y=None, height=dp(26), spacing=6)
-        meta_hdr.add_widget(Label(text="Raw Metadata:", font_size=13,
+        meta_hdr.add_widget(Label(text="Raw Metadata:", font_size=sp(13),
                                   bold=True))
         copy_btn = Button(text="Copy all", size_hint_x=None, width=dp(82),
-                          font_size=12)
+                          font_size=sp(12))
         copy_btn.bind(on_release=self._copy_meta)
         meta_hdr.add_widget(copy_btn)
         export_btn = Button(text="Export JSON", size_hint_x=None, width=dp(94),
-                            font_size=12)
+                            font_size=sp(12))
         export_btn.bind(on_release=self._export_json)
         meta_hdr.add_widget(export_btn)
         self._edit_btn = Button(text="Edit Metadata...", size_hint_x=None,
-                                width=dp(116), font_size=12, disabled=True)
+                                width=dp(116), font_size=sp(12), disabled=True)
         self._edit_btn.bind(on_release=self._open_edit_popup)
         meta_hdr.add_widget(self._edit_btn)
         root.add_widget(meta_hdr)
@@ -465,7 +465,7 @@ class MetadataScreen(Screen):
             lbl = Label(
                 text=f"{tag}  {reason}",
                 size_hint_y=None, height=dp(22),
-                font_size=11, halign="left",
+                font_size=sp(11), halign="left",
                 color=LEVEL_COLORS.get(flevel, (1,1,1,1)))
             lbl.bind(size=lbl.setter("text_size"))
             self._find_grid.add_widget(lbl)
@@ -473,19 +473,19 @@ class MetadataScreen(Screen):
         if not findings:
             self._find_grid.add_widget(Label(
                 text="No indicators found.", size_hint_y=None, height=dp(22),
-                font_size=11))
+                font_size=sp(11)))
 
         # metadata table
         self._meta_grid.clear_widgets()
         for k, v in sorted(meta.items()):
             key_lbl = Label(
                 text=k, size_hint_y=None, height=dp(22),
-                font_size=11, bold=True, halign="left",
+                font_size=sp(11), bold=True, halign="left",
                 color=(0.7, 0.85, 1, 1))
             key_lbl.bind(size=key_lbl.setter("text_size"))
             val_lbl = Label(
                 text=str(v), size_hint_y=None,
-                font_size=11, halign="left", valign="top")
+                font_size=sp(11), halign="left", valign="top")
             val_lbl.bind(
                 width=lambda inst, w: setattr(inst, "text_size", (w, None)))
             val_lbl.bind(
@@ -530,7 +530,7 @@ class MetadataScreen(Screen):
         layout.add_widget(Label(
             text="Editing only writes back the fields below - values are "
                  "read from the file's current EXIF where present.",
-            font_size=10, size_hint_y=None, height=dp(30),
+            font_size=sp(10), size_hint_y=None, height=dp(30),
             halign="left", color=(0.6, 0.6, 0.6, 1)))
 
         inputs = {}
@@ -538,9 +538,9 @@ class MetadataScreen(Screen):
                      "DateTime", "DateTimeOriginal"):
             row = BoxLayout(size_hint_y=None, height=dp(34), spacing=6)
             row.add_widget(Label(text=label, size_hint_x=None, width=dp(120),
-                                 font_size=12, halign="left"))
+                                 font_size=sp(12), halign="left"))
             current = self._meta.get(label, "")
-            ti = TextInput(text=current, multiline=False, font_size=12)
+            ti = TextInput(text=current, multiline=False, font_size=sp(12))
             inputs[label] = ti
             row.add_widget(ti)
             layout.add_widget(row)
@@ -550,11 +550,11 @@ class MetadataScreen(Screen):
             active=("GPSInfo" in self._meta), size_hint=(None, None),
             size=(dp(24), dp(24)))
         gps_row.add_widget(strip_gps_cb)
-        gps_row.add_widget(Label(text="Strip GPS data", font_size=12,
+        gps_row.add_widget(Label(text="Strip GPS data", font_size=sp(12),
                                  halign="left"))
         layout.add_widget(gps_row)
 
-        status = Label(text="", size_hint_y=None, height=dp(22), font_size=11,
+        status = Label(text="", size_hint_y=None, height=dp(22), font_size=sp(11),
                       color=(0.6, 0.8, 1, 1))
         layout.add_widget(status)
 

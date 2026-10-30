@@ -14,7 +14,7 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.filechooser import FileChooserIconView
 from kivy.uix.popup import Popup
 from kivy.uix.togglebutton import ToggleButton
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 
 import app_data
 from core.android_storage import shared_storage_root
@@ -52,7 +52,7 @@ class DataDirScreen(Screen):
                            "sort configs, autosaves, and other data.")
         hdr = Label(text=header_text, markup=True,
                     size_hint_y=None, height=dp(72),
-                    font_size=14, halign="center", valign="middle")
+                    font_size=sp(14), halign="center", valign="middle")
         hdr.bind(size=hdr.setter("text_size"))
         root.add_widget(hdr)
 
@@ -61,15 +61,15 @@ class DataDirScreen(Screen):
         self._path_label = Label(
             text=f"Current: {cur}",
             size_hint_y=None, height=dp(28),
-            font_size=12, halign="left", color=(0.7, 0.9, 1, 1))
+            font_size=sp(12), halign="left", color=(0.7, 0.9, 1, 1))
         self._path_label.bind(size=self._path_label.setter("text_size"))
         root.add_widget(self._path_label)
 
         # ── choose folder ──
         choose_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=8)
-        choose_btn = Button(text="📁 Choose Folder", font_size=14)
+        choose_btn = Button(text="📁 Choose Folder", font_size=sp(14))
         choose_btn.bind(on_release=self._pick_folder)
-        same_btn = Button(text="📌 Save next to app", font_size=13)
+        same_btn = Button(text="📌 Save next to app", font_size=sp(13))
         same_btn.bind(on_release=self._use_app_dir)
         choose_row.add_widget(choose_btn)
         choose_row.add_widget(same_btn)
@@ -79,27 +79,27 @@ class DataDirScreen(Screen):
         move_row = BoxLayout(size_hint_y=None, height=dp(34), spacing=8)
         self._move_cb = ToggleButton(text="Move existing data",
                                      state="down", size_hint_x=None,
-                                     width=dp(180), font_size=13)
+                                     width=dp(180), font_size=sp(13))
         move_row.add_widget(self._move_cb)
         move_row.add_widget(Label(
             text="(copies old data to new location)",
-            font_size=11, halign="left"))
+            font_size=sp(11), halign="left"))
         root.add_widget(move_row)
 
         # ── status ──
         self._status = Label(text="", size_hint_y=None, height=dp(26),
-                             font_size=12, color=(0.6, 1, 0.6, 1))
+                             font_size=sp(12), color=(0.6, 1, 0.6, 1))
         root.add_widget(self._status)
 
         # ── danger zone ──
         root.add_widget(Label(text="[b]Data management[/b]", markup=True,
-                              size_hint_y=None, height=dp(28), font_size=13))
+                              size_hint_y=None, height=dp(28), font_size=sp(13)))
         danger = BoxLayout(size_hint_y=None, height=dp(44), spacing=8)
         cache_btn = Button(text="🗑 Clear cache / temp files",
-                           font_size=12,
+                           font_size=sp(12),
                            background_color=(0.6, 0.4, 0.1, 1))
         all_btn   = Button(text="☢ Clear ALL data",
-                           font_size=12,
+                           font_size=sp(12),
                            background_color=(0.7, 0.1, 0.1, 1))
         cache_btn.bind(on_release=self._clear_cache)
         all_btn.bind(on_release=self._clear_all)
@@ -114,7 +114,7 @@ class DataDirScreen(Screen):
         self._cont_btn = Button(
             text=cont_text,
             size_hint_y=None, height=dp(54),
-            font_size=16,
+            font_size=sp(16),
             background_color=(0.2, 0.6, 0.2, 1),
         )
         self._cont_btn.bind(on_release=self._continue)

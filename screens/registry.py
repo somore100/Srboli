@@ -52,7 +52,7 @@ LABELS = {
     "gallery":        "Gallery Sorter",
     "music":          "Music Player",
     "random_tools":   "Randomizer Tools",
-    "image_text":     "Image to Text",
+    "image_text":     "File to Base64",
     "morse":          "Morse Converter",
     "binary":         "Binary / Hex Converter",
     "plotter":        "Function Plotter",
@@ -72,6 +72,41 @@ LABELS = {
     "converter":      "File Converter",
     "learn":          "Learn (AI courses)",
     "shortcut":       "Linux Shortcut Creator",
+}
+
+
+# Extra words the Dashboard search matches besides the tool's name.
+ALIASES = {
+    "image_text":     ["base64", "encode", "decode", "image", "ocr", "file"],
+    "text_editor":    ["notes", "markdown", "json", "write", "txt"],
+    "full_editor":    ["document", "word", "slides", "presentation", "table",
+                       "outline", "docs"],
+    "script_mode":    ["prompter", "teleprompter", "script"],
+    "learn":          ["course", "quiz", "study", "ai"],
+    "file_sorter":    ["rules", "organize", "move files", "clean"],
+    "fast_transfer":  ["copy", "move", "speed", "usb", "backup"],
+    "converter":      ["pdf", "docx", "convert", "image", "format"],
+    "gallery":        ["photos", "pictures", "images", "video"],
+    "metadata":       ["exif", "info", "properties"],
+    "music":          ["audio", "player", "mp3", "playlist"],
+    "shape_gen":      ["draw", "geometry", "svg"],
+    "basic_tools":    ["calculator", "calc", "unit", "convert"],
+    "plotter":        ["graph", "function", "math", "chart"],
+    "random_tools":   ["dice", "random", "coin", "pick"],
+    "binary":         ["hex", "bits", "base"],
+    "morse":          ["code", "dots"],
+    "system_stats":   ["cpu", "ram", "memory", "monitor", "overlay"],
+    "reminders":      ["todo", "alarm", "notification", "timer"],
+    "loading_timer":  ["stopwatch", "countdown", "timer"],
+    "quickswitcher":  ["hotkey", "shortcut", "keybind"],
+    "cover":          ["privacy", "blackout", "hide screen"],
+    "shortcut":       ["desktop", "launcher", "icon", ".desktop", "linux"],
+    "touch_test":     ["tap", "screen", "multitouch"],
+    "minesweeper":    ["game", "mines"],
+    "chess":          ["game", "board"],
+    "spin":           ["wheel", "random", "names", "game"],
+    "backrooms":      ["levels", "wiki", "game"],
+    "unhelpful_calc": ["joke", "calculator", "fun"],
 }
 
 

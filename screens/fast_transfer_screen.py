@@ -30,7 +30,7 @@ from kivy.uix.checkbox import CheckBox
 from kivy.uix.filechooser import FileChooserIconView
 from kivy.uix.popup import Popup
 from kivy.clock import Clock
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 
 from core.file_sorter_core import _fmt_size
 from core.transfer_core import (
@@ -78,10 +78,10 @@ class FastTransferScreen(Screen):
 
         root = BoxLayout(orientation="vertical", padding=dp(8), spacing=dp(6))
         root.add_widget(Label(text="[b]Fast File Transfer[/b] (parallel/batched)",
-                              markup=True, font_size=18, size_hint_y=None,
+                              markup=True, font_size=sp(18), size_hint_y=None,
                               height=dp(30)))
 
-        explain = Label(text=EXPLAIN_TEXT, markup=True, font_size=11,
+        explain = Label(text=EXPLAIN_TEXT, markup=True, font_size=sp(11),
                         halign="left", valign="top", size_hint_y=None,
                         color=(0.75, 0.85, 0.95, 1))
         explain.bind(width=lambda *a: setattr(
@@ -92,7 +92,7 @@ class FastTransferScreen(Screen):
 
         # source / destination
         src_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(4))
-        self._src_lbl = Label(text="(no source folder chosen)", font_size=11,
+        self._src_lbl = Label(text="(no source folder chosen)", font_size=sp(11),
                               halign="left", color=(0.7, 0.9, 0.7, 1))
         self._src_lbl.bind(size=self._src_lbl.setter("text_size"))
         pick_src = Button(text="Pick Source", size_hint_x=None, width=dp(120))
@@ -102,7 +102,7 @@ class FastTransferScreen(Screen):
         root.add_widget(src_row)
 
         dst_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(4))
-        self._dst_lbl = Label(text="(no destination folder chosen)", font_size=11,
+        self._dst_lbl = Label(text="(no destination folder chosen)", font_size=sp(11),
                               halign="left", color=(0.7, 0.9, 0.7, 1))
         self._dst_lbl.bind(size=self._dst_lbl.setter("text_size"))
         pick_dst = Button(text="Pick Destination", size_hint_x=None, width=dp(120))
@@ -114,7 +114,7 @@ class FastTransferScreen(Screen):
         # options
         opt_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(8))
         opt_row.add_widget(Label(text="Mode:", size_hint_x=None, width=dp(50),
-                                 font_size=12))
+                                 font_size=sp(12)))
         self._mode_spinner = Spinner(text="Copy", values=MODES,
                                      size_hint_x=None, width=dp(90))
         self._mode_spinner.bind(text=lambda *a: self._mark_stale())
@@ -124,25 +124,25 @@ class FastTransferScreen(Screen):
                                       size=(dp(24), dp(24)))
         self._recursive_cb.bind(active=lambda *a: self._mark_stale())
         opt_row.add_widget(self._recursive_cb)
-        opt_row.add_widget(Label(text="Include subfolders", font_size=12,
+        opt_row.add_widget(Label(text="Include subfolders", font_size=sp(12),
                                  size_hint_x=None, width=dp(120)))
 
         self._overwrite_cb = CheckBox(active=False, size_hint=(None, None),
                                       size=(dp(24), dp(24)))
         opt_row.add_widget(self._overwrite_cb)
-        opt_row.add_widget(Label(text="Overwrite", font_size=12))
+        opt_row.add_widget(Label(text="Overwrite", font_size=sp(12)))
         root.add_widget(opt_row)
 
         # concurrency
         conc_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(8))
         conc_row.add_widget(Label(text="Concurrency:", size_hint_x=None,
-                                  width=dp(90), font_size=12))
+                                  width=dp(90), font_size=sp(12)))
         self._concurrency_input = TextInput(text="4", multiline=False,
-                                            input_filter="int", font_size=12,
+                                            input_filter="int", font_size=sp(12),
                                             size_hint_x=None, width=dp(60))
         conc_row.add_widget(self._concurrency_input)
         self._recommend_lbl = Label(text="Run Analyze to get a recommendation.",
-                                    font_size=11, halign="left",
+                                    font_size=sp(11), halign="left",
                                     color=(0.8, 0.8, 0.5, 1))
         self._recommend_lbl.bind(size=self._recommend_lbl.setter("text_size"))
         conc_row.add_widget(self._recommend_lbl)
@@ -166,11 +166,11 @@ class FastTransferScreen(Screen):
         root.add_widget(act_row)
 
         self._status = Label(text="", size_hint_y=None, height=dp(20),
-                             font_size=11, color=(0.6, 0.8, 1, 1))
+                             font_size=sp(11), color=(0.6, 0.8, 1, 1))
         root.add_widget(self._status)
 
         log_sv = ScrollView(size_hint_y=0.32)
-        self._log_lbl = Label(text="", font_size=10, halign="left",
+        self._log_lbl = Label(text="", font_size=sp(10), halign="left",
                               valign="top", size_hint_y=None, markup=False)
         self._log_lbl.bind(texture_size=lambda *a: setattr(
             self._log_lbl, "height", self._log_lbl.texture_size[1]))

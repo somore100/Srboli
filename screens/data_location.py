@@ -8,7 +8,7 @@ import os
 import threading
 
 from kivy.clock import Clock
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.filechooser import FileChooserIconView
@@ -23,8 +23,8 @@ from screens.dialogs import confirm_popup, message_popup
 class DataLocation(BoxLayout):
     def __init__(self, **kw):
         super().__init__(orientation="vertical", size_hint_y=None,
-                         height=dp(150), spacing=dp(6), **kw)
-        self._label = Label(font_size=11, halign="left", valign="middle",
+                         height=dp(190), spacing=dp(6), **kw)
+        self._label = Label(font_size=sp(11), halign="left", valign="middle",
                             color=(0.5, 0.8, 1, 1), size_hint_y=None,
                             height=dp(40))
         self._label.bind(size=lambda w, v: setattr(w, "text_size", (v[0], None)))
@@ -35,12 +35,16 @@ class DataLocation(BoxLayout):
                 ("Move data...", self._choose_folder, (0.2, 0.45, 0.2, 1)),
                 ("Clear cache", self._clear_cache, (0.5, 0.35, 0.1, 1)),
                 ("Clear ALL data", self._clear_all, (0.65, 0.1, 0.1, 1))):
-            b = Button(text=text, font_size=12, background_color=color)
+            b = Button(text=text, font_size=sp(12), background_color=color)
             b.bind(on_release=cb)
             row.add_widget(b)
             self._buttons.append(b)
         self.add_widget(row)
-        self._status = Label(font_size=11, halign="left", valign="middle",
+        logs = Button(text="Open logs folder", font_size=sp(12),
+                      size_hint_y=None, height=dp(34))
+        logs.bind(on_release=self._open_logs)
+        self.add_widget(logs)
+        self._status = Label(font_size=sp(11), halign="left", valign="middle",
                              size_hint_y=None, height=dp(40),
                              color=(0.6, 1, 0.6, 1))
         self._status.bind(size=lambda w, v: setattr(w, "text_size", (v[0], None)))
@@ -134,6 +138,14 @@ class DataLocation(BoxLayout):
         self._done()
         self._status.color = (1, 0.5, 0.4, 1)
         self._status.text = f"Not moved: {text}"
+
+    def _open_logs(self, *a):
+        from core.logs import logs_dir, open_folder
+        path = logs_dir()
+        if open_folder(path):
+            self._status.text = f"Opened {path}"
+        else:
+            self._status.text = f"Logs are in: {path}"
 
     # ── clear ────────────────────────────────────────────────────────────
     def _clear_cache(self, *a):

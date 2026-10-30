@@ -36,7 +36,7 @@ from kivy.uix.checkbox import CheckBox
 from kivy.uix.filechooser import FileChooserIconView
 from kivy.uix.popup import Popup
 from kivy.clock import Clock
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.utils import platform as _platform
 
 # The engine (rule matching, plan building, applying an action to a file)
@@ -66,7 +66,7 @@ class ConditionRow(BoxLayout):
 
         self.field_sp = Spinner(
             text=FIELD_LABELS.get(initial.get("field", "file_type"), "File type"),
-            values=[FIELD_LABELS[k] for k in FIELD_ORDER], font_size=11)
+            values=[FIELD_LABELS[k] for k in FIELD_ORDER], font_size=sp(11))
         self.field_sp.bind(text=lambda *a: self._rebuild_value_row())
         top.add_widget(self.field_sp)
 
@@ -96,7 +96,7 @@ class ConditionRow(BoxLayout):
         ops = spec["ops"]
         op_text = self._init_op if self._init_op in ops else ops[0]
         self._init_op = None  # only honor initial value on first build
-        self.op_sp = Spinner(text=op_text, values=ops, font_size=11,
+        self.op_sp = Spinner(text=op_text, values=ops, font_size=sp(11),
                              size_hint_x=0.45)
         self._value_row.add_widget(self.op_sp)
 
@@ -104,18 +104,18 @@ class ConditionRow(BoxLayout):
         if kind == "bool":
             self.value_input = None
             self._value_row.add_widget(Label(text="(no value needed)",
-                                             font_size=10, color=(0.6,0.6,0.6,1)))
+                                             font_size=sp(10), color=(0.6,0.6,0.6,1)))
         elif kind == "category":
             init = self._init_value if self._init_value in FILE_TYPE_NAMES else FILE_TYPE_NAMES[0]
             self.value_input = Spinner(text=init, values=FILE_TYPE_NAMES,
-                                       font_size=11, size_hint_x=0.55)
+                                       font_size=sp(11), size_hint_x=0.55)
             self._value_row.add_widget(self.value_input)
         else:
             hint = {"text_list": "jpg, png, mp4", "text": "text or pattern",
                     "size": "e.g. 500MB or 1GB", "days": "e.g. 30"}.get(kind, "")
             self.value_input = TextInput(text=self._init_value or "",
                                          hint_text=hint, multiline=False,
-                                         font_size=11, size_hint_x=0.55)
+                                         font_size=sp(11), size_hint_x=0.55)
             self._value_row.add_widget(self.value_input)
         self._init_value = ""
 
@@ -144,9 +144,9 @@ class RuleEditorPopup(Popup):
 
         name_row = BoxLayout(size_hint_y=None, height=dp(34), spacing=4)
         name_row.add_widget(Label(text="Rule name:", size_hint_x=None,
-                                  width=dp(90), font_size=12))
+                                  width=dp(90), font_size=sp(12)))
         self.name_input = TextInput(text=existing.get("name", "New Rule"),
-                                    multiline=False, font_size=12)
+                                    multiline=False, font_size=sp(12))
         name_row.add_widget(self.name_input)
         root.add_widget(name_row)
 
@@ -157,7 +157,7 @@ class RuleEditorPopup(Popup):
         # rest of the screen relies on.
         group_row = BoxLayout(size_hint_y=None, height=dp(34), spacing=4)
         group_row.add_widget(Label(text="Group:", size_hint_x=None,
-                                   width=dp(90), font_size=12))
+                                   width=dp(90), font_size=sp(12)))
         NEW_GROUP = self.NEW_GROUP
         NO_GROUP = self.NO_GROUP
         current_group = existing.get("group", "") or NO_GROUP
@@ -170,9 +170,9 @@ class RuleEditorPopup(Popup):
         spinner_values = known + [NEW_GROUP]
 
         self.group_sp = Spinner(text=current_group, values=spinner_values,
-                                font_size=12, size_hint_x=0.45)
+                                font_size=sp(12), size_hint_x=0.45)
         self.group_new_input = TextInput(
-            hint_text="new group name", multiline=False, font_size=12,
+            hint_text="new group name", multiline=False, font_size=sp(12),
             size_hint_x=0.55)
         self.group_new_input.opacity = 0
         self.group_new_input.disabled = True
@@ -197,12 +197,12 @@ class RuleEditorPopup(Popup):
         if_header = BoxLayout(size_hint_y=None, height=dp(30), spacing=6)
         if_header.add_widget(Label(text="[b]IF[/b]", markup=True,
                                    size_hint_x=None, width=dp(30),
-                                   font_size=14, color=(0.6, 0.85, 1, 1)))
+                                   font_size=sp(14), color=(0.6, 0.85, 1, 1)))
         self.logic_sp = Spinner(text=existing.get("logic", "AND"),
-                                values=["AND", "OR"], font_size=12,
+                                values=["AND", "OR"], font_size=sp(12),
                                 size_hint_x=None, width=dp(70))
         if_header.add_widget(self.logic_sp)
-        self._if_note = Label(font_size=11, halign="left", color=(0.6, 0.6, 0.6, 1))
+        self._if_note = Label(font_size=sp(11), halign="left", color=(0.6, 0.6, 0.6, 1))
         self._if_note.bind(size=self._if_note.setter("text_size"))
 
         def _update_if_note(*a):
@@ -223,7 +223,7 @@ class RuleEditorPopup(Popup):
         root.add_widget(cond_sv)
 
         add_cond_btn = Button(text="+ Add condition", size_hint_y=None,
-                              height=dp(34), font_size=12)
+                              height=dp(34), font_size=sp(12))
         add_cond_btn.bind(on_release=lambda *a: self._add_condition())
         root.add_widget(add_cond_btn)
 
@@ -233,11 +233,11 @@ class RuleEditorPopup(Popup):
         then_header = BoxLayout(size_hint_y=None, height=dp(30), spacing=6)
         then_header.add_widget(Label(text="[b]THEN[/b]", markup=True,
                                      size_hint_x=None, width=dp(50),
-                                     font_size=14, color=(1, 0.8, 0.5, 1)))
+                                     font_size=sp(14), color=(1, 0.8, 0.5, 1)))
         action = existing.get("action", {"type": "move"})
         self.action_sp = Spinner(text=ACTION_LABELS[action.get("type", "move")],
                                  values=[ACTION_LABELS[t] for t in ACTION_TYPES],
-                                 font_size=12)
+                                 font_size=sp(12))
         self.action_sp.bind(text=lambda *a: self._rebuild_action_row())
         then_header.add_widget(self.action_sp)
         root.add_widget(then_header)
@@ -253,7 +253,7 @@ class RuleEditorPopup(Popup):
         cont_row.add_widget(self.continue_cb)
         cont_lbl = Label(text="Keep checking later rules too (off = stop "
                               "here once this rule matches)",
-                         font_size=11, halign="left")
+                         font_size=sp(11), halign="left")
         cont_lbl.bind(size=cont_lbl.setter("text_size"))
         cont_row.add_widget(cont_lbl)
         root.add_widget(cont_row)
@@ -299,12 +299,12 @@ class RuleEditorPopup(Popup):
             to_row = BoxLayout(size_hint_y=None, height=dp(20), spacing=4)
             to_row.add_widget(Label(text="[b]TO[/b]", markup=True,
                                     size_hint_x=None, width=dp(30),
-                                    font_size=12, color=(0.7, 1, 0.7, 1)))
-            to_row.add_widget(Label(text="this folder:", font_size=11,
+                                    font_size=sp(12), color=(0.7, 1, 0.7, 1)))
+            to_row.add_widget(Label(text="this folder:", font_size=sp(11),
                                     halign="left", color=(0.6, 0.6, 0.6, 1)))
             col.add_widget(to_row)
             btn = Button(text="Pick destination folder...")
-            lbl = Label(text=self._dest_path or "(none chosen)", font_size=10,
+            lbl = Label(text=self._dest_path or "(none chosen)", font_size=sp(10),
                        halign="left", color=(0.7, 0.9, 0.7, 1))
             lbl.bind(size=lbl.setter("text_size"))
             self._dest_lbl = lbl
@@ -340,17 +340,17 @@ class RuleEditorPopup(Popup):
             to_row = BoxLayout(size_hint_y=None, height=dp(20), spacing=4)
             to_row.add_widget(Label(text="[b]TO[/b]", markup=True,
                                     size_hint_x=None, width=dp(30),
-                                    font_size=12, color=(0.7, 1, 0.7, 1)))
-            to_row.add_widget(Label(text="this name pattern:", font_size=11,
+                                    font_size=sp(12), color=(0.7, 1, 0.7, 1)))
+            to_row.add_widget(Label(text="this name pattern:", font_size=sp(11),
                                     halign="left", color=(0.6, 0.6, 0.6, 1)))
             col.add_widget(to_row)
             self._rename_input = TextInput(
                 text=init.get("pattern", "{name}{ext}"), multiline=False,
-                font_size=12)
+                font_size=sp(12))
             col.add_widget(self._rename_input)
             hint = Label(text="Tokens: {name} {ext} {counter} {date}  "
                               "(note: {ext} already includes the leading dot)",
-                        font_size=10, color=(0.6, 0.6, 0.6, 1))
+                        font_size=sp(10), color=(0.6, 0.6, 0.6, 1))
             col.add_widget(hint)
             self._action_row.add_widget(col)
 
@@ -360,7 +360,7 @@ class RuleEditorPopup(Popup):
                 text=("Sends to recycle bin/trash." if HAS_SEND2TRASH else
                      "PERMANENT delete - send2trash not installed, "
                      "there is no recycle bin fallback."),
-                font_size=11, halign="left",
+                font_size=sp(11), halign="left",
                 color=(0.7, 0.9, 0.7, 1) if HAS_SEND2TRASH else (1, 0.5, 0.4, 1))
             warn.bind(size=warn.setter("text_size"))
             col.add_widget(warn)
@@ -373,7 +373,7 @@ class RuleEditorPopup(Popup):
             auto_lbl = Label(
                 text="Auto-delete, no confirmation each time (off = "
                     "ask before every delete, like the OS trash does)",
-                font_size=10, halign="left", color=(0.75, 0.75, 0.5, 1))
+                font_size=sp(10), halign="left", color=(0.75, 0.75, 0.5, 1))
             auto_lbl.bind(size=auto_lbl.setter("text_size"))
             auto_row.add_widget(auto_lbl)
             col.add_widget(auto_row)
@@ -432,12 +432,12 @@ class FileSorterScreen(Screen):
 
         root = BoxLayout(orientation="vertical", padding=8, spacing=6)
         root.add_widget(Label(text="[b]File Sorter[/b] (rule-based)",
-                              markup=True, font_size=18, size_hint_y=None,
+                              markup=True, font_size=sp(18), size_hint_y=None,
                               height=dp(30)))
 
         # source folder
         src_row = BoxLayout(size_hint_y=None, height=dp(38), spacing=4)
-        self._src_lbl = Label(text="(no source folder chosen)", font_size=11,
+        self._src_lbl = Label(text="(no source folder chosen)", font_size=sp(11),
                               halign="left", color=(0.7, 0.9, 0.7, 1))
         self._src_lbl.bind(size=self._src_lbl.setter("text_size"))
         pick_src_btn = Button(text="Pick Source Folder", size_hint_x=None,
@@ -452,7 +452,7 @@ class FileSorterScreen(Screen):
         self._recursive_cb.bind(active=lambda *a: self._mark_stale())
         rec_row = BoxLayout(size_hint_y=None, height=dp(30), spacing=6)
         rec_row.add_widget(self._recursive_cb)
-        rec_row.add_widget(Label(text="Include subfolders", font_size=12,
+        rec_row.add_widget(Label(text="Include subfolders", font_size=sp(12),
                                  halign="left"))
         root.add_widget(rec_row)
 
@@ -460,10 +460,10 @@ class FileSorterScreen(Screen):
         # file that is still being generated / downloaded / saved is left alone.
         settle_row = BoxLayout(size_hint_y=None, height=dp(34), spacing=6)
         settle_row.add_widget(Label(
-            text="Only touch files unchanged for (seconds):", font_size=12,
+            text="Only touch files unchanged for (seconds):", font_size=sp(12),
             halign="left"))
         self._settle_in = TextInput(text=f"{SETTLE_SECONDS:g}", multiline=False,
-                                    input_filter="float", font_size=13,
+                                    input_filter="float", font_size=sp(13),
                                     size_hint_x=None, width=dp(64))
         self._settle_in.bind(text=lambda *a: self._sync_watch_cfg())
         settle_row.add_widget(self._settle_in)
@@ -480,7 +480,7 @@ class FileSorterScreen(Screen):
             watch_row.add_widget(self._watch_cb)
             watch_row.add_widget(Label(
                 text="Auto-apply in background (needs Background service)",
-                font_size=12, halign="left"))
+                font_size=sp(12), halign="left"))
             root.add_widget(watch_row)
 
         # ruleset save/load - one "Rulesets..." button opens a popup with
@@ -507,22 +507,22 @@ class FileSorterScreen(Screen):
         io_row.add_widget(import_btn)
         io_row.add_widget(Label(
             text="(save/load a ruleset to any file, e.g. to share it)",
-            font_size=10, color=(0.6, 0.6, 0.6, 1), halign="left"))
+            font_size=sp(10), color=(0.6, 0.6, 0.6, 1), halign="left"))
         root.add_widget(io_row)
 
         # rules list
         root.add_widget(Label(text="Rules (evaluated top to bottom):",
-                              size_hint_y=None, height=dp(20), font_size=12))
+                              size_hint_y=None, height=dp(20), font_size=sp(12)))
 
         filter_row = BoxLayout(size_hint_y=None, height=dp(32), spacing=6)
         filter_row.add_widget(Label(text="Show group:", size_hint_x=None,
-                                    width=dp(90), font_size=11))
+                                    width=dp(90), font_size=sp(11)))
         self._group_filter_sp = Spinner(text="All groups", values=["All groups"],
-                                        font_size=11, size_hint_x=0.5)
+                                        font_size=sp(11), size_hint_x=0.5)
         self._group_filter_sp.bind(text=lambda *a: self._refresh_rules_list())
         filter_row.add_widget(self._group_filter_sp)
         note = Label(text="(Up/Down move a rule's real evaluation position, "
-                          "even while filtered)", font_size=9,
+                          "even while filtered)", font_size=sp(9),
                      color=(0.55, 0.55, 0.55, 1), halign="left")
         note.bind(size=note.setter("text_size"))
         filter_row.add_widget(note)
@@ -554,11 +554,11 @@ class FileSorterScreen(Screen):
         root.add_widget(act_row)
 
         self._status = Label(text="", size_hint_y=None, height=dp(20),
-                             font_size=11, color=(0.6, 0.8, 1, 1))
+                             font_size=sp(11), color=(0.6, 0.8, 1, 1))
         root.add_widget(self._status)
 
         log_sv = ScrollView(size_hint_y=0.28)
-        self._log_lbl = Label(text="", font_size=10, halign="left",
+        self._log_lbl = Label(text="", font_size=sp(10), halign="left",
                               valign="top", size_hint_y=None, markup=False)
         self._log_lbl.bind(texture_size=lambda *a: setattr(
             self._log_lbl, "height", self._log_lbl.texture_size[1]))
@@ -641,13 +641,13 @@ class FileSorterScreen(Screen):
 
         summary = f"{group_tag}{rule.get('name', '?')}: {rule_one_liner(rule)}"
         text_color = (0.9, 0.9, 0.9, 1) if enabled else (0.5, 0.5, 0.5, 1)
-        lbl = Label(text=summary, font_size=10, halign="left", color=text_color)
+        lbl = Label(text=summary, font_size=sp(10), halign="left", color=text_color)
         lbl.bind(size=lbl.setter("text_size"))
         card.add_widget(lbl)
 
-        up = Button(text="Up", font_size=11, size_hint_x=None, width=dp(40))
+        up = Button(text="Up", font_size=sp(11), size_hint_x=None, width=dp(40))
         up.bind(on_release=lambda *a: self._move_rule(index, -1))
-        down = Button(text="Dn", font_size=11, size_hint_x=None, width=dp(40))
+        down = Button(text="Dn", font_size=sp(11), size_hint_x=None, width=dp(40))
         down.bind(on_release=lambda *a: self._move_rule(index, 1))
         edit = Button(text="Edit", size_hint_x=None, width=dp(50))
         edit.bind(on_release=lambda *a: self._open_rule_editor(index))
@@ -700,14 +700,14 @@ class FileSorterScreen(Screen):
 
         new_row = BoxLayout(size_hint_y=None, height=dp(38), spacing=4)
         name_input = TextInput(text=self._current_ruleset_name or "my_rules",
-                               multiline=False, font_size=12)
+                               multiline=False, font_size=sp(12))
         save_new_btn = Button(text="Save as new", size_hint_x=None, width=dp(100))
         new_row.add_widget(name_input)
         new_row.add_widget(save_new_btn)
         layout.add_widget(new_row)
 
         layout.add_widget(Label(text="Existing rulesets:", size_hint_y=None,
-                                height=dp(20), font_size=12, halign="left"))
+                                height=dp(20), font_size=sp(12), halign="left"))
 
         sv = ScrollView()
         grid = BoxLayout(orientation="vertical", size_hint_y=None, spacing=2)
@@ -736,7 +736,7 @@ class FileSorterScreen(Screen):
 
         for n in names:
             row = BoxLayout(size_hint_y=None, height=dp(38), spacing=4)
-            row.add_widget(Label(text=n, font_size=12, halign="left"))
+            row.add_widget(Label(text=n, font_size=sp(12), halign="left"))
             load_btn = Button(text="Load", size_hint_x=None, width=dp(70))
             overwrite_btn = Button(text="Save over", size_hint_x=None, width=dp(90))
 
@@ -781,10 +781,10 @@ class FileSorterScreen(Screen):
 
         name_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=4)
         name_row.add_widget(Label(text="File name:", size_hint_x=None,
-                                  width=dp(80), font_size=12))
+                                  width=dp(80), font_size=sp(12)))
         filename_input = TextInput(
             text=(self._current_ruleset_name.strip() or "my_rules") + ".json",
-            multiline=False, font_size=12)
+            multiline=False, font_size=sp(12))
         name_row.add_widget(filename_input)
         layout.add_widget(name_row)
 
@@ -1109,7 +1109,7 @@ class FileSorterScreen(Screen):
         def _show(dt):
             content = BoxLayout(orientation="vertical", spacing=8, padding=10)
             content.add_widget(Label(
-                text=f"Delete this file?\n\n{path}", font_size=12,
+                text=f"Delete this file?\n\n{path}", font_size=sp(12),
                 halign="center"))
             btn_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=8)
             yes = Button(text="Delete")

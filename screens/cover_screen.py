@@ -18,7 +18,7 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.checkbox import CheckBox
 from kivy.uix.spinner import Spinner
 from kivy.clock import Clock
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 
 import core.cover_core as cc
 from core.daemon_ipc import send_command as daemon_send
@@ -57,10 +57,10 @@ class BoxCard(BoxLayout):
         self.name_in = _bg_input(text=box["name"], hint_text="name")
         r1.add_widget(self.name_in)
         self.style_sp = Spinner(text=box["style"], values=list(cc.STYLES),
-                             size_hint_x=0.5, font_size=13)
+                             size_hint_x=0.5, font_size=sp(13))
         self.style_sp.bind(text=self._style_changed)
         r1.add_widget(self.style_sp)
-        rm = Button(text="Remove", size_hint_x=0.5, font_size=13,
+        rm = Button(text="Remove", size_hint_x=0.5, font_size=sp(13),
                     background_color=(0.55, 0.2, 0.2, 1))
         rm.bind(on_release=lambda *a: on_remove(self.box_id))
         r1.add_widget(rm)
@@ -69,7 +69,7 @@ class BoxCard(BoxLayout):
         r2 = BoxLayout(size_hint_y=None, height=dp(34), spacing=4)
         self.fields = {}
         for key in ("x", "y", "w", "h"):
-            r2.add_widget(Label(text=key, size_hint_x=0.25, font_size=13))
+            r2.add_widget(Label(text=key, size_hint_x=0.25, font_size=sp(13)))
             ti = _bg_input(text=str(box[key]), input_filter="int",
                            halign="center")
             self.fields[key] = ti
@@ -77,10 +77,10 @@ class BoxCard(BoxLayout):
         self.add_widget(r2)
 
         r3 = BoxLayout(size_hint_y=None, height=dp(34), spacing=4)
-        r3.add_widget(Label(text="colour", size_hint_x=0.6, font_size=13))
+        r3.add_widget(Label(text="colour", size_hint_x=0.6, font_size=sp(13)))
         self.color_in = _bg_input(text=box["color"], hint_text="#rrggbb")
         r3.add_widget(self.color_in)
-        r3.add_widget(Label(text="opacity", size_hint_x=0.6, font_size=13))
+        r3.add_widget(Label(text="opacity", size_hint_x=0.6, font_size=sp(13)))
         self.opacity_in = _bg_input(text=str(box["opacity"]),
                                  input_filter="float")
         r3.add_widget(self.opacity_in)
@@ -94,7 +94,7 @@ class BoxCard(BoxLayout):
         r4.add_widget(Label(
             text="hide from recording" if cc.capture_exclusion_supported()
             else "hide from recording (Windows only)",
-            font_size=12, halign="left", color=(0.8, 0.8, 0.8, 1)))
+            font_size=sp(12), halign="left", color=(0.8, 0.8, 0.8, 1)))
         self.hotkey = _bg_input(text=box["hotkey"],
                                 hint_text="box hotkey, e.g. ctrl+alt+1")
         r4.add_widget(self.hotkey)
@@ -129,7 +129,7 @@ class CoverScreen(Screen):
         root = BoxLayout(orientation="vertical", padding=10, spacing=8)
         root.add_widget(Label(text="[b]Cover — privacy boxes & blackout[/b]",
                               markup=True, size_hint_y=None, height=dp(34),
-                              font_size=18))
+                              font_size=sp(18)))
 
         if not cc.is_desktop():
             root.add_widget(Label(
@@ -141,7 +141,7 @@ class CoverScreen(Screen):
             return
 
         self.status = Label(text="…", size_hint_y=None, height=dp(48),
-                            font_size=12, halign="left", valign="middle",
+                            font_size=sp(12), halign="left", valign="middle",
                             color=(0.8, 0.85, 0.9, 1))
         self.status.bind(size=lambda i, s: setattr(i, "text_size", (s[0], None)))
         root.add_widget(self.status)
@@ -165,13 +165,13 @@ class CoverScreen(Screen):
     def _section(self, text):
         self.body.add_widget(Label(
             text=f"[b]{text}[/b]", markup=True, size_hint_y=None,
-            height=dp(28), font_size=14, halign="left",
+            height=dp(28), font_size=sp(14), halign="left",
             color=(0.55, 0.8, 1, 1)))
         self.body.children[0].bind(
             size=lambda i, s: setattr(i, "text_size", (s[0], None)))
 
     def _note(self, text, h=40):
-        lb = Label(text=text, size_hint_y=None, height=dp(h), font_size=12,
+        lb = Label(text=text, size_hint_y=None, height=dp(h), font_size=sp(12),
                    halign="left", valign="top", color=(0.7, 0.7, 0.7, 1))
         lb.bind(size=lambda i, s: setattr(i, "text_size", (s[0], None)))
         self.body.add_widget(lb)
@@ -179,7 +179,7 @@ class CoverScreen(Screen):
     def _btn_row(self, items):
         row = BoxLayout(size_hint_y=None, height=dp(40), spacing=6)
         for text, fn in items:
-            b = Button(text=text, font_size=13)
+            b = Button(text=text, font_size=sp(13))
             b.bind(on_release=lambda inst, f=fn: f())
             row.add_widget(b)
         self.body.add_widget(row)
@@ -189,7 +189,7 @@ class CoverScreen(Screen):
         cb = CheckBox(active=active, size_hint_x=None, width=dp(32))
         setattr(self, attr, cb)
         row.add_widget(cb)
-        row.add_widget(Label(text=text, font_size=13, halign="left",
+        row.add_widget(Label(text=text, font_size=sp(13), halign="left",
                              color=(0.9, 0.9, 0.9, 1)))
         row.children[0].bind(
             size=lambda i, s: setattr(i, "text_size", (s[0], None)))
@@ -218,7 +218,7 @@ class CoverScreen(Screen):
         self._check_row("Also lock the session when blackout turns on",
                         cfg["lock_after_blackout"], "_lock_cb")
         row = BoxLayout(size_hint_y=None, height=dp(34), spacing=6)
-        row.add_widget(Label(text="Blackout colour / opacity", font_size=13,
+        row.add_widget(Label(text="Blackout colour / opacity", font_size=sp(13),
                              size_hint_x=1.4))
         self._bo_color = _bg_input(text=cfg["blackout"]["color"])
         self._bo_opacity = _bg_input(text=str(cfg["blackout"]["opacity"]),
@@ -231,7 +231,7 @@ class CoverScreen(Screen):
         self._hk = {}
         for act in cc.HOTKEY_ACTIONS:
             row = BoxLayout(size_hint_y=None, height=dp(34), spacing=6)
-            row.add_widget(Label(text=cc.HOTKEY_LABELS[act], font_size=13,
+            row.add_widget(Label(text=cc.HOTKEY_LABELS[act], font_size=sp(13),
                                  size_hint_x=1.3))
             ti = _bg_input(text=cfg["hotkeys"].get(act, ""),
                            hint_text="e.g. ctrl+alt+h")
@@ -266,7 +266,7 @@ class CoverScreen(Screen):
         self._btn_row([("Add box", self._add_box),
                        ("Save & apply", self._save)])
         self.msg = Label(text="", size_hint_y=None, height=dp(40),
-                         font_size=12, halign="left", valign="top")
+                         font_size=sp(12), halign="left", valign="top")
         self.msg.bind(size=lambda i, s: setattr(i, "text_size", (s[0], None)))
         self.body.add_widget(self.msg)
 

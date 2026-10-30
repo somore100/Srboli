@@ -21,7 +21,7 @@ from kivy.uix.spinner import Spinner
 from kivy.uix.widget import Widget
 from kivy.clock import Clock
 from kivy.graphics import Color, Rectangle
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.utils import platform as _platform
 
 _IS_ANDROID = _platform == "android"
@@ -38,7 +38,7 @@ class LoadingTimerScreen(Screen):
 
         layout.add_widget(Label(text="[b]Loading / Timer[/b]", markup=True,
                                 size_hint_y=None, height=dp(40),
-                                font_size=18))
+                                font_size=sp(18)))
 
         # ── time inputs ──
         time_layout = BoxLayout(orientation="horizontal", spacing=dp(8),
@@ -48,7 +48,7 @@ class LoadingTimerScreen(Screen):
                            ("seconds_input", "Seconds")):
             ti = TextInput(hint_text=hint, multiline=False,
                            input_filter="int", halign="center",
-                           font_size=18, padding=[dp(6), dp(14), dp(6), dp(6)])
+                           font_size=sp(18), padding=[dp(6), dp(14), dp(6), dp(6)])
             setattr(self, attr, ti)
             time_layout.add_widget(ti)
         layout.add_widget(time_layout)
@@ -57,7 +57,7 @@ class LoadingTimerScreen(Screen):
         presets = BoxLayout(size_hint_y=None, height=dp(42), spacing=dp(6))
         for label, s in (("5 min", 300), ("10 min", 600),
                          ("30 min", 1800), ("1 hr", 3600)):
-            b = Button(text=label, font_size=13)
+            b = Button(text=label, font_size=sp(13))
             b.bind(on_release=lambda inst, sec=s: self._apply_preset(sec))
             presets.add_widget(b)
         layout.add_widget(presets)
@@ -65,14 +65,14 @@ class LoadingTimerScreen(Screen):
         # ── on-complete action ──
         action_row = BoxLayout(size_hint_y=None, height=dp(44),
                                spacing=dp(8))
-        lbl = Label(text="On complete:", size_hint_x=0.4, font_size=14,
+        lbl = Label(text="On complete:", size_hint_x=0.4, font_size=sp(14),
                     halign="left", valign="middle")
         lbl.bind(size=lambda i, s: setattr(i, "text_size", s))
         action_row.add_widget(lbl)
         self.action_spinner = Spinner(
             text="Nothing",
             values=ACTIONS_ANDROID if _IS_ANDROID else ACTIONS_DESKTOP,
-            size_hint_x=0.6, font_size=14,
+            size_hint_x=0.6, font_size=sp(14),
         )
         self.action_spinner.bind(text=self._on_action_changed)
         action_row.add_widget(self.action_spinner)
@@ -80,18 +80,18 @@ class LoadingTimerScreen(Screen):
 
         # ── start / pause / reset ──
         ctrl = BoxLayout(size_hint_y=None, height=dp(50), spacing=dp(8))
-        self.start_btn = Button(text="Start", font_size=15)
+        self.start_btn = Button(text="Start", font_size=sp(15))
         self.start_btn.bind(on_release=self.start_timer)
-        self.pause_btn = Button(text="Pause", font_size=15, disabled=True)
+        self.pause_btn = Button(text="Pause", font_size=sp(15), disabled=True)
         self.pause_btn.bind(on_release=self.toggle_pause)
-        self.reset_btn = Button(text="Reset", font_size=15, disabled=True)
+        self.reset_btn = Button(text="Reset", font_size=sp(15), disabled=True)
         self.reset_btn.bind(on_release=self.reset_timer)
         for b in (self.start_btn, self.pause_btn, self.reset_btn):
             ctrl.add_widget(b)
         layout.add_widget(ctrl)
 
         # ── time remaining ──
-        self.time_label = Label(text="00:00:00", font_size=40,
+        self.time_label = Label(text="00:00:00", font_size=sp(40),
                                 size_hint_y=None, height=dp(64))
         layout.add_widget(self.time_label)
 
@@ -102,7 +102,7 @@ class LoadingTimerScreen(Screen):
         layout.add_widget(self.canvas_area)
 
         # ── status message ──
-        self.status_label = Label(text="", font_size=14,
+        self.status_label = Label(text="", font_size=sp(14),
                                   size_hint_y=None, height=dp(36))
         layout.add_widget(self.status_label)
 
@@ -110,7 +110,7 @@ class LoadingTimerScreen(Screen):
         layout.add_widget(Widget())
 
         back = Button(text="< Back", size_hint_y=None, height=dp(48),
-                      font_size=15)
+                      font_size=sp(15))
         back.bind(on_release=lambda *a: setattr(self.manager, "current",
                                                 "dashboard"))
         layout.add_widget(back)

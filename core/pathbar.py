@@ -14,7 +14,7 @@
 import os
 
 from kivy.clock import Clock
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
@@ -91,15 +91,15 @@ class PathBar(BoxLayout):
 
         row = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(4))
         self._input = TextInput(
-            multiline=False, write_tab=False, font_size=13,
+            multiline=False, write_tab=False, font_size=sp(13),
             hint_text="Type or paste a folder path",
             foreground_color=(1, 1, 1, 1), hint_text_color=(0.6, 0.6, 0.6, 1),
             background_color=(0.12, 0.12, 0.12, 1),
             cursor_color=(0.4, 0.75, 1, 1), padding=(dp(8), dp(10)))
         self._input.bind(on_text_validate=lambda *a: self._go())
-        go = Button(text="Go", size_hint_x=None, width=dp(56), font_size=13)
+        go = Button(text="Go", size_hint_x=None, width=dp(56), font_size=sp(13))
         go.bind(on_release=lambda *a: self._go())
-        self._paste_btn = Button(text="Paste", font_size=12,
+        self._paste_btn = Button(text="Paste", font_size=sp(12),
                                  background_color=(0.2, 0.35, 0.5, 1))
         self._paste_btn.bind(on_release=lambda *a: self._paste())
         self._hist, self._hpos, self._navigating = [], -1, False
@@ -110,11 +110,11 @@ class PathBar(BoxLayout):
         self._last_ok = chooser.path
         self._reverting = False
         self._back = Button(text="<", size_hint_x=None, width=dp(38),
-                            font_size=14)
+                            font_size=sp(14))
         self._fwd = Button(text=">", size_hint_x=None, width=dp(38),
-                           font_size=14)
+                           font_size=sp(14))
         self._mode_btn = Button(text="", size_hint_x=None, width=dp(52),
-                                font_size=12,
+                                font_size=sp(12),
                                 background_color=(0.2, 0.35, 0.5, 1))
         self._back.bind(on_release=lambda *a: self._nav(-1))
         self._fwd.bind(on_release=lambda *a: self._nav(1))
@@ -127,7 +127,7 @@ class PathBar(BoxLayout):
                                 spacing=dp(4))
         self.add_widget(self._chips)
 
-        self._status = Label(text="", font_size=11, size_hint_y=None,
+        self._status = Label(text="", font_size=sp(11), size_hint_y=None,
                              height=dp(18), halign="left", valign="middle",
                              color=(1, 0.6, 0.4, 1))
         self._status.bind(size=lambda i, s: setattr(i, "text_size", s))
@@ -153,7 +153,7 @@ class PathBar(BoxLayout):
             if os.path.isdir(p):
                 targets.append((name, p))
         for label, p in targets[:5]:
-            b = Button(text=label, font_size=12, shorten=True,
+            b = Button(text=label, font_size=sp(12), shorten=True,
                        background_color=(0.25, 0.25, 0.25, 1))
             b.bind(on_release=lambda inst, pp=p: self._open(pp))
             self._chips.add_widget(b)

@@ -9,7 +9,7 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.core.clipboard import Clipboard
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 import collections
 import re
 
@@ -43,12 +43,12 @@ class MorseScreen(Screen):
 
         root.add_widget(Label(
             text="[b]Morse Code Converter[/b]", markup=True,
-            size_hint_y=None, height=dp(34), font_size=18,
+            size_hint_y=None, height=dp(34), font_size=sp(18),
         ))
 
         # ── input ──
         root.add_widget(Label(text="Input (text or morse):",
-                              size_hint_y=None, height=dp(22), font_size=13))
+                              size_hint_y=None, height=dp(22), font_size=sp(13)))
         self.input = TextInput(
             hint_text="Type here…",
             size_hint_y=None, height=dp(80),
@@ -63,19 +63,19 @@ class MorseScreen(Screen):
         keys = BoxLayout(size_hint_y=None, height=dp(52), spacing=6)
         for label, ins in (("•  dot", "."), ("—  dash", "-"),
                            ("letter ␣", " "), ("word /", " / ")):
-            kb = Button(text=label, font_size=13)
+            kb = Button(text=label, font_size=sp(13))
             kb.bind(on_release=lambda w, t=ins: self._type(t))
             keys.add_widget(kb)
-        bs = Button(text="⌫", size_hint_x=None, width=dp(48), font_size=16)
+        bs = Button(text="⌫", size_hint_x=None, width=dp(48), font_size=sp(16))
         bs.bind(on_release=lambda *a: self.input.do_backspace())
         keys.add_widget(bs)
         root.add_widget(keys)
 
         # ── buttons ──
         btn_row = BoxLayout(size_hint_y=None, height=dp(46), spacing=8)
-        t2m = Button(text="Text > Morse", font_size=14)
-        m2t = Button(text="Morse > Text", font_size=14)
-        clr = Button(text="Clear", size_hint_x=None, width=dp(70), font_size=13)
+        t2m = Button(text="Text > Morse", font_size=sp(14))
+        m2t = Button(text="Morse > Text", font_size=sp(14))
+        clr = Button(text="Clear", size_hint_x=None, width=dp(70), font_size=sp(13))
         t2m.bind(on_release=self._text_to_morse)
         m2t.bind(on_release=self._morse_to_text)
         clr.bind(on_release=lambda *a: (
@@ -89,7 +89,7 @@ class MorseScreen(Screen):
 
         # ── output ──
         root.add_widget(Label(text="Output:",
-                              size_hint_y=None, height=dp(22), font_size=13))
+                              size_hint_y=None, height=dp(22), font_size=sp(13)))
         self.output = TextInput(
             text="", readonly=True,
             size_hint_y=None, height=dp(80),
@@ -104,7 +104,7 @@ class MorseScreen(Screen):
 
         # ── history ──
         root.add_widget(Label(text="History:", size_hint_y=None, height=dp(22),
-                              font_size=13))
+                              font_size=sp(13)))
         sv = ScrollView(size_hint=(1, 0.25))
         self.hist_grid = GridLayout(cols=1, spacing=2, size_hint_y=None)
         self.hist_grid.bind(minimum_height=self.hist_grid.setter("height"))
@@ -159,6 +159,6 @@ class MorseScreen(Screen):
         self.hist_grid.clear_widgets()
         for e in self._history:
             lbl = Label(text=e, size_hint_y=None, height=dp(24),
-                        font_size=11, halign="left")
+                        font_size=sp(11), halign="left")
             lbl.bind(size=lbl.setter("text_size"))
             self.hist_grid.add_widget(lbl)

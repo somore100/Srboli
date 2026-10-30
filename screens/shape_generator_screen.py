@@ -19,7 +19,7 @@ from kivy.uix.popup import Popup
 from kivy.uix.widget import Widget
 from kivy.graphics import Color, Line, Ellipse, Triangle, Rectangle
 from kivy.clock import Clock
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 
 import app_data
 
@@ -292,7 +292,7 @@ class ShapeGeneratorScreen(Screen):
         # ── controls ──────────────────────────────────────────────────────
         ctrl = BoxLayout(size_hint_y=None, height=dp(40), spacing=5)
         ctrl.add_widget(Label(text="Style(s):", size_hint_x=None,
-                              width=dp(58), font_size=13))
+                              width=dp(58), font_size=sp(13)))
 
         # style checkboxes
         self._style_cbs = {}
@@ -301,22 +301,22 @@ class ShapeGeneratorScreen(Screen):
                           size_hint_x=None, size=(dp(22), dp(22)))
             ctrl.add_widget(cb)
             ctrl.add_widget(Label(text=s.capitalize(), size_hint_x=None,
-                                  width=dp(78), font_size=12))
+                                  width=dp(78), font_size=sp(12)))
             self._style_cbs[s] = cb
 
         ctrl.add_widget(Label(text="Cmplx:", size_hint_x=None,
-                              width=dp(50), font_size=12))
+                              width=dp(50), font_size=sp(12)))
         self._complexity = Slider(min=0.1, max=1.0, value=0.5,
                                   size_hint_x=None, width=dp(110))
         ctrl.add_widget(self._complexity)
 
         self._seed_input = TextInput(hint_text="Seed", multiline=False,
                                      input_filter="int", size_hint_x=None,
-                                     width=dp(90), font_size=12)
+                                     width=dp(90), font_size=sp(12))
         ctrl.add_widget(self._seed_input)
 
         gen_btn = Button(text=" Generate", size_hint_x=None, width=dp(110),
-                         font_size=14)
+                         font_size=sp(14))
         gen_btn.bind(on_release=self._generate)
         ctrl.add_widget(gen_btn)
         root.add_widget(ctrl)
@@ -330,14 +330,14 @@ class ShapeGeneratorScreen(Screen):
         prev_btn = Button(text="<", size_hint_x=None, width=dp(44))
         prev_btn.bind(on_release=self._hist_back)
         self._hist_lbl = Label(text="0/0", size_hint_x=None, width=dp(50),
-                               font_size=12)
+                               font_size=sp(12))
         next_btn = Button(text=">", size_hint_x=None, width=dp(44))
         next_btn.bind(on_release=self._hist_fwd)
         png_btn = Button(text="Save PNG", size_hint_x=None, width=dp(80))
         png_btn.bind(on_release=self._save_png)
         svg_btn = Button(text="Save SVG", size_hint_x=None, width=dp(80))
         svg_btn.bind(on_release=self._save_svg)
-        self._seed_lbl = Label(text="Seed: —", font_size=11)
+        self._seed_lbl = Label(text="Seed: —", font_size=sp(11))
         back_btn = Button(text="< Back", size_hint_x=None, width=dp(90))
         back_btn.bind(on_release=self._go_back)
         for w in (prev_btn, self._hist_lbl, next_btn,
@@ -404,7 +404,7 @@ class ShapeGeneratorScreen(Screen):
         chooser = FileChooserIconView(path=app_data.get_data_dir())
         name_in = TextInput(
             text=f"srboli_shape_{self._canvas_w.spec.seed if self._canvas_w.spec else 0}{ext}",
-            multiline=False, size_hint_y=None, height=dp(36), font_size=13)
+            multiline=False, size_hint_y=None, height=dp(36), font_size=sp(13))
         save_btn = Button(text="Save", size_hint_y=None, height=dp(44))
         layout = BoxLayout(orientation="vertical", spacing=4)
         layout.add_widget(chooser)

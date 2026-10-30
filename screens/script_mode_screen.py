@@ -19,7 +19,7 @@ from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.checkbox import CheckBox
 from kivy.core.clipboard import Clipboard
 from kivy.core.window import Window
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.clock import Clock
 
 
@@ -36,15 +36,15 @@ class ScriptModeScreen(Screen):
 
         root.add_widget(Label(
             text="Script / Teleprompter Mode",
-            size_hint_y=None, height=dp(30), font_size=17, bold=True))
+            size_hint_y=None, height=dp(30), font_size=sp(17), bold=True))
         root.add_widget(Label(
             text="Paste your full text, split it into chunks.\n"
                  "Each chunk auto-copies. Paste it wherever, then press Next.",
-            size_hint_y=None, height=dp(36), font_size=11, halign="left"))
+            size_hint_y=None, height=dp(36), font_size=sp(11), halign="left"))
 
         # ── input ──────────────────────────────────────────────────────────
         self._input = TextInput(
-            multiline=True, font_size=13, size_hint_y=0.26,
+            multiline=True, font_size=sp(13), size_hint_y=0.26,
             hint_text="Paste full script/text here...",
             background_color=(0.10, 0.10, 0.13, 1),
             foreground_color=(0.92, 0.92, 0.88, 1),
@@ -54,12 +54,12 @@ class ScriptModeScreen(Screen):
         # ── split options ──────────────────────────────────────────────────
         opt = BoxLayout(size_hint_y=None, height=dp(36), spacing=6)
         opt.add_widget(Label(text="Split by:", size_hint_x=None,
-                             width=dp(60), font_size=13))
+                             width=dp(60), font_size=sp(13)))
         self._split_mode = Spinner(
             text="Enter (blank line)",
             values=("Enter (blank line)", "Lines", "Characters",
                     "Sentences", "Paragraphs"),
-            size_hint_x=None, width=dp(170), font_size=12)
+            size_hint_x=None, width=dp(170), font_size=sp(12))
         # See main.py's Window.softinput_mode comment: if the text input
         # above still has focus (and the keyboard is up), the very tap
         # that opens this dropdown can double as the tap that closes it.
@@ -68,14 +68,14 @@ class ScriptModeScreen(Screen):
         self._split_mode.bind(on_touch_down=self._defocus_input)
         opt.add_widget(self._split_mode)
         opt.add_widget(Label(text="Size:", size_hint_x=None,
-                             width=dp(38), font_size=12))
+                             width=dp(38), font_size=sp(12)))
         self._chunk_sz = TextInput(text="1", multiline=False,
                                    input_filter="int",
                                    size_hint_x=None, width=dp(50),
-                                   font_size=13)
+                                   font_size=sp(13))
         opt.add_widget(self._chunk_sz)
         split_btn = Button(text="Split", size_hint_x=None, width=dp(70),
-                           font_size=13)
+                           font_size=sp(13))
         split_btn.bind(on_release=self._do_split)
         opt.add_widget(split_btn)
         root.add_widget(opt)
@@ -87,7 +87,7 @@ class ScriptModeScreen(Screen):
         auto_row.add_widget(self._auto_cb)
         auto_row.add_widget(Label(
             text="Auto-advance on paste (Ctrl+V) — copies next chunk automatically",
-            font_size=11, halign="left"))
+            font_size=sp(11), halign="left"))
         root.add_widget(auto_row)
 
         # ── chunk preview ──────────────────────────────────────────────────
@@ -100,33 +100,33 @@ class ScriptModeScreen(Screen):
         # ── status + current chunk ─────────────────────────────────────────
         self._status = Label(
             text="Press Split, then Start.",
-            size_hint_y=None, height=dp(24), font_size=13, bold=True,
+            size_hint_y=None, height=dp(24), font_size=sp(13), bold=True,
             color=(0.4, 0.9, 0.4, 1))
         root.add_widget(self._status)
 
         self._chunk_disp = TextInput(
             text="", readonly=True, multiline=True,
-            font_size=15, size_hint_y=0.12,
+            font_size=sp(15), size_hint_y=0.12,
             background_color=(0.06, 0.12, 0.06, 1),
             foreground_color=(0.3, 1, 0.4, 1),
         )
         root.add_widget(self._chunk_disp)
 
         self._prog = Label(text="", size_hint_y=None, height=dp(18),
-                           font_size=11, color=(0.5, 0.7, 1, 1))
+                           font_size=sp(11), color=(0.5, 0.7, 1, 1))
         root.add_widget(self._prog)
 
         # ── controls ───────────────────────────────────────────────────────
         ctrl = BoxLayout(size_hint_y=None, height=dp(48), spacing=5)
-        self._start_btn = Button(text="Start", font_size=15,
+        self._start_btn = Button(text="Start", font_size=sp(15),
                                  background_color=(0.2, 0.6, 0.2, 1))
         self._start_btn.bind(on_release=self._start)
-        self._prev_btn = Button(text="< Back", font_size=13,
+        self._prev_btn = Button(text="< Back", font_size=sp(13),
                                 disabled=True, size_hint_x=None, width=dp(80))
         self._prev_btn.bind(on_release=self._prev)
-        self._next_btn = Button(text="Next >", font_size=15, disabled=True)
+        self._next_btn = Button(text="Next >", font_size=sp(15), disabled=True)
         self._next_btn.bind(on_release=self._next)
-        stop_btn = Button(text="Stop", font_size=13,
+        stop_btn = Button(text="Stop", font_size=sp(13),
                           size_hint_x=None, width=dp(70),
                           background_color=(0.6, 0.15, 0.15, 1))
         stop_btn.bind(on_release=self._stop)
@@ -211,7 +211,7 @@ class ScriptModeScreen(Screen):
                 preview += "..."
             lbl = Label(text=f"{i+1}. {preview}",
                         size_hint_y=None, height=dp(20),
-                        font_size=10, halign="left")
+                        font_size=sp(10), halign="left")
             lbl.bind(size=lbl.setter("text_size"))
             self._prev_grid.add_widget(lbl)
 

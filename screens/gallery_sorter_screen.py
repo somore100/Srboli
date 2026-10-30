@@ -22,7 +22,7 @@ from kivy.uix.checkbox import CheckBox
 from kivy.uix.slider import Slider
 from kivy.animation import Animation
 from kivy.clock import Clock
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.core.window import Window
 
 try:
@@ -220,12 +220,12 @@ class VideoPlayerPopup(Popup):
 
             # Time row: current | hover hint | total
             tr = BoxLayout(size_hint_y=None, height=dp(20), spacing=dp(4))
-            self._cur_lbl   = Label(text="0:00", font_size=12,
+            self._cur_lbl   = Label(text="0:00", font_size=sp(12),
                                     size_hint_x=None, width=dp(46),
                                     color=(1,1,1,1))
-            self._hover_lbl = Label(text="", font_size=11,
+            self._hover_lbl = Label(text="", font_size=sp(11),
                                     color=(0.75, 0.9, 1, 1))
-            self._dur_lbl   = Label(text="0:00", font_size=12,
+            self._dur_lbl   = Label(text="0:00", font_size=sp(12),
                                     size_hint_x=None, width=dp(46),
                                     halign="right", color=(1,1,1,1))
             tr.add_widget(self._cur_lbl)
@@ -250,7 +250,7 @@ class VideoPlayerPopup(Popup):
                 pos_hint={"center_x": 0.5, "center_y": 0.6},
                 opacity=1.0,
                 background_color=(0, 0, 0, 0.55),
-                color=(1,1,1,1), font_size=18,
+                color=(1,1,1,1), font_size=sp(18),
             )
             self._play_btn.bind(on_release=self._toggle_play)
             self._vf.add_widget(self._play_btn)
@@ -262,7 +262,7 @@ class VideoPlayerPopup(Popup):
             for txt, cb in [("Play/Pause", self._toggle_play),
                              ("Stop", lambda *a: setattr(self._vid,"state","stop")),
                              ("Close", lambda *a: self.dismiss())]:
-                b = Button(text=txt, font_size=12)
+                b = Button(text=txt, font_size=sp(12))
                 b.bind(on_release=cb)
                 bot.add_widget(b)
             layout.add_widget(bot)
@@ -273,7 +273,7 @@ class VideoPlayerPopup(Popup):
         else:
             layout.add_widget(Label(
                 text="ffpyplayer not installed.\nRun: python3 -m pip install ffpyplayer",
-                halign="center", font_size=14))
+                halign="center", font_size=sp(14)))
             fb = Button(text="Open in system player",
                         size_hint_y=None, height=dp(46))
             fb.bind(on_release=lambda *a: (_open_ext(path), self.dismiss()))
@@ -369,7 +369,7 @@ class FrameStripPopup(Popup):
         super().__init__(title=f"Frames: {os.path.basename(path)}",
                          content=layout, size_hint=(0.96, 0.94), **kw)
 
-        self._loading = Label(text="Generating frames...", font_size=14)
+        self._loading = Label(text="Generating frames...", font_size=sp(14))
         layout.add_widget(self._loading)
 
         self._img_row = BoxLayout(spacing=dp(3))
@@ -448,7 +448,7 @@ class GallerySorterScreen(Screen):
         top = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(4))
         add_src = Button(text="+ Source", size_hint_x=None, width=dp(95))
         add_src.bind(on_release=self._add_source)
-        self._src_lbl = Label(text="No sources", font_size=11, halign="left")
+        self._src_lbl = Label(text="No sources", font_size=sp(11), halign="left")
         self._src_lbl.bind(size=self._src_lbl.setter("text_size"))
         save_c = Button(text="Save cfg", size_hint_x=None, width=dp(78))
         save_c.bind(on_release=self._save_config)
@@ -469,13 +469,13 @@ class GallerySorterScreen(Screen):
         self._instant_cb.bind(active=lambda cb, v: setattr(self, "_instant", v))
         opts.add_widget(self._instant_cb)
         opts.add_widget(Label(text="Instant move", size_hint_x=None,
-                              width=dp(90), font_size=11))
+                              width=dp(90), font_size=sp(11)))
         self._commit_btn = Button(text="Commit (0)", size_hint_x=None,
-                                  width=dp(100), font_size=11, disabled=True)
+                                  width=dp(100), font_size=sp(11), disabled=True)
         self._commit_btn.bind(on_release=self._commit)
         opts.add_widget(self._commit_btn)
         rescan_b = Button(text="Rescan", size_hint_x=None, width=dp(80),
-                          font_size=11)
+                          font_size=sp(11))
         rescan_b.bind(on_release=lambda *a: self._reload_files(force=True))
         opts.add_widget(rescan_b)
         root.add_widget(opts)
@@ -500,7 +500,7 @@ class GallerySorterScreen(Screen):
             pos_hint={"center_x": 0.5, "center_y": 0.5},
             opacity=0,
             background_color=(0, 0, 0, 0.6),
-            color=(1, 1, 1, 1), font_size=13,
+            color=(1, 1, 1, 1), font_size=sp(13),
         )
         self._play_btn.bind(on_release=self._open_player)
         self._pf.add_widget(self._play_btn)
@@ -512,7 +512,7 @@ class GallerySorterScreen(Screen):
             pos_hint={"right": 1, "y": 0},
             opacity=0,
             background_color=(0, 0, 0, 0.55),
-            color=(1, 1, 1, 1), font_size=11,
+            color=(1, 1, 1, 1), font_size=sp(11),
         )
         self._strip_btn.bind(on_release=self._open_strip)
         self._pf.add_widget(self._strip_btn)
@@ -522,27 +522,27 @@ class GallerySorterScreen(Screen):
         # info label (format, size, duration, resolution)
         self._info_lbl = Label(
             text="", size_hint_y=None, height=dp(36),
-            font_size=11, halign="left", valign="top",
+            font_size=sp(11), halign="left", valign="top",
             color=(0.7, 0.85, 1, 1))
         self._info_lbl.bind(size=self._info_lbl.setter("text_size"))
         info_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(4))
         info_row.add_widget(self._info_lbl)
         clear_b = Button(text="Clear", size_hint_x=None, width=dp(60),
-                         font_size=12)
+                         font_size=sp(12))
         clear_b.bind(on_release=lambda *a: self._clear_popup())
         info_row.add_widget(clear_b)
         pbox.add_widget(info_row)
 
         self._file_lbl = Label(text="--", size_hint_y=None, height=dp(16),
-                               font_size=10, shorten=True,
+                               font_size=sp(10), shorten=True,
                                shorten_from="left")
         pbox.add_widget(self._file_lbl)
 
         ren = BoxLayout(size_hint_y=None, height=dp(28), spacing=dp(3))
         self._ren_in = TextInput(hint_text="Rename (no ext)",
-                                 multiline=False, font_size=11)
+                                 multiline=False, font_size=sp(11))
         ren_b = Button(text="Rename", size_hint_x=None, width=dp(70),
-                       font_size=11)
+                       font_size=sp(11))
         ren_b.bind(on_release=self._rename)
         ren.add_widget(self._ren_in); ren.add_widget(ren_b)
         pbox.add_widget(ren)
@@ -551,15 +551,15 @@ class GallerySorterScreen(Screen):
         # dest panel
         dpan = BoxLayout(orientation="vertical", size_hint_x=0.40, spacing=dp(3))
         dpan.add_widget(Label(text="Destinations", size_hint_y=None,
-                              height=dp(18), font_size=12, bold=True))
+                              height=dp(18), font_size=sp(12), bold=True))
         da = BoxLayout(size_hint_y=None, height=dp(28), spacing=dp(3))
         self._dest_in = TextInput(hint_text="Label", multiline=False,
-                                  font_size=11, size_hint_x=0.38)
-        pb = Button(text="Pick", size_hint_x=None, width=dp(58), font_size=10)
-        cb2 = Button(text="Create", size_hint_x=None, width=dp(64), font_size=10)
+                                  font_size=sp(11), size_hint_x=0.38)
+        pb = Button(text="Pick", size_hint_x=None, width=dp(58), font_size=sp(10))
+        cb2 = Button(text="Create", size_hint_x=None, width=dp(64), font_size=sp(10))
         pb.bind(on_release=self._add_dest_pick)
         cb2.bind(on_release=self._add_dest_create)
-        ab = Button(text="Albums", size_hint_x=None, width=dp(62), font_size=10)
+        ab = Button(text="Albums", size_hint_x=None, width=dp(62), font_size=sp(10))
         ab.bind(on_release=self._add_albums)
         da.add_widget(self._dest_in); da.add_widget(pb); da.add_widget(cb2)
         da.add_widget(ab)
@@ -575,7 +575,7 @@ class GallerySorterScreen(Screen):
         # ── nav ───────────────────────────────────────────────────────────
         nav = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(4))
         self._prog = Label(text="0/0", size_hint_x=None, width=dp(52),
-                           font_size=12)
+                           font_size=sp(12))
         pv = Button(text="< Prev", size_hint_x=None, width=dp(72))
         pv.bind(on_release=lambda *a: self._step(-1))
         ps = Button(text="Pass >")
@@ -597,7 +597,7 @@ class GallerySorterScreen(Screen):
 
         # ── status + back ─────────────────────────────────────────────────
         bot = BoxLayout(size_hint_y=None, height=dp(28), spacing=dp(5))
-        self._status = Label(text="", font_size=10, halign="left")
+        self._status = Label(text="", font_size=sp(10), halign="left")
         self._status.bind(size=self._status.setter("text_size"))
         bk = Button(text="Back", size_hint_x=None, width=dp(68))
         bk.bind(on_release=self._go_back)
@@ -645,7 +645,7 @@ class GallerySorterScreen(Screen):
                           "folder called DCIM (Camera = your shots, "
                           "Screenshots = screenshots).\n\n"
                           "Start there, or pick any other folder."),
-                    halign="center", valign="middle", font_size=14)
+                    halign="center", valign="middle", font_size=sp(14))
         lbl.bind(size=lambda i, sz: setattr(i, "text_size", (sz[0], None)))
         layout.add_widget(lbl)
         popup = Popup(title="Tip", content=layout, size_hint=(0.9, 0.6),
@@ -680,7 +680,7 @@ class GallerySorterScreen(Screen):
         lbl = Label(text=("Clear what Srboli has loaded?\n\nThis only "
                           "empties the app's memory. No file or folder is "
                           "deleted or moved."), halign="center",
-                    font_size=13)
+                    font_size=sp(13))
         lbl.bind(size=lambda i, sz: setattr(i, "text_size", (sz[0], None)))
         layout.add_widget(lbl)
         popup = Popup(title="Clear", content=layout, size_hint=(0.9, 0.5))
@@ -691,7 +691,7 @@ class GallerySorterScreen(Screen):
         for text, d in (("Clear sources and loaded files", False),
                         ("Clear everything (also destinations)", True)):
             b = Button(text=text, size_hint_y=None, height=dp(46),
-                       font_size=13)
+                       font_size=sp(13))
             b.bind(on_release=lambda inst, dd=d: go(dd))
             layout.add_widget(b)
         cancel = Button(text="Cancel", size_hint_y=None, height=dp(46))
@@ -883,7 +883,7 @@ class GallerySorterScreen(Screen):
             else:
                 picked.add(path); btn.background_color = (0.2, 0.55, 0.8, 1)
         for label, path in found:
-            b = Button(text=label, size_hint_y=None, height=dp(44), font_size=13,
+            b = Button(text=label, size_hint_y=None, height=dp(44), font_size=sp(13),
                        background_color=(0.25, 0.25, 0.25, 1))
             b.bind(on_release=lambda inst, pp=path: _toggle(inst, pp))
             box.add_widget(b)
@@ -931,7 +931,7 @@ class GallerySorterScreen(Screen):
     def _add_subfolder_ui(self, dest_idx):
         parent = self._dest_tree[dest_idx]
         nin = TextInput(hint_text="Subfolder name", multiline=False,
-                        font_size=13, size_hint_y=None, height=dp(38))
+                        font_size=sp(13), size_hint_y=None, height=dp(38))
         btn = Button(text="Create", size_hint_y=None, height=dp(42))
         layout = BoxLayout(orientation="vertical", padding=dp(8), spacing=dp(5))
         layout.add_widget(Label(text=f"In: {parent['label']}",
@@ -954,11 +954,11 @@ class GallerySorterScreen(Screen):
         for i, d in enumerate(self._dest_tree):
             row = BoxLayout(size_hint_y=None, height=dp(24), spacing=dp(3))
             row.add_widget(Label(text=f"[b]{d['label']}[/b]", markup=True,
-                                 font_size=11, halign="left"))
+                                 font_size=sp(11), halign="left"))
             asb = Button(text="+sub", size_hint_x=None, width=dp(40),
-                         font_size=9)
+                         font_size=sp(9))
             asb.bind(on_release=lambda inst, idx=i: self._add_subfolder_ui(idx))
-            rm = Button(text="x", size_hint_x=None, width=dp(20), font_size=10)
+            rm = Button(text="x", size_hint_x=None, width=dp(20), font_size=sp(10))
             rm.bind(on_release=lambda inst, idx=i: (
                 self._dest_tree.pop(idx), self._refresh_dests()))
             row.add_widget(asb); row.add_widget(rm)
@@ -966,10 +966,10 @@ class GallerySorterScreen(Screen):
             for sub in d.get("subs", []):
                 sr = BoxLayout(size_hint_y=None, height=dp(20), spacing=dp(3))
                 sr.add_widget(Label(text="   ", size_hint_x=None, width=dp(10)))
-                sr.add_widget(Label(text=sub["label"], font_size=10,
+                sr.add_widget(Label(text=sub["label"], font_size=sp(10),
                                     halign="left"))
                 srm = Button(text="x", size_hint_x=None, width=dp(18),
-                             font_size=9)
+                             font_size=sp(9))
                 srm.bind(on_release=lambda inst, dd=d, ss=sub: (
                     dd["subs"].remove(ss), self._refresh_dests()))
                 sr.add_widget(srm)
@@ -982,13 +982,13 @@ class GallerySorterScreen(Screen):
         self._sort_row.cols = max(1, total)
         for d in self._dest_tree:
             b = Button(text=d["label"], size_hint_x=None, width=dp(108),
-                       height=dp(40), font_size=12,
+                       height=dp(40), font_size=sp(12),
                        background_color=(0.25, 0.45, 0.65, 1))
             b.bind(on_release=lambda inst, p=d["path"]: self._sort_to(p))
             self._sort_row.add_widget(b)
             for sub in d.get("subs", []):
                 sb = Button(text=f"  {sub['label']}", size_hint_x=None,
-                            width=dp(108), height=dp(40), font_size=11,
+                            width=dp(108), height=dp(40), font_size=sp(11),
                             background_color=(0.18, 0.35, 0.52, 1))
                 sb.bind(on_release=lambda inst, p=sub["path"]: self._sort_to(p))
                 self._sort_row.add_widget(sb)
@@ -1263,7 +1263,7 @@ class GallerySorterScreen(Screen):
     # ── config ────────────────────────────────────────────────────────────
     def _save_config(self, *a):
         cfg_dir = app_data.subdir("gallery_configs")
-        nin = TextInput(text="my_sort", multiline=False, font_size=13,
+        nin = TextInput(text="my_sort", multiline=False, font_size=sp(13),
                         size_hint_y=None, height=dp(38))
         btn = Button(text="Save", size_hint_y=None, height=dp(42))
         layout = BoxLayout(orientation="vertical", padding=dp(8), spacing=dp(5))
@@ -1295,7 +1295,7 @@ class GallerySorterScreen(Screen):
                       size_hint=(0.62, 0.58))
         for name in cfgs:
             b = Button(text=name, size_hint_y=None, height=dp(36),
-                       font_size=12)
+                       font_size=sp(12))
             b.bind(on_release=lambda inst, n=name: (
                 self._apply_config(n), popup.dismiss()))
             grid.add_widget(b)

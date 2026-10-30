@@ -18,7 +18,7 @@ from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.clock import Clock
 
 from core import chess_core as cc
@@ -53,15 +53,15 @@ class ChessScreen(Screen):
                          spacing=dp(6))
 
         top = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(4))
-        self._mode_btn = Button(text="Vs: AI", font_size=13)
+        self._mode_btn = Button(text="Vs: AI", font_size=sp(13))
         self._mode_btn.bind(on_release=self._toggle_mode)
-        self._lvl_btn = Button(text=f"Level: {self.level}", font_size=13)
+        self._lvl_btn = Button(text=f"Level: {self.level}", font_size=sp(13))
         self._lvl_btn.bind(on_release=self._cycle_level)
         for w in (self._mode_btn, self._lvl_btn):
             top.add_widget(w)
         root.add_widget(top)
 
-        self._status = Label(text="", font_size=14, size_hint_y=None,
+        self._status = Label(text="", font_size=sp(14), size_hint_y=None,
                              height=dp(28), color=(0.7, 0.9, 1, 1))
         root.add_widget(self._status)
 
@@ -71,7 +71,7 @@ class ChessScreen(Screen):
         self._area.bind(size=lambda *a: self._fit_grid())
         root.add_widget(self._area)
 
-        self._moves_lbl = Label(text="", font_size=12, size_hint_y=None,
+        self._moves_lbl = Label(text="", font_size=sp(12), size_hint_y=None,
                                 height=dp(36), halign="left", valign="top",
                                 color=(0.75, 0.75, 0.75, 1))
         self._moves_lbl.bind(
@@ -82,7 +82,7 @@ class ChessScreen(Screen):
         for text, fn in (("New", lambda *a: self._new_game()),
                          ("Undo", lambda *a: self._undo()),
                          ("< Back", self._go_back)):
-            b = Button(text=text, font_size=14)
+            b = Button(text=text, font_size=sp(14))
             b.bind(on_release=fn)
             bar.add_widget(b)
         root.add_widget(bar)
@@ -101,7 +101,7 @@ class ChessScreen(Screen):
 
     # ── state ─────────────────────────────────────────────────────────────
     def _new_state(self):
-        self.pos = cc.Position()
+        self.game = cc.Position()
         self.history = []         # [(position_before, move, san)]
         self.selected = None
         self.targets = {}         # dest square -> move
@@ -131,7 +131,7 @@ class ChessScreen(Screen):
         self._thinking = False
         steps = 2 if self.vs_ai and len(self.history) >= 2 else 1
         for _ in range(steps):
-            self.pos, _m, _s = self.history.pop()
+            self.game, _m, _s = self.history.pop()
         self.last = None
         if self.history:
             prev = self.history[-1]
@@ -142,7 +142,7 @@ class ChessScreen(Screen):
 
     # ── board ─────────────────────────────────────────────────────────────
     def _flipped(self):
-        return (not self.vs_ai) and self.pos.turn == "b"
+        return (not self.vs_ai) and self.game.turn == "b"
 
     def _build_cells(self):
         self._grid.clear_widgets()
@@ -170,7 +170,7 @@ class ChessScreen(Screen):
     def _refresh(self):
         if self._flipped() != self._flip_built:
             self._build_cells()
-        pos = self.pos
+        pos = self.game
         check_sq = (pos.king_square(pos.turn) if pos.in_check() else None)
         for i, b in self._cells.items():
             light = (i // 8 + i % 8) % 2 == 0
@@ -203,10 +203,10 @@ class ChessScreen(Screen):
         return " ".join(parts[-8:]) if len(parts) > 8 else " ".join(parts)
 
     def _status_text(self):
-        st = self.pos.status()
-        side = "White" if self.pos.turn == "w" else "Black"
+        st = self.game.status()
+        side = "White" if self.game.turn == "w" else "Black"
         if st == "checkmate":
-            winner = "Black" if self.pos.turn == "w" else "White"
+            winner = "Black" if self.game.turn == "w" else "White"
             return f"Checkmate - {winner} wins"
         if st == "stalemate":
             return "Stalemate - draw"
@@ -218,28 +218,28 @@ class ChessScreen(Screen):
 
     # ── input ─────────────────────────────────────────────────────────────
     def _human_turn(self):
-        return not self._thinking and not (self.vs_ai and self.pos.turn == "b")
+        return not self._thinking and not (self.vs_ai and self.game.turn == "b")
 
     def _tap(self, s):
-        if not self._human_turn() or self.pos.status() in (
+        if not self._human_turn() or self.game.status() in (
                 "checkmate", "stalemate", "draw"):
             return
         if s in self.targets:
             self._make_move(self.targets[s])
             return
-        p = self.pos.board[s]
-        if p != "." and p.isupper() == (self.pos.turn == "w"):
+        p = self.game.board[s]
+        if p != "." and p.isupper() == (self.game.turn == "w"):
             self.selected = s
-            self.targets = {m[1]: m for m in self.pos.moves_from(s)
+            self.targets = {m[1]: m for m in self.game.moves_from(s)
                             if m[2] in ("", "q")}
         else:
             self.selected, self.targets = None, {}
         self._refresh()
 
     def _make_move(self, move):
-        san = self.pos.san(move)
-        self.history.append((self.pos, move, san))
-        self.pos = self.pos.play(move)
+        san = self.game.san(move)
+        self.history.append((self.game, move, san))
+        self.game = self.game.play(move)
         self.last = (move[0], move[1])
         self.selected, self.targets = None, {}
         self._refresh()
@@ -247,12 +247,12 @@ class ChessScreen(Screen):
 
     # ── AI ────────────────────────────────────────────────────────────────
     def _maybe_ai(self):
-        if (not self.vs_ai or self.pos.turn != "b" or self._thinking
-                or self.pos.status() in ("checkmate", "stalemate", "draw")):
+        if (not self.vs_ai or self.game.turn != "b" or self._thinking
+                or self.game.status() in ("checkmate", "stalemate", "draw")):
             return
         self._thinking = True
         self._status.text = "Thinking..."
-        gen, pos, depth = self._gen, self.pos, LEVELS[self.level]
+        gen, pos, depth = self._gen, self.game, LEVELS[self.level]
 
         def work():
             mv = cc.best_move(pos, depth)

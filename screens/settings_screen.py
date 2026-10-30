@@ -33,7 +33,7 @@ from kivy.uix.widget import Widget
 from kivy.graphics import Color, Rectangle
 from kivy.core.window import Window
 from kivy.clock import Clock
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 
 import app_data
 from core.jsonio import read_json, write_json_atomic
@@ -43,6 +43,8 @@ from core.daemon_ipc import send_command, daemon_launch_cmd, spawn_detached
 import core.autostart as autostart
 
 CONFIG_FILE_NAME = "app_settings.json"
+# written only by the Dashboard / onboarding; save_settings keeps them as on disk
+DASHBOARD_KEYS = ("recent", "collapsed", "pinned", "onboarded")
 
 
 def _config_path():
@@ -88,6 +90,8 @@ def load_settings():
     data["recent"], data["collapsed"] = dash.clean_state(
         data.get("recent"), data.get("collapsed"), known,
         [k for k, _t, _r in GROUPS] + [dash.OTHER_KEY])
+    data["pinned"] = dash.clean_routes(data.get("pinned"), known)
+    data["onboarded"] = bool(data.get("onboarded", False))
     return data
 
 
@@ -105,17 +109,20 @@ def save_settings(data):
     wipe what the Dashboard saved since."""
     current = load_settings()
     merged = dict(data)
-    merged["recent"], merged["collapsed"] = current["recent"], current["collapsed"]
+    for key in DASHBOARD_KEYS:
+        merged[key] = current[key]
     _write(merged)
 
 
-def update_dashboard_state(recent=None, collapsed=None):
-    """Save the Dashboard's recent tools / folded sections (None = unchanged)."""
+def update_dashboard_state(recent=None, collapsed=None, pinned=None,
+                           onboarded=None):
+    """Save the Dashboard's own state: recent tools, folded sections, pinned
+    tools, first-run done (None = unchanged)."""
     data = load_settings()
-    if recent is not None:
-        data["recent"] = recent
-    if collapsed is not None:
-        data["collapsed"] = collapsed
+    for key, value in (("recent", recent), ("collapsed", collapsed),
+                       ("pinned", pinned), ("onboarded", onboarded)):
+        if value is not None:
+            data[key] = value
     _write(data)
 
 
@@ -146,7 +153,7 @@ class _Row(BoxLayout):
         cb.bind(active=lambda inst, v: on_toggle(route, v))
         self.add_widget(cb)
 
-        self._lbl = Label(text=label, font_size=13, halign="left",
+        self._lbl = Label(text=label, font_size=sp(13), halign="left",
                           valign="middle",
                           color=(1, 1, 1, 1) if visible else (0.5, 0.5, 0.5, 1))
         self._lbl.bind(size=self._lbl.setter("text_size"))
@@ -191,7 +198,7 @@ class SettingsScreen(Screen):
 
         root = BoxLayout(orientation="vertical", padding=10, spacing=8)
         root.add_widget(Label(text="[b]Settings[/b]", markup=True,
-                              font_size=20, size_hint_y=None, height=dp(32)))
+                              font_size=sp(20), size_hint_y=None, height=dp(32)))
 
         # Everything between the title and the Back button scrolls: on a phone
         # the settings are taller than the screen, and the screen list used to
@@ -207,15 +214,15 @@ class SettingsScreen(Screen):
                  "in their Dashboard sections: click a row to select it, then "
                  "use the arrows (or Up/Down keys) to move it within its "
                  "section. Hidden screens stay reachable via Quick Switcher.",
-            font_size=11, halign="left", valign="top", size_hint_y=None,
+            font_size=sp(11), halign="left", valign="top", size_hint_y=None,
             height=dp(64), color=(0.7, 0.7, 0.7, 1)))
         blurb = content.children[0]
         blurb.bind(size=blurb.setter("text_size"))
 
         # ── reorder controls ────────────────────────────────────────────
         move_row = BoxLayout(size_hint_y=None, height=dp(38), spacing=6)
-        up_btn = Button(text="Move Up", font_size=12)
-        down_btn = Button(text="Move Down", font_size=12)
+        up_btn = Button(text="Move Up", font_size=sp(12))
+        down_btn = Button(text="Move Down", font_size=sp(12))
         up_btn.bind(on_release=lambda *a: self._move_selected(-1))
         down_btn.bind(on_release=lambda *a: self._move_selected(1))
         move_row.add_widget(up_btn)
@@ -230,14 +237,14 @@ class SettingsScreen(Screen):
         content.add_widget(sv)
 
         reset_btn = Button(text="Reset screen list to defaults",
-                           size_hint_y=None, height=dp(38), font_size=12,
+                           size_hint_y=None, height=dp(38), font_size=sp(12),
                            background_color=(0.45, 0.3, 0.1, 1))
         reset_btn.bind(on_release=self._reset_defaults)
         content.add_widget(reset_btn)
 
         # ── other settings ──────────────────────────────────────────────
         content.add_widget(Label(text="[b]Other settings[/b]", markup=True,
-                              font_size=15, size_hint_y=None, height=dp(26)))
+                              font_size=sp(15), size_hint_y=None, height=dp(26)))
 
         from screens.data_location import DataLocation
         content.add_widget(DataLocation())
@@ -251,7 +258,7 @@ class SettingsScreen(Screen):
             text="Lazy-load screens (build each screen only when you first "
                  "open it, instead of all at startup) - on by default now, "
                  "for a faster launch. Takes effect after restarting Srboli.",
-            font_size=11, halign="left", valign="middle")
+            font_size=sp(11), halign="left", valign="middle")
         lazy_lbl.bind(size=lazy_lbl.setter("text_size"))
         lazy_row.add_widget(lazy_lbl)
         content.add_widget(lazy_row)
@@ -267,7 +274,7 @@ class SettingsScreen(Screen):
                  "idle, and only while you are not touching the app). May stutter "
                  "on slow devices. Needs lazy-loading on. Applies after a "
                  "restart.",
-            font_size=11, halign="left", valign="middle")
+            font_size=sp(11), halign="left", valign="middle")
         pre_lbl.bind(size=pre_lbl.setter("text_size"))
         pre_row.add_widget(pre_lbl)
         content.add_widget(pre_row)
@@ -282,37 +289,37 @@ class SettingsScreen(Screen):
                  "receives (touches, clicks, keys; typed letters are not "
                  "recorded) and what it does (screens, builds, stalls) to "
                  "a log file. Applies immediately.",
-            font_size=11, halign="left", valign="middle")
+            font_size=sp(11), halign="left", valign="middle")
         adv_lbl.bind(size=adv_lbl.setter("text_size"))
         adv_row.add_widget(adv_lbl)
         content.add_widget(adv_row)
 
         # ── background service ──────────────────────────────────────────
         content.add_widget(Label(text="[b]Background service[/b]", markup=True,
-                              font_size=15, size_hint_y=None, height=dp(26)))
+                              font_size=sp(15), size_hint_y=None, height=dp(26)))
         svc_desc = Label(
             text="A small process that can run reminders, watch folders, "
                  "and answer hotkeys even when Srboli's window is closed. "
                  "Off by default — nothing runs in the background unless "
                  "you start it here.",
-            font_size=11, halign="left", valign="top",
+            font_size=sp(11), halign="left", valign="top",
             size_hint_y=None, height=dp(46), color=(0.7, 0.7, 0.7, 1))
         svc_desc.bind(size=svc_desc.setter("text_size"))
         content.add_widget(svc_desc)
 
         svc_row = BoxLayout(size_hint_y=None, height=dp(40), spacing=6)
-        self._daemon_status_lbl = Label(text="Checking...", font_size=12,
+        self._daemon_status_lbl = Label(text="Checking...", font_size=sp(12),
                                         halign="left", valign="middle")
         self._daemon_status_lbl.bind(
             size=self._daemon_status_lbl.setter("text_size"))
         svc_row.add_widget(self._daemon_status_lbl)
         self._daemon_refresh_btn = Button(text="Refresh", size_hint_x=None,
-                                          width=dp(72), font_size=11)
+                                          width=dp(72), font_size=sp(11))
         self._daemon_start_btn = Button(text="Start", size_hint_x=None,
-                                        width=dp(72), font_size=12,
+                                        width=dp(72), font_size=sp(12),
                                         background_color=(0.2, 0.55, 0.2, 1))
         self._daemon_stop_btn = Button(text="Stop", size_hint_x=None,
-                                       width=dp(72), font_size=12,
+                                       width=dp(72), font_size=sp(12),
                                        background_color=(0.55, 0.2, 0.2, 1))
         self._daemon_refresh_btn.bind(
             on_release=lambda *a: self._refresh_daemon_status())
@@ -331,7 +338,7 @@ class SettingsScreen(Screen):
             auto_row.add_widget(self._autostart_cb)
             auto_lbl = Label(
                 text="Start the background service automatically when I log in",
-                font_size=12, halign="left", valign="middle")
+                font_size=sp(12), halign="left", valign="middle")
             auto_lbl.bind(size=auto_lbl.setter("text_size"))
             auto_row.add_widget(auto_lbl)
             content.add_widget(auto_row)
@@ -339,7 +346,7 @@ class SettingsScreen(Screen):
             self._autostart_cb = None
 
         feat_btn = Button(text="Choose what the service may run...",
-                          size_hint_y=None, height=dp(40), font_size=12)
+                          size_hint_y=None, height=dp(40), font_size=sp(12))
         feat_btn.bind(on_release=self._open_service_features)
         from kivy.utils import platform as _p_
         if _p_ == "android":
@@ -348,12 +355,12 @@ class SettingsScreen(Screen):
         content.add_widget(feat_btn)
 
         tt_btn = Button(text="Touch Test (are my taps arriving twice?)",
-                        size_hint_y=None, height=dp(40), font_size=12)
+                        size_hint_y=None, height=dp(40), font_size=sp(12))
         tt_btn.bind(on_release=self._open_touch_test)
         content.add_widget(tt_btn)
 
         self._status = Label(text="", size_hint_y=None, height=dp(22),
-                             font_size=11, color=(0.4, 1, 0.4, 1))
+                             font_size=sp(11), color=(0.4, 1, 0.4, 1))
         root.add_widget(self._status)
 
         back = Button(text="Back", size_hint_y=None, height=dp(42))
@@ -370,7 +377,7 @@ class SettingsScreen(Screen):
         hidden = set(self._cfg["hidden"])
         menu = [(r, LABELS.get(r, r)) for r in self._cfg["order"]]
         for _key, title, members in dash.group_menu(menu, GROUPS):
-            head = Label(text=f"[b]{title}[/b]", markup=True, font_size=12,
+            head = Label(text=f"[b]{title}[/b]", markup=True, font_size=sp(12),
                          halign="left", size_hint_y=None, height=dp(26),
                          color=(0.55, 0.8, 1, 1))
             head.bind(size=head.setter("text_size"))
@@ -456,6 +463,8 @@ class SettingsScreen(Screen):
 
     # ── keyboard reorder (Up/Down while this screen is active) ─────────────
     def on_enter(self, *a):
+        self._cfg = load_settings()     # the Dashboard / first-run setup may have changed it
+        self._refresh_list()
         Window.bind(on_key_down=self._on_key)
         self._refresh_daemon_status()
         if self._autostart_cb is not None:
@@ -560,7 +569,7 @@ class SettingsScreen(Screen):
                   "or it ends when the computer shuts down (unless 'start "
                   "when I log in' is ticked). It is off until you start it.\n\n"
                   "Pick what a running service is allowed to do:"),
-            font_size=12, halign="left", valign="top",
+            font_size=sp(12), halign="left", valign="top",
             size_hint_y=None, height=dp(120))
         intro.bind(size=lambda i, sz: setattr(i, "text_size", (sz[0], None)))
         layout.add_widget(intro)
@@ -571,7 +580,7 @@ class SettingsScreen(Screen):
                           size=(dp(32), dp(32)))
             boxes[key] = cb
             col = Label(text=f"[b]{title}[/b]\n{desc}", markup=True,
-                        font_size=12, halign="left", valign="middle")
+                        font_size=sp(12), halign="left", valign="middle")
             col.bind(size=lambda i, sz: setattr(i, "text_size", (sz[0], None)))
             row.add_widget(cb)
             row.add_widget(col)

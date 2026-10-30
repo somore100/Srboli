@@ -34,14 +34,17 @@ def group_menu(menu, groups):
     return out
 
 
-def search(menu, query):
-    """Tools whose name contains every word of `query` (case-insensitive).
-    Names that START with the first word come first. [] for an empty query."""
+def search(menu, query, aliases=None):
+    """Tools whose name (or alias, see registry.ALIASES) contains every word of
+    `query` (case-insensitive). Names that START with the first word come
+    first. [] for an empty query."""
     words = query.lower().split()
     if not words:
         return []
+    aliases = aliases or {}
     hits = [(r, l) for r, l in menu
             if all(w in l.lower() or w in r.lower().replace("_", " ")
+                   or any(w in a.lower() for a in aliases.get(r, ()))
                    for w in words)]
     return sorted(hits, key=lambda rl: not rl[1].lower().startswith(words[0]))
 
@@ -75,3 +78,37 @@ def clean_state(recent, collapsed, known_routes, known_groups):
     col = [k for k in (collapsed if isinstance(collapsed, list) else [])
            if isinstance(k, str) and k in known_groups]
     return rec[:RECENT_KEPT], col
+
+
+# ── pinned tools, tile layout ───────────────────────────────────────────────
+PINNED_KEPT = 12
+TILE_MIN_DP = 220          # a tile is at least this wide (dp)
+NARROW_DP = 480            # below this window width the Recent row is shorter
+RECENT_NARROW = 3
+
+
+def toggle_pin(pinned, route):
+    """A new list with `route` pinned (appended), or unpinned if it was."""
+    if route in pinned:
+        return [r for r in pinned if r != route]
+    return (list(pinned) + [route])[-PINNED_KEPT:]
+
+
+def clean_routes(routes, known_routes, keep=PINNED_KEPT):
+    """Drop unknown / repeated routes from a saved list."""
+    known, seen, out = set(known_routes), set(), []
+    for r in routes if isinstance(routes, list) else []:
+        if isinstance(r, str) and r in known and r not in seen:
+            seen.add(r)
+            out.append(r)
+    return out[:keep]
+
+
+def tile_columns(width, dp_unit=1.0):
+    """How many tiles fit side by side in a window `width` pixels wide;
+    dp_unit is the pixels-per-dp factor (kivy.metrics.dp(1))."""
+    return max(1, int(width // (TILE_MIN_DP * dp_unit)))
+
+
+def recent_shown(width, dp_unit=1.0):
+    return RECENT_NARROW if width < NARROW_DP * dp_unit else RECENT_SHOWN

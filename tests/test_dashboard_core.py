@@ -67,5 +67,19 @@ check("toggle doesn't mutate", D.toggle_collapsed(c, "fun") is not c and c == ["
 check("clean_state", D.clean_state(["chess", "gone", "chess", 5], ["fun", "nope", 3], ["chess"], ["fun"]), (["chess"], ["fun"]))
 check("clean_state junk", D.clean_state("x", None, [], []), ([], []))
 
+# ── search aliases, pins, tiles ──
+def _t3():
+    menu = [("image_text", "File to Base64"), ("music", "Music Player")]
+    assert D.search(menu, "base64") == [("image_text", "File to Base64")]
+    assert D.search(menu, "mp3", {"music": ["mp3"]}) == [("music", "Music Player")]
+    assert D.search(menu, "mp3") == []
+    assert D.toggle_pin([], "a") == ["a"] and D.toggle_pin(["a", "b"], "a") == ["b"]
+    assert D.clean_routes(["a", "zz", "a", 3, "b"], ["a", "b"]) == ["a", "b"]
+    assert D.tile_columns(300) == 1 and D.tile_columns(900) == 4
+    assert D.tile_columns(900, 2.0) == 2
+    assert D.recent_shown(360) == 3 and D.recent_shown(900) == 4
+    print("aliases / pins / tiles passed")
+_t3()
+
 print("\nFAILED" if fails else "\nall passed")
 sys.exit(1 if fails else 0)

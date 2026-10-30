@@ -23,7 +23,7 @@ from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.widget import Widget
 from kivy.graphics import Color, Ellipse, Line, Rectangle
 from kivy.clock import Clock
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.core.clipboard import Clipboard
 
 import app_data
@@ -154,7 +154,7 @@ def _color_wheel_popup(on_pick):
     picked = [1.0, 1.0, 1.0, 1.0]   # mutable r,g,b,a
 
     preview = Label(text="  ████████  ", size_hint_y=None, height=dp(32),
-                    font_size=18)
+                    font_size=sp(18))
 
     def _on_color(r, g, b, a):
         picked[:] = [r, g, b, a]
@@ -170,14 +170,14 @@ def _color_wheel_popup(on_pick):
     # V slider
     v_row = BoxLayout(size_hint_y=None, height=dp(34), spacing=6)
     v_row.add_widget(Label(text="Brightness:", size_hint_x=None,
-                           width=dp(82), font_size=12))
+                           width=dp(82), font_size=sp(12)))
     v_sl = Slider(min=0.1, max=1.0, value=1.0)
     v_row.add_widget(v_sl)
     layout.add_widget(v_row)
 
     a_row = BoxLayout(size_hint_y=None, height=dp(34), spacing=6)
     a_row.add_widget(Label(text="Opacity:", size_hint_x=None,
-                           width=dp(82), font_size=12))
+                           width=dp(82), font_size=sp(12)))
     a_sl = Slider(min=0.0, max=1.0, value=1.0)
     a_row.add_widget(a_sl)
     layout.add_widget(a_row)
@@ -191,7 +191,7 @@ def _color_wheel_popup(on_pick):
     layout.add_widget(preview)
 
     apply_btn = Button(text="OK Use this colour", size_hint_y=None,
-                       height=dp(44), font_size=14,
+                       height=dp(44), font_size=sp(14),
                        background_color=(0.2, 0.55, 0.2, 1))
     layout.add_widget(apply_btn)
 
@@ -229,7 +229,7 @@ class TextEditorScreen(Screen):
         fmt_sel_row = BoxLayout(size_hint_y=None, height=dp(46), spacing=6,
                                 padding=(0, 2))
         fmt_sel_row.add_widget(Label(text="Export format:", size_hint_x=None,
-                                     width=dp(110), font_size=13))
+                                     width=dp(110), font_size=sp(13)))
         from kivy.uix.spinner import Spinner as _FmtSp
         self._export_fmt = _FmtSp(
             text=".txt",
@@ -237,7 +237,7 @@ class TextEditorScreen(Screen):
                     ".html — coloured text, opens in browser",
                     ".md — Markdown, basic formatting",
                     ".json — checked and pretty-printed"),
-            font_size=12,
+            font_size=sp(12),
         )
         self._export_fmt.bind(text=self._on_fmt_change)
         fmt_sel_row.add_widget(self._export_fmt)
@@ -247,7 +247,7 @@ class TextEditorScreen(Screen):
         self._fmt_hint = Label(
             text="Plain text — colour not preserved. Zoom is just for "
                  "editing, it isn't saved to the file.",
-            font_size=11, size_hint_y=None, height=dp(20),
+            font_size=sp(11), size_hint_y=None, height=dp(20),
             halign="left", color=(0.6, 0.8, 1, 1),
             shorten=True, shorten_from="right", max_lines=1)
         self._fmt_hint.bind(size=self._fmt_hint.setter("text_size"))
@@ -282,9 +282,9 @@ class TextEditorScreen(Screen):
         rowB = _row()
         # Raw / Styled view toggle (like GitHub's Code | Preview)
         self._raw_btn = ToggleButton(text="Raw", group="te_view", state="down",
-                                     allow_no_selection=False, font_size=12)
+                                     allow_no_selection=False, font_size=sp(12))
         self._sty_btn = ToggleButton(text="Styled", group="te_view",
-                                     allow_no_selection=False, font_size=12)
+                                     allow_no_selection=False, font_size=sp(12))
         self._sty_btn.bind(state=lambda i, st: self._set_view(st == "down"))
         rowB.add_widget(self._raw_btn)
         rowB.add_widget(self._sty_btn)
@@ -295,7 +295,7 @@ class TextEditorScreen(Screen):
         rowB.add_widget(col_btn)
         # autosave
         self._auto_btn = ToggleButton(text="Autosave ON", state="down",
-                                      font_size=11, shorten=True,
+                                      font_size=sp(11), shorten=True,
                                       shorten_from="right")
         self._auto_btn.bind(on_release=self._toggle_autosave)
         rowB.add_widget(self._auto_btn)
@@ -303,7 +303,7 @@ class TextEditorScreen(Screen):
 
         rowC = _row()
         rowC.add_widget(Label(text="Zoom:", size_hint_x=None,
-                              width=dp(46), font_size=12))
+                              width=dp(46), font_size=sp(12)))
         # font_size ints are px in Kivy; main.py scales them by density on
         # Android, so the zoom base has to be scaled the same way.
         from kivy.utils import platform as _plat
@@ -311,7 +311,7 @@ class TextEditorScreen(Screen):
         self._base_font_size = 15 * (_M.density if _plat == "android" else 1)
         self._font_sl = Slider(min=50, max=250, value=100)
         self._font_lbl = Label(text="100%", size_hint_x=None,
-                               width=dp(44), font_size=12)
+                               width=dp(44), font_size=sp(12))
         self._font_sl.bind(value=self._on_zoom)
         rowC.add_widget(self._font_sl)
         rowC.add_widget(self._font_lbl)
@@ -341,14 +341,14 @@ class TextEditorScreen(Screen):
             ("Line", "block", "\n---\n", "")]
         r1, r2 = _row(40, 4), _row(40, 4)
         for i, (label, kind, a, b2) in enumerate(specs):
-            btn = Button(text=label, font_size=13, shorten=True,
+            btn = Button(text=label, font_size=sp(13), shorten=True,
                          bold=(label == "B"), italic=(label == "I"),
                          strikethrough=(label == "S"))
             btn.bind(on_release=lambda inst, k=kind, x=a, y=b2:
                      self._apply_fmt(k, x, y))
             (r1 if i < 7 else r2).add_widget(btn)
             self._fmt_buttons.append(btn)
-        help_btn = Button(text="?", font_size=14)
+        help_btn = Button(text="?", font_size=sp(14))
         help_btn.bind(on_release=lambda *a: self._show_syntax_help())
         r2.add_widget(help_btn)
         fmt_box.add_widget(r1)
@@ -358,7 +358,7 @@ class TextEditorScreen(Screen):
 
         # ── editor ───────────────────────────────────────────────────────────
         self._ed = TextInput(
-            text="", multiline=True, font_size=15,
+            text="", multiline=True, font_size=sp(15),
             background_color=(0.10, 0.10, 0.12, 1),
             foreground_color=(0.92, 0.92, 0.88, 1),
             cursor_color=(0.4, 0.8, 1, 1),
@@ -366,7 +366,7 @@ class TextEditorScreen(Screen):
         self._ed.bind(text=self._on_change)
         root.add_widget(self._ed)
 
-        self._status = Label(text="New file", font_size=11, halign="left",
+        self._status = Label(text="New file", font_size=sp(11), halign="left",
                              valign="middle", shorten=True,
                              shorten_from="right", max_lines=1,
                              size_hint_y=None, height=dp(20))
@@ -458,7 +458,7 @@ class TextEditorScreen(Screen):
         for l, r in rows:
             for t in (l, r):
                 lb = Label(text=t, size_hint_y=None, height=dp(30),
-                           font_size=13, halign="left", valign="middle")
+                           font_size=sp(13), halign="left", valign="middle")
                 lb.bind(size=lb.setter("text_size"))
                 grid.add_widget(lb)
         sv = ScrollView()
@@ -635,7 +635,7 @@ class TextEditorScreen(Screen):
         chooser = FileChooserIconView(path=_home())
         name = os.path.splitext(os.path.basename(self._file or "document"))[0]
         name_in = TextInput(text=f"{name}.html", multiline=False,
-                            size_hint_y=None, height=dp(36), font_size=13)
+                            size_hint_y=None, height=dp(36), font_size=sp(13))
         btn = Button(text="Export HTML", size_hint_y=None, height=dp(44))
         layout = BoxLayout(orientation="vertical", spacing=4)
         layout.add_widget(chooser); layout.add_widget(name_in)
@@ -669,7 +669,7 @@ padding:24px;line-height:1.6}}</style></head>
         chooser = FileChooserIconView(path=_home())
         name = os.path.splitext(os.path.basename(self._file or "document"))[0]
         name_in = TextInput(text=f"{name}.md", multiline=False,
-                            size_hint_y=None, height=dp(36), font_size=13)
+                            size_hint_y=None, height=dp(36), font_size=sp(13))
         btn = Button(text="Export Markdown", size_hint_y=None, height=dp(44))
         layout = BoxLayout(orientation="vertical", spacing=4)
         layout.add_widget(chooser); layout.add_widget(name_in)
@@ -704,7 +704,7 @@ padding:24px;line-height:1.6}}</style></head>
         chooser = FileChooserIconView(path=_home())
         name = os.path.splitext(os.path.basename(self._file or "document"))[0]
         name_in = TextInput(text=f"{name}.json", multiline=False,
-                            size_hint_y=None, height=dp(36), font_size=13)
+                            size_hint_y=None, height=dp(36), font_size=sp(13))
         btn = Button(text="Export JSON", size_hint_y=None, height=dp(44))
         layout = BoxLayout(orientation="vertical", spacing=4)
         layout.add_widget(chooser); layout.add_widget(name_in)
@@ -726,7 +726,7 @@ padding:24px;line-height:1.6}}</style></head>
         chooser  = FileChooserIconView(path=_home())
         name_in  = TextInput(
             text=os.path.basename(self._file) if self._file else "document.txt",
-            multiline=False, size_hint_y=None, height=dp(36), font_size=13)
+            multiline=False, size_hint_y=None, height=dp(36), font_size=sp(13))
         btn = Button(text="Save", size_hint_y=None, height=dp(44))
         layout = BoxLayout(orientation="vertical", spacing=4)
         layout.add_widget(chooser); layout.add_widget(name_in)

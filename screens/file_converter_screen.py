@@ -30,7 +30,7 @@ from kivy.uix.slider import Slider
 from kivy.uix.progressbar import ProgressBar
 from kivy.uix.popup import Popup
 from kivy.uix.filechooser import FileChooserIconView
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.clock import Clock
 
 import app_data
@@ -73,13 +73,13 @@ class FileConverterScreen(Screen):
         for text, cb in (("Add files", self._pick_files),
                          ("Add folder", self._pick_folder),
                          ("Clear", self._clear)):
-            b = Button(text=text, font_size=13)
+            b = Button(text=text, font_size=sp(13))
             b.bind(on_release=lambda inst, f=cb: f())
             row.add_widget(b)
         root.add_widget(row)
 
         # -- file list -------------------------------------------------------
-        self._count_lbl = Label(text="", font_size=12, size_hint_y=None,
+        self._count_lbl = Label(text="", font_size=sp(12), size_hint_y=None,
                                 height=dp(22), halign="left", valign="middle",
                                 color=(0.7, 0.9, 1, 1))
         self._count_lbl.bind(size=self._fit_text)
@@ -92,14 +92,14 @@ class FileConverterScreen(Screen):
 
         # -- options (images only; shown when an image group has a target) ------
         self._opts = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(6))
-        self._q_lbl = Label(text="Quality 90", font_size=12,
+        self._q_lbl = Label(text="Quality 90", font_size=sp(12),
                             size_hint_x=None, width=dp(84))
         self._quality = Slider(min=10, max=100, value=90, step=1)
         self._quality.bind(value=lambda i, v: setattr(
             self._q_lbl, "text", f"Quality {int(v)}"))
         self._maxside = TextInput(
             multiline=False, hint_text="max px", input_filter="int",
-            font_size=13, size_hint_x=None, width=dp(80),
+            font_size=sp(13), size_hint_x=None, width=dp(80),
             foreground_color=(1, 1, 1, 1), hint_text_color=(.6, .6, .6, 1),
             background_color=(.12, .12, .12, 1), cursor_color=(.4, .75, 1, 1),
             padding=(dp(8), dp(10)))
@@ -109,11 +109,11 @@ class FileConverterScreen(Screen):
 
         # -- output folder ----------------------------------------------------
         orow = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(6))
-        self._out_lbl = Label(text="", font_size=11, halign="left",
+        self._out_lbl = Label(text="", font_size=sp(11), halign="left",
                               valign="middle", shorten=True,
                               shorten_from="left")
         self._out_lbl.bind(size=self._fit_text)
-        ob = Button(text="Output folder", font_size=12, size_hint_x=None,
+        ob = Button(text="Output folder", font_size=sp(12), size_hint_x=None,
                     width=dp(112))
         ob.bind(on_release=lambda *a: self._pick_out_dir())
         orow.add_widget(self._out_lbl)
@@ -122,9 +122,9 @@ class FileConverterScreen(Screen):
 
         # -- convert / cancel + progress ----------------------------------------
         crow = BoxLayout(size_hint_y=None, height=dp(48), spacing=dp(6))
-        self._go = Button(text="Convert", font_size=15, disabled=True)
+        self._go = Button(text="Convert", font_size=sp(15), disabled=True)
         self._go.bind(on_release=lambda *a: self._start())
-        self._stop = Button(text="Cancel", font_size=13, size_hint_x=None,
+        self._stop = Button(text="Cancel", font_size=sp(13), size_hint_x=None,
                             width=dp(86), disabled=True)
         self._stop.bind(on_release=lambda *a: self._cancel.set())
         crow.add_widget(self._go)
@@ -134,13 +134,13 @@ class FileConverterScreen(Screen):
         self._bar = ProgressBar(max=100, value=0, size_hint_y=None,
                                 height=dp(8))
         root.add_widget(self._bar)
-        self._status = Label(text="", font_size=12, size_hint_y=None,
+        self._status = Label(text="", font_size=sp(12), size_hint_y=None,
                              height=dp(20), halign="left", valign="middle")
         self._status.bind(size=self._fit_text)
         root.add_widget(self._status)
 
         rsv = ScrollView(size_hint_y=None, height=dp(110), bar_width=dp(4))
-        self._results = Label(text="", font_size=11, size_hint_y=None,
+        self._results = Label(text="", font_size=sp(11), size_hint_y=None,
                               halign="left", valign="top",
                               color=(0.85, 0.85, 0.85, 1))
         self._results.bind(
@@ -243,21 +243,21 @@ class FileConverterScreen(Screen):
                 self._targets[kind] = "-"
             head = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
             title = Label(text=f"[b]{cc.KIND_LABEL[kind]}[/b] ({len(files)})",
-                          markup=True, font_size=14, halign="left",
+                          markup=True, font_size=sp(14), halign="left",
                           valign="middle", size_hint_x=None, width=dp(128),
                           color=(0.7, 0.9, 1, 1))
             title.bind(size=lambda i, sz: setattr(i, "text_size", sz))
-            sp = Spinner(text=self._targets[kind], values=tuple(values),
-                         font_size=14, disabled=bool(problem))
-            sp.bind(text=lambda inst, val, k=kind: self._set_target(k, val))
+            picker = Spinner(text=self._targets[kind], values=tuple(values),
+                             font_size=sp(14), disabled=bool(problem))
+            picker.bind(text=lambda inst, val, k=kind: self._set_target(k, val))
             head.add_widget(title)
-            head.add_widget(Label(text="convert to", font_size=11,
+            head.add_widget(Label(text="convert to", font_size=sp(11),
                                   size_hint_x=None, width=dp(64),
                                   color=(0.6, 0.6, 0.6, 1)))
-            head.add_widget(sp)
+            head.add_widget(picker)
             self._list.add_widget(head)
             if problem:
-                note = Label(text=problem, font_size=11, halign="left",
+                note = Label(text=problem, font_size=sp(11), halign="left",
                              valign="top", size_hint_y=None, height=dp(48),
                              color=(1, 0.65, 0.4, 1))
                 note.bind(size=lambda i, sz: setattr(i, "text_size",
@@ -270,10 +270,10 @@ class FileConverterScreen(Screen):
                 except OSError:
                     size = "?"
                 lbl = Label(text=f"{os.path.basename(p)}   [{size}]",
-                            font_size=12, halign="left", valign="middle",
+                            font_size=sp(12), halign="left", valign="middle",
                             shorten=True, shorten_from="right")
                 lbl.bind(size=lambda i, s_: setattr(i, "text_size", s_))
-                x = Button(text="X", font_size=12, size_hint_x=None,
+                x = Button(text="X", font_size=sp(12), size_hint_x=None,
                            width=dp(40))
                 x.bind(on_release=lambda inst, pp=p: self._remove(pp))
                 row.add_widget(lbl)
@@ -323,8 +323,8 @@ class FileConverterScreen(Screen):
         layout = BoxLayout(orientation="vertical", spacing=dp(4))
         layout.add_widget(chooser)
         sel_row = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(4))
-        all_b = Button(text="Select all here", font_size=12)
-        none_b = Button(text="Select none", font_size=12)
+        all_b = Button(text="Select all here", font_size=sp(12))
+        none_b = Button(text="Select none", font_size=sp(12))
         sel_row.add_widget(all_b)
         sel_row.add_widget(none_b)
         layout.add_widget(sel_row)

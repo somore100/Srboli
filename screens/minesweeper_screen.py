@@ -33,7 +33,7 @@ from kivy.graphics import Color, Line, Triangle
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.togglebutton import ToggleButton
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.clock import Clock
 
 import app_data
@@ -156,7 +156,7 @@ class MinesweeperScreen(Screen):
         lvl_row = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(4))
         self._lvl_btns = {}
         for name in LEVEL_ORDER:
-            b = ToggleButton(text=name, group="ms_level", font_size=13,
+            b = ToggleButton(text=name, group="ms_level", font_size=sp(13),
                              allow_no_selection=False,
                              state="down" if name == self.level else "normal")
             b.bind(on_release=lambda inst, n=name: self._set_level(n))
@@ -166,20 +166,20 @@ class MinesweeperScreen(Screen):
 
         # counters
         top = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
-        self._mine_lbl = Label(text="Mines: 10", font_size=15,
+        self._mine_lbl = Label(text="Mines: 10", font_size=sp(15),
                                size_hint_x=None, width=dp(100))
-        self._time_lbl = Label(text="0:00", font_size=15,
+        self._time_lbl = Label(text="0:00", font_size=sp(15),
                                size_hint_x=None, width=dp(60))
-        self._flag_btn = ToggleButton(text="Flag: OFF", font_size=12)
+        self._flag_btn = ToggleButton(text="Flag: OFF", font_size=sp(12))
         self._flag_btn.bind(on_release=self._toggle_flag_mode)
-        new_btn = Button(text="New", font_size=13, size_hint_x=None,
+        new_btn = Button(text="New", font_size=sp(13), size_hint_x=None,
                          width=dp(70))
         new_btn.bind(on_release=lambda *a: self._new_game())
         for w in (self._mine_lbl, self._time_lbl, self._flag_btn, new_btn):
             top.add_widget(w)
         root.add_widget(top)
 
-        self._status = Label(text="", font_size=13, size_hint_y=None,
+        self._status = Label(text="", font_size=sp(13), size_hint_y=None,
                              height=dp(24), color=(0.7, 0.9, 1, 1))
         root.add_widget(self._status)
 

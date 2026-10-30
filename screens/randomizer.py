@@ -22,7 +22,7 @@ from kivy.uix.popup import Popup
 from kivy.uix.slider import Slider
 from kivy.core.clipboard import Clipboard
 from kivy.graphics import Color, Rectangle
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 
 DEFAULT_SYMBOLS = "!@#$%^&*()-_=+[]{}|;:,.<>?"
 
@@ -175,11 +175,11 @@ class UtilityToolsScreen(Screen):
         layout.add_widget(row2)
 
         gen_btn = Button(text="Generate", size_hint_y=None, height=dp(46),
-                         font_size=15)
+                         font_size=sp(15))
         gen_btn.bind(on_release=self._gen_numbers)
         layout.add_widget(gen_btn)
 
-        self.num_result = Label(text="—", font_size=22,
+        self.num_result = Label(text="—", font_size=sp(22),
                                 size_hint_y=None, height=dp(48))
         layout.add_widget(self.num_result)
 
@@ -221,12 +221,12 @@ class UtilityToolsScreen(Screen):
         # ── mode ──
         mode_row = BoxLayout(size_hint_y=None, height=dp(34), spacing=dp(6))
         mode_row.add_widget(Label(text="Mode:", size_hint_x=None,
-                                  width=dp(50), font_size=13))
+                                  width=dp(50), font_size=sp(13)))
         from kivy.uix.spinner import Spinner as _Spinner
         self._pw_mode = _Spinner(
             text="Character",
             values=("Character", "Simple (word+num+sym)", "Words (passphrase)", "Base64"),
-            font_size=13,
+            font_size=sp(13),
         )
         self._pw_mode.bind(text=self._on_pw_mode_change)
         mode_row.add_widget(self._pw_mode)
@@ -235,7 +235,7 @@ class UtilityToolsScreen(Screen):
         # ── length / word count (shared row, label swaps) ──
         len_row = BoxLayout(size_hint_y=None, height=dp(38), spacing=dp(8))
         self._pw_len_label = Label(text="Length:", size_hint_x=None,
-                                   width=dp(70), font_size=13)
+                                   width=dp(70), font_size=sp(13))
         len_row.add_widget(self._pw_len_label)
         self.pw_length = TextInput(text="16", multiline=False,
                                    input_filter="int",
@@ -252,9 +252,9 @@ class UtilityToolsScreen(Screen):
             self._char_opts.add_widget(cb)
         # custom symbols
         self._char_opts.add_widget(Label(text="Custom:", size_hint_x=None,
-                                         width=dp(60), font_size=12))
+                                         width=dp(60), font_size=sp(12)))
         self._custom_sym = TextInput(text="", multiline=False,
-                                     hint_text="extra chars", font_size=12)
+                                     hint_text="extra chars", font_size=sp(12))
         self._char_opts.add_widget(self._custom_sym)
         layout.add_widget(self._char_opts)
 
@@ -263,10 +263,10 @@ class UtilityToolsScreen(Screen):
                                        spacing=dp(6))
         self._pw_words_row.add_widget(Label(text="Include words:",
                                             size_hint_x=None, width=dp(110),
-                                            font_size=13))
+                                            font_size=sp(13)))
         self._pw_nwords = _Spinner(text="0", values=("0", "1", "2"),
                                    size_hint_x=None, width=dp(60),
-                                   font_size=13)
+                                   font_size=sp(13))
         self._pw_words_row.add_widget(self._pw_nwords)
         self._pw_cap = TickBox("Capitalize", active=False, width=dp(110))
         self._pw_words_row.add_widget(self._pw_cap)
@@ -275,16 +275,16 @@ class UtilityToolsScreen(Screen):
 
         # ── generate button ──
         gen_btn = Button(text=" Generate", size_hint_y=None, height=dp(46),
-                         font_size=15)
+                         font_size=sp(15))
         gen_btn.bind(on_release=self._gen_password)
         layout.add_widget(gen_btn)
 
         # ── result (editable so user can paste their own to check strength) ──
         layout.add_widget(Label(text="Result / paste to check strength:",
-                                size_hint_y=None, height=dp(22), font_size=12))
+                                size_hint_y=None, height=dp(22), font_size=sp(12)))
         self.pw_result = TextInput(
             text="", multiline=False,
-            size_hint_y=None, height=dp(44), font_size=15,
+            size_hint_y=None, height=dp(44), font_size=sp(15),
             background_color=(0.12, 0.12, 0.14, 1),
             foreground_color=(0.9, 0.9, 0.9, 1),
         )
@@ -294,16 +294,16 @@ class UtilityToolsScreen(Screen):
         self.pw_strength_bar = StrengthBar()
         layout.add_widget(self.pw_strength_bar)
         self.pw_strength_label = Label(text="", size_hint_y=None,
-                                       height=dp(22), font_size=12)
+                                       height=dp(22), font_size=sp(12))
         layout.add_widget(self.pw_strength_label)
 
         # ── copy + wordlist import ──
         bot = BoxLayout(size_hint_y=None, height=dp(38), spacing=dp(6))
-        copy_btn = Button(text="Copy Copy", font_size=13)
+        copy_btn = Button(text="Copy Copy", font_size=sp(13))
         copy_btn.bind(on_release=lambda *a: self._copy_popup(self.pw_result.text))
-        import_btn = Button(text="Import Wordlist .txt", font_size=12)
+        import_btn = Button(text="Import Wordlist .txt", font_size=sp(12))
         import_btn.bind(on_release=self._import_wordlist)
-        wl_lbl = Label(font_size=11, text=f"built-in: {len(_BUILTIN_WORDS)} words")
+        wl_lbl = Label(font_size=sp(11), text=f"built-in: {len(_BUILTIN_WORDS)} words")
         self._wl_label = wl_lbl
         bot.add_widget(copy_btn)
         bot.add_widget(import_btn)
@@ -488,7 +488,7 @@ class UtilityToolsScreen(Screen):
         pick_row.add_widget(pick_btn)
         layout.add_widget(pick_row)
 
-        self.list_result = Label(text="—", font_size=16,
+        self.list_result = Label(text="—", font_size=sp(16),
                                  size_hint_y=None, height=dp(40))
         layout.add_widget(self.list_result)
 
@@ -540,8 +540,8 @@ class UtilityToolsScreen(Screen):
         self.list_grid.clear_widgets()
         for i, name in enumerate(self._items):
             row = BoxLayout(size_hint_y=None, height=dp(30))
-            row.add_widget(Label(text=name, halign="left", font_size=13))
-            d = Button(text="x", size_hint_x=None, width=dp(34), font_size=12)
+            row.add_widget(Label(text=name, halign="left", font_size=sp(13)))
+            d = Button(text="x", size_hint_x=None, width=dp(34), font_size=sp(12))
             d.bind(on_release=lambda inst, idx=i: (
                 self._items.pop(idx), self._refresh_list_ui()
             ))
@@ -568,7 +568,7 @@ class UtilityToolsScreen(Screen):
         layout = BoxLayout(orientation="vertical", padding=dp(10), spacing=dp(8))
 
         layout.add_widget(Label(text="[b]Dice Roller[/b]", markup=True,
-                                size_hint_y=None, height=dp(30), font_size=16))
+                                size_hint_y=None, height=dp(30), font_size=sp(16)))
 
         dice_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(8))
         dice_row.add_widget(Label(text="Rolls:", size_hint_x=None, width=dp(52)))
@@ -576,11 +576,11 @@ class UtilityToolsScreen(Screen):
                                     size_hint_x=None, width=dp(50))
         dice_row.add_widget(self.dice_count)
         dice_row.add_widget(Label(text="d", size_hint_x=None, width=dp(18),
-                                  font_size=18))
+                                  font_size=sp(18)))
         self.dice_sides = TextInput(text="6", multiline=False, input_filter="int",
                                     size_hint_x=None, width=dp(60))
         dice_row.add_widget(self.dice_sides)
-        dice_row.add_widget(Label(text="+", size_hint_x=None, width=dp(16), font_size=16))
+        dice_row.add_widget(Label(text="+", size_hint_x=None, width=dp(16), font_size=sp(16)))
         self.dice_mod = TextInput(text="0", multiline=False, input_filter="int",
                                   size_hint_x=None, width=dp(50))
         dice_row.add_widget(self.dice_mod)
@@ -589,28 +589,28 @@ class UtilityToolsScreen(Screen):
         # quick dice buttons
         quick = BoxLayout(size_hint_y=None, height=dp(38), spacing=dp(5))
         for sides in (4, 6, 8, 10, 12, 20, 100):
-            b = Button(text=f"d{sides}", font_size=12)
+            b = Button(text=f"d{sides}", font_size=sp(12))
             b.bind(on_release=lambda inst, s=sides: self._quick_roll(s))
             quick.add_widget(b)
         layout.add_widget(quick)
 
         roll_btn = Button(text=" Roll!", size_hint_y=None, height=dp(46),
-                          font_size=16)
+                          font_size=sp(16))
         roll_btn.bind(on_release=self._roll_dice)
         layout.add_widget(roll_btn)
 
-        self.dice_result = Label(text="—", font_size=24,
+        self.dice_result = Label(text="—", font_size=sp(24),
                                  size_hint_y=None, height=dp(50))
         layout.add_widget(self.dice_result)
 
         # coin flip
         layout.add_widget(Label(text="[b]Coin Flip[/b]", markup=True,
-                                size_hint_y=None, height=dp(28), font_size=15))
+                                size_hint_y=None, height=dp(28), font_size=sp(15)))
         coin_btn = Button(text=" Flip!", size_hint_y=None, height=dp(44),
-                          font_size=15)
+                          font_size=sp(15))
         coin_btn.bind(on_release=self._coin_flip)
         layout.add_widget(coin_btn)
-        self.coin_result = Label(text="—", font_size=20,
+        self.coin_result = Label(text="—", font_size=sp(20),
                                  size_hint_y=None, height=dp(40))
         layout.add_widget(self.coin_result)
 
@@ -651,7 +651,7 @@ class UtilityToolsScreen(Screen):
         layout = BoxLayout(orientation="vertical", padding=dp(8), spacing=dp(6))
 
         top = BoxLayout(size_hint_y=None, height=dp(38), spacing=dp(8))
-        top.add_widget(Label(text="Recent results:", font_size=14))
+        top.add_widget(Label(text="Recent results:", font_size=sp(14)))
         clr = Button(text="Clear", size_hint_x=None, width=dp(80))
         clr.bind(on_release=lambda *a: self._clear_history())
         top.add_widget(clr)
@@ -673,10 +673,10 @@ class UtilityToolsScreen(Screen):
         self.history_grid.clear_widgets()
         for entry in self._history:
             row = BoxLayout(size_hint_y=None, height=dp(28))
-            lbl = Label(text=entry, font_size=12, halign="left")
+            lbl = Label(text=entry, font_size=sp(12), halign="left")
             lbl.bind(size=lbl.setter("text_size"))
             copy_btn = Button(text="Copy", size_hint_x=None, width=dp(34),
-                              font_size=12)
+                              font_size=sp(12))
             val = entry.split("]  ", 1)[-1]
             copy_btn.bind(on_release=lambda inst, v=val: self._copy_popup(v))
             row.add_widget(lbl)

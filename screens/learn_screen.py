@@ -1,7 +1,7 @@
 # screens/learn_screen.py - Learn: import an AI-written course (JSON) and
 # study it Duolingo-style. Engine lives in core/learn_core.py.
 from kivy.core.clipboard import Clipboard
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
@@ -20,7 +20,7 @@ ACCENT = (0.25, 0.45, 0.80, 1)
 PICKED = (0.30, 0.40, 0.65, 1)
 
 
-def _wrap_label(text, font_size=15, **kw):
+def _wrap_label(text, font_size=sp(15), **kw):
     """Label that wraps to its width and grows tall enough for its text."""
     lb = Label(text=text, font_size=font_size, halign="left", valign="top",
                size_hint_y=None, markup=kw.pop("markup", False), **kw)
@@ -86,10 +86,10 @@ class LearnScreen(Screen):
         st = L.load_progress()
         self._root.add_widget(Label(
             text="[b]Learn[/b]", markup=True, size_hint_y=None,
-            height=dp(34), font_size=20))
+            height=dp(34), font_size=sp(20)))
         self._root.add_widget(Label(
             text=f"XP {st['xp']}    Streak {L.current_streak(st)} day(s)",
-            size_hint_y=None, height=dp(22), font_size=14,
+            size_hint_y=None, height=dp(22), font_size=sp(14),
             color=(0.8, 0.8, 0.6, 1)))
         row = BoxLayout(size_hint_y=None, height=dp(46), spacing=dp(8))
         row.add_widget(_btn("Import course", self._import_popup,
@@ -122,7 +122,7 @@ class LearnScreen(Screen):
         box = BoxLayout(orientation="vertical", padding=dp(8), spacing=dp(6))
         box.add_widget(Label(
             text="Paste the course JSON the AI gave you:",
-            size_hint_y=None, height=dp(24), font_size=13))
+            size_hint_y=None, height=dp(24), font_size=sp(13)))
         ti = TextInput(hint_text="{ ... }", multiline=True)
         box.add_widget(ti)
         msg = _wrap_label("", 13, color=(1, 0.6, 0.5, 1))
@@ -165,7 +165,7 @@ class LearnScreen(Screen):
         box.add_widget(topic)
         box.add_widget(level)
         # read-only TextInput: stays put, drag selects text, scrolls inside
-        out = TextInput(text="", readonly=True, font_size=12,
+        out = TextInput(text="", readonly=True, font_size=sp(12),
                         background_color=(0.12, 0.12, 0.14, 1),
                         foreground_color=(0.85, 0.85, 0.85, 1))
         box.add_widget(out)
@@ -184,7 +184,7 @@ class LearnScreen(Screen):
             except Exception:
                 msg.text = "Could not copy - select the text by hand."
 
-        msg = Label(text="", size_hint_y=None, height=dp(20), font_size=12,
+        msg = Label(text="", size_hint_y=None, height=dp(20), font_size=sp(12),
                     color=(0.6, 0.9, 0.6, 1))
         box.add_widget(msg)
         row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
@@ -384,7 +384,7 @@ class LearnScreen(Screen):
             text=("[b]Lesson complete![/b]\n\n"
                   f"{s['correct']}/{s['total']} right first try ({pct}%)\n"
                   f"+{gained} XP    Streak {L.current_streak(st)} day(s)"),
-            markup=True, halign="center", font_size=18))
+            markup=True, halign="center", font_size=sp(18)))
         nxt = L.next_lesson(st, self._plan)
         if nxt:
             self._root.add_widget(_btn(

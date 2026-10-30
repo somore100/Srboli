@@ -25,7 +25,7 @@ from kivy.uix.filechooser import FileChooserIconView
 from kivy.uix.image import Image as KivyImage
 from kivy.graphics import Color, Rectangle, Line
 from kivy.clock import Clock
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.core.clipboard import Clipboard
 
 import app_data
@@ -234,7 +234,7 @@ class OutlinePanel(BoxLayout):
         # ── tree (left) ──
         left = BoxLayout(orientation="vertical", size_hint_x=0.36, spacing=dp(3))
         left.add_widget(Label(text="Outline", size_hint_y=None,
-                              height=dp(24), font_size=13))
+                              height=dp(24), font_size=sp(13)))
         sv = ScrollView()
         self._tree = GridLayout(cols=1, spacing=dp(2), size_hint_y=None)
         self._tree.bind(minimum_height=self._tree.setter("height"))
@@ -247,7 +247,7 @@ class OutlinePanel(BoxLayout):
                        ("In", self._indent), ("Out", self._outdent)]):
             row = BoxLayout(size_hint_y=None, height=dp(34), spacing=dp(2))
             for text, cb in specs:
-                b = Button(text=text, font_size=11)
+                b = Button(text=text, font_size=sp(11))
                 b.bind(on_release=cb)
                 row.add_widget(b)
             left.add_widget(row)
@@ -255,7 +255,7 @@ class OutlinePanel(BoxLayout):
 
         # ── section editor (right) ──
         right = BoxLayout(orientation="vertical", spacing=dp(3))
-        self._title_in = TextInput(multiline=False, font_size=15,
+        self._title_in = TextInput(multiline=False, font_size=sp(15),
                                    size_hint_y=None, height=dp(36),
                                    hint_text="Section title")
         self._title_in.bind(text=self._title_changed)
@@ -263,9 +263,9 @@ class OutlinePanel(BoxLayout):
         self._editor = MarkdownEditor(on_edit=self._body_changed)
         right.add_widget(self._editor)
         bottom = BoxLayout(size_hint_y=None, height=dp(34), spacing=dp(3))
-        ins_btn = Button(text="Insert table", font_size=12)
+        ins_btn = Button(text="Insert table", font_size=sp(12))
         ins_btn.bind(on_release=self._insert_table)
-        all_btn = Button(text="Preview whole document", font_size=12)
+        all_btn = Button(text="Preview whole document", font_size=sp(12))
         all_btn.bind(on_release=self._preview_all)
         bottom.add_widget(ins_btn)
         bottom.add_widget(all_btn)
@@ -306,12 +306,12 @@ class OutlinePanel(BoxLayout):
             row.add_widget(Widget(size_hint_x=None, width=dp(10) * n["depth"]))
             if O.has_children(ol, i):
                 tg = Button(text="+" if n["collapsed"] else "-",
-                            size_hint_x=None, width=dp(26), font_size=13)
+                            size_hint_x=None, width=dp(26), font_size=sp(13))
                 tg.bind(on_release=lambda inst, idx=i: self._toggle(idx))
             else:
                 tg = Widget(size_hint_x=None, width=dp(26))
             row.add_widget(tg)
-            tb = Button(text=self._row_text(n), markup=True, font_size=12,
+            tb = Button(text=self._row_text(n), markup=True, font_size=sp(12),
                         halign="left", valign="middle", max_lines=2,
                         shorten=True, shorten_from="right",
                         background_color=self.SEL_BG if i == self._active
@@ -531,7 +531,7 @@ class SlidesPanel(BoxLayout):
         # ── slide list (left) ──
         left = BoxLayout(orientation="vertical", size_hint_x=0.28, spacing=dp(3))
         left.add_widget(Label(text="Slides", size_hint_y=None, height=dp(24),
-                              font_size=13))
+                              font_size=sp(13)))
         sv = ScrollView()
         self._list = GridLayout(cols=1, spacing=dp(3), size_hint_y=None)
         self._list.bind(minimum_height=self._list.setter("height"))
@@ -547,11 +547,11 @@ class SlidesPanel(BoxLayout):
 
         r1 = row()
         self._mode_sp = Spinner(text=S.MODES["separate"],
-                                values=tuple(S.MODES.values()), font_size=12)
+                                values=tuple(S.MODES.values()), font_size=sp(12))
         self._mode_sp.bind(text=self._mode_changed)
         r1.add_widget(self._mode_sp)
         self._title_tg = ToggleButton(text="Title slide", state="down",
-                                      font_size=12, size_hint_x=None,
+                                      font_size=sp(12), size_hint_x=None,
                                       width=dp(92))
         self._title_tg.bind(state=self._title_toggled)
         r1.add_widget(self._title_tg)
@@ -561,16 +561,16 @@ class SlidesPanel(BoxLayout):
         right.add_widget(self._preview)
 
         r2 = row()
-        r2.add_widget(Label(text="Colour:", font_size=12, size_hint_x=None,
+        r2.add_widget(Label(text="Colour:", font_size=sp(12), size_hint_x=None,
                             width=dp(52)))
         self._bg_btn = ToggleButton(text="Bg", group="slide_target",
                                     state="down", allow_no_selection=False,
-                                    font_size=12)
+                                    font_size=sp(12))
         self._fg_btn = ToggleButton(text="Text", group="slide_target",
-                                    allow_no_selection=False, font_size=12)
+                                    allow_no_selection=False, font_size=sp(12))
         r2.add_widget(self._bg_btn)
         r2.add_widget(self._fg_btn)
-        reset = Button(text="Reset", font_size=12)
+        reset = Button(text="Reset", font_size=sp(12))
         reset.bind(on_release=self._reset_colors)
         r2.add_widget(reset)
         right.add_widget(r2)
@@ -579,13 +579,13 @@ class SlidesPanel(BoxLayout):
         r3 = row()
         for text, cb in (("Image...", self._pick_image),
                          ("No image", self._clear_image)):
-            b = Button(text=text, font_size=12)
+            b = Button(text=text, font_size=sp(12))
             b.bind(on_release=cb)
             r3.add_widget(b)
-        self._skip_tg = ToggleButton(text="Skip", font_size=12)
+        self._skip_tg = ToggleButton(text="Skip", font_size=sp(12))
         self._skip_tg.bind(state=self._skip_toggled)
         r3.add_widget(self._skip_tg)
-        edit = Button(text="Edit section", font_size=12)
+        edit = Button(text="Edit section", font_size=sp(12))
         edit.bind(on_release=self._edit_section)
         r3.add_widget(edit)
         right.add_widget(r3)
@@ -596,9 +596,9 @@ class SlidesPanel(BoxLayout):
             b = Button(text=text, size_hint_x=None, width=w)
             b.bind(on_release=cb)
             r4.add_widget(b)
-        self._idx_lbl = Label(text="0/0", font_size=12)
+        self._idx_lbl = Label(text="0/0", font_size=sp(12))
         r4.add_widget(self._idx_lbl)
-        present = Button(text="> Present", font_size=13)
+        present = Button(text="> Present", font_size=sp(13))
         present.bind(on_release=self._present)
         r4.add_widget(present)
         right.add_widget(r4)
@@ -630,7 +630,7 @@ class SlidesPanel(BoxLayout):
             text = sl["title"] or "(untitled)"
             if sl["skip"]:
                 text = f"(skip) {text}"
-            b = Button(text=text, size_hint_y=None, height=dp(34), font_size=12,
+            b = Button(text=text, size_hint_y=None, height=dp(34), font_size=sp(12),
                        halign="left", shorten=True, shorten_from="right",
                        background_color=self.SEL_BG if i == self._active
                        else self.SKIP_BG if sl["skip"] else self.ROW_BG)
@@ -762,7 +762,7 @@ class SlidesPanel(BoxLayout):
             nb = Button(text="Next >", disabled=(idx == len(slides) - 1))
             xb = Button(text="x Exit", size_hint_x=None, width=dp(90))
             lbl = Label(text=f"{idx + 1}/{len(slides)}", size_hint_x=None,
-                        width=dp(60), font_size=13)
+                        width=dp(60), font_size=sp(13))
             for w in (pb, lbl, nb, xb):
                 nav.add_widget(w)
             layout.add_widget(nav)
@@ -805,17 +805,17 @@ class TablesPanel(BoxLayout):
             return BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(3))
 
         def btn(text, cb, **kw):
-            b = Button(text=text, font_size=12, **kw)
+            b = Button(text=text, font_size=sp(12), **kw)
             b.bind(on_release=cb)
             return b
 
         # ── row 1: which table ──
         r1 = row()
-        self._table_sp = Spinner(text="", values=(), font_size=12,
+        self._table_sp = Spinner(text="", values=(), font_size=sp(12),
                                  size_hint_x=0.3)
         self._table_sp.bind(text=self._pick_table)
         r1.add_widget(self._table_sp)
-        self._name_in = TextInput(multiline=False, font_size=13,
+        self._name_in = TextInput(multiline=False, font_size=sp(13),
                                   hint_text="Table name")
         self._name_in.bind(on_text_validate=self._rename,
                            focus=lambda i, f: None if f else self._rename())
@@ -832,10 +832,10 @@ class TablesPanel(BoxLayout):
         r2.add_widget(btn("- Row", lambda *a: self._structure("del_row")))
         r2.add_widget(btn("+ Col", lambda *a: self._structure("add_col")))
         r2.add_widget(btn("- Col", lambda *a: self._structure("del_col")))
-        r2.add_widget(Label(text="Apply to:", font_size=12, size_hint_x=None,
+        r2.add_widget(Label(text="Apply to:", font_size=sp(12), size_hint_x=None,
                             width=dp(62)))
         self._scope_sp = Spinner(text="Cell", values=tuple(self.SCOPES),
-                                 font_size=12, size_hint_x=None, width=dp(80))
+                                 font_size=sp(12), size_hint_x=None, width=dp(80))
         r2.add_widget(self._scope_sp)
         self.add_widget(r2)
 
@@ -843,9 +843,9 @@ class TablesPanel(BoxLayout):
         r3 = row()
         self._fill_btn = ToggleButton(text="Fill", group="tbl_target",
                                       state="down", allow_no_selection=False,
-                                      font_size=12)
+                                      font_size=sp(12))
         self._text_btn = ToggleButton(text="Text", group="tbl_target",
-                                      allow_no_selection=False, font_size=12)
+                                      allow_no_selection=False, font_size=sp(12))
         r3.add_widget(self._fill_btn)
         r3.add_widget(self._text_btn)
         r3.add_widget(btn("Clear", self._clear_colors))
@@ -856,13 +856,13 @@ class TablesPanel(BoxLayout):
         # ── formula bar ──
         fbar = row()
         fbar.add_widget(Label(text="Cell:", size_hint_x=None, width=dp(40),
-                              font_size=13))
+                              font_size=sp(13)))
         self._cell_ref = Label(text="A1", size_hint_x=None, width=dp(50),
-                               font_size=13, color=(0.4, 0.8, 1, 1))
+                               font_size=sp(13), color=(0.4, 0.8, 1, 1))
         fbar.add_widget(self._cell_ref)
         fbar.add_widget(Label(text="Formula:", size_hint_x=None, width=dp(68),
-                              font_size=12))
-        self._formula_in = TextInput(multiline=False, font_size=13,
+                              font_size=sp(12)))
+        self._formula_in = TextInput(multiline=False, font_size=sp(13),
                                      hint_text="=SUM(A1:A5)  or  =A1*2+B3")
         self._formula_in.bind(on_text_validate=self._apply_formula)
         fbar.add_widget(self._formula_in)
@@ -873,7 +873,7 @@ class TablesPanel(BoxLayout):
         # ── grid ──
         self._sv = ScrollView()
         self._empty = Label(text="No tables yet.\nPress + Table to make one.",
-                            font_size=14, halign="center")
+                            font_size=sp(14), halign="center")
         self.add_widget(self._sv)
 
         self._refresh()
@@ -927,19 +927,19 @@ class TablesPanel(BoxLayout):
         grid = GridLayout(cols=cols + 1, spacing=dp(1), size_hint=(None, None))
         grid.bind(minimum_size=grid.setter("size"))
         grid.add_widget(Label(text="", size_hint=(None, None),
-                              size=(dp(30), dp(26)), font_size=10))
+                              size=(dp(30), dp(26)), font_size=sp(10)))
         for c in range(cols):
             grid.add_widget(Label(text=T.col_letter(c), size_hint=(None, None),
-                                  size=(self.CELL_W, dp(26)), font_size=11,
+                                  size=(self.CELL_W, dp(26)), font_size=sp(11),
                                   bold=True, color=(0.6, 0.8, 1, 1)))
         for r in range(rows):
             grid.add_widget(Label(text=str(r + 1), size_hint=(None, None),
-                                  size=(dp(30), self.CELL_H), font_size=10,
+                                  size=(dp(30), self.CELL_H), font_size=sp(10),
                                   color=(0.6, 0.7, 0.8, 1)))
             for c in range(cols):
                 cell = t["cells"][r][c]
                 ti = TextInput(
-                    text=cell["t"], multiline=False, font_size=12,
+                    text=cell["t"], multiline=False, font_size=sp(12),
                     size_hint=(None, None), size=(self.CELL_W, self.CELL_H),
                     background_normal="", background_active="",
                     background_color=self._bg(cell),
@@ -1113,11 +1113,11 @@ class FullEditorScreen(Screen):
         # ── file bar: title and status on one row, the buttons share the next ──
         top = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(5))
         self._doc_title = TextInput(text="Untitled", multiline=False,
-                                    font_size=14, size_hint_x=0.7,
+                                    font_size=sp(14), size_hint_x=0.7,
                                     hint_text="Document title")
         self._doc_title.bind(text=self._title_changed)
         top.add_widget(self._doc_title)
-        self._status = Label(text="", font_size=11, halign="left", size_hint_x=0.3)
+        self._status = Label(text="", font_size=sp(11), halign="left", size_hint_x=0.3)
         self._status.bind(size=self._status.setter("text_size"))
         top.add_widget(self._status)
         root.add_widget(top)
@@ -1126,7 +1126,7 @@ class FullEditorScreen(Screen):
         for lbl, cb in [("New", self._new), ("Open", self._open),
                          ("Save", self._save), ("Save As", self._save_as),
                          ("Export HTML", self._export_html)]:
-            b = Button(text=lbl, font_size=12)
+            b = Button(text=lbl, font_size=sp(12))
             b.bind(on_release=cb)
             fbar.add_widget(b)
         root.add_widget(fbar)
@@ -1268,7 +1268,7 @@ class FullEditorScreen(Screen):
         docs_dir = app_data.subdir("full_editor")
         name_in  = TextInput(
             text=f"{self.doc.title}.srdoc",
-            multiline=False, size_hint_y=None, height=dp(36), font_size=13)
+            multiline=False, size_hint_y=None, height=dp(36), font_size=sp(13))
         chooser  = FileChooserIconView(path=docs_dir)
         btn = Button(text="Save", size_hint_y=None, height=dp(44))
         layout = BoxLayout(orientation="vertical", spacing=dp(4))

@@ -21,7 +21,7 @@ from kivy.uix.widget import Widget
 from kivy.graphics import Color, Ellipse, Line, Triangle
 from kivy.clock import Clock
 from kivy.animation import Animation
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 
 
 def _start_dir():
@@ -142,7 +142,7 @@ class WheelWidget(Widget):
             name = item["name"]
             short = name if len(name) <= 10 else name[:9] + "…"
             lbl = Label(text=short, size_hint=(None, None), size=(dp(88), dp(22)),
-                        font_size=11, bold=True, color=(1, 1, 1, 1))
+                        font_size=sp(11), bold=True, color=(1, 1, 1, 1))
             lbl.pos = (lx - dp(44), ly - dp(11))
             self.add_widget(lbl)
             self._label_cache.append(lbl)
@@ -183,13 +183,13 @@ class SpinScreen(Screen):
         # ── mode toggle ──
         mode_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=8)
         mode_row.add_widget(Label(text="Mode:", size_hint_x=None,
-                                  width=dp(50), font_size=13))
+                                  width=dp(50), font_size=sp(13)))
         self._mode_names = ToggleButton(text="Names", group="mode",
                                         state="down", size_hint_x=None,
-                                        width=dp(90), font_size=13)
+                                        width=dp(90), font_size=sp(13))
         self._mode_nums  = ToggleButton(text="Numbers", group="mode",
                                          size_hint_x=None, width=dp(90),
-                                         font_size=13)
+                                         font_size=sp(13))
         self._mode_names.bind(on_release=lambda *a: self._switch_mode("names"))
         self._mode_nums.bind(on_release=lambda *a: self._switch_mode("numbers"))
         mode_row.add_widget(self._mode_names)
@@ -224,12 +224,12 @@ class SpinScreen(Screen):
         self._num_row = BoxLayout(size_hint_y=None, height=dp(40),
                                   spacing=5)
         self._num_row.add_widget(Label(text="Min:", size_hint_x=None,
-                                        width=dp(40), font_size=13))
+                                        width=dp(40), font_size=sp(13)))
         self._num_min = TextInput(text="1", multiline=False,
                                    input_filter="int")
         self._num_row.add_widget(self._num_min)
         self._num_row.add_widget(Label(text="Max:", size_hint_x=None,
-                                        width=dp(36), font_size=13))
+                                        width=dp(36), font_size=sp(13)))
         self._num_max = TextInput(text="10", multiline=False,
                                    input_filter="int")
         self._num_row.add_widget(self._num_max)
@@ -251,9 +251,9 @@ class SpinScreen(Screen):
 
         # ── spin + result ──
         bottom = BoxLayout(size_hint_y=None, height=dp(52), spacing=8)
-        self._spin_btn = Button(text="Spin!", font_size=17)
+        self._spin_btn = Button(text="Spin!", font_size=sp(17))
         self._spin_btn.bind(on_release=self._spin)
-        self._result_label = Label(text="", font_size=14)
+        self._result_label = Label(text="", font_size=sp(14))
         bottom.add_widget(self._spin_btn)
         bottom.add_widget(self._result_label)
         root.add_widget(bottom)
@@ -345,8 +345,8 @@ class SpinScreen(Screen):
             row = BoxLayout(size_hint_y=None, height=dp(26))
             row.add_widget(Label(
                 text=f"{item['name']}  (w={item['weight']})",
-                halign="left", font_size=11))
-            d = Button(text="x", size_hint_x=None, width=dp(34), font_size=11)
+                halign="left", font_size=sp(11)))
+            d = Button(text="x", size_hint_x=None, width=dp(34), font_size=sp(11))
             d.bind(on_release=lambda inst, i=idx: (
                 self.wheel.remove_index(i), self._refresh_list()))
             row.add_widget(d)
@@ -404,7 +404,7 @@ class SpinScreen(Screen):
             self._spinning          = False
             self._spin_btn.disabled = False
             Popup(title="Result!",
-                  content=Label(text=name, font_size=22, halign="center"),
+                  content=Label(text=name, font_size=sp(22), halign="center"),
                   size_hint=(0.55, 0.38)).open()
 
         self.wheel.animate_spin(

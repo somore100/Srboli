@@ -15,7 +15,7 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.checkbox import CheckBox
 from kivy.graphics import Color, Line, Rectangle
 from kivy.clock import Clock
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 
 try:
     import psutil
@@ -45,9 +45,9 @@ class GraphWidget(BoxLayout):
         self._history = collections.deque([0.0] * HISTORY, maxlen=HISTORY)
 
         hdr = BoxLayout(size_hint_y=None, height=dp(22))
-        self._title_lbl = Label(text=label, font_size=12, halign="left",
+        self._title_lbl = Label(text=label, font_size=sp(12), halign="left",
                                 size_hint_x=0.6)
-        self._val_lbl   = Label(text="--",  font_size=12, halign="right",
+        self._val_lbl   = Label(text="--",  font_size=sp(12), halign="right",
                                 size_hint_x=0.4)
         hdr.add_widget(self._title_lbl)
         hdr.add_widget(self._val_lbl)
@@ -125,9 +125,9 @@ class SystemStatsScreen(Screen):
                             ("disk","Disk"),("gpu","GPU"),("net","Network")]:
             self._sys_grid.add_widget(
                 Label(text=f"[b]-- {title} --[/b]", markup=True,
-                      size_hint_y=None, height=dp(26), font_size=14))
+                      size_hint_y=None, height=dp(26), font_size=sp(14)))
             lbl = Label(text="...", size_hint_y=None, height=dp(80),
-                        markup=True, halign="left", valign="top", font_size=13)
+                        markup=True, halign="left", valign="top", font_size=sp(13))
             lbl.bind(size=lbl.setter("text_size"))
             self._sys_labels[key] = lbl
             self._sys_grid.add_widget(lbl)
@@ -139,7 +139,7 @@ class SystemStatsScreen(Screen):
         tab = TabbedPanelItem(text="Live Graphs")
         layout = BoxLayout(orientation="vertical", padding=8, spacing=8)
         layout.add_widget(Label(text="[b]Kivy FPS[/b]", markup=True,
-                                size_hint_y=None, height=dp(22), font_size=14))
+                                size_hint_y=None, height=dp(22), font_size=sp(14)))
         self._fps_graph = GraphWidget(label="FPS", unit="fps",
                                       max_val=120.0, color=(0.25, 0.70, 1.0),
                                       size_hint_y=0.35)
@@ -147,9 +147,9 @@ class SystemStatsScreen(Screen):
 
         pr = BoxLayout(size_hint_y=None, height=dp(36), spacing=8)
         pr.add_widget(Label(text="[b]Ping[/b] host:", markup=True,
-                            size_hint_x=None, width=dp(100), font_size=13))
+                            size_hint_x=None, width=dp(100), font_size=sp(13)))
         self._ping_input = TextInput(text=PING_HOST_DEFAULT,
-                                     multiline=False, font_size=13,
+                                     multiline=False, font_size=sp(13),
                                      size_hint_x=0.5)
         apply_btn = Button(text="Apply", size_hint_x=None, width=dp(70))
         apply_btn.bind(on_release=self._apply_ping)
@@ -171,28 +171,28 @@ class SystemStatsScreen(Screen):
 
         layout.add_widget(Label(
             text="[b]Mini Stats Overlay[/b]", markup=True,
-            size_hint_y=None, height=dp(30), font_size=16))
+            size_hint_y=None, height=dp(30), font_size=sp(16)))
         layout.add_widget(Label(
             text=("Opens a small always-on-top window that stays visible\n"
                   "even when Srboli is minimised.\n"
                   "Close it by closing that window directly."),
-            size_hint_y=None, height=dp(56), font_size=12, halign="left"))
+            size_hint_y=None, height=dp(56), font_size=sp(12), halign="left"))
 
         self._overlay_btn = Button(
             text="Open Overlay Window", size_hint_y=None, height=dp(52),
-            font_size=15, background_color=(0.2, 0.55, 0.2, 1))
+            font_size=sp(15), background_color=(0.2, 0.55, 0.2, 1))
         self._overlay_btn.bind(on_release=self._toggle_overlay)
         layout.add_widget(self._overlay_btn)
 
         self._overlay_status = Label(
-            text="Overlay: not running", font_size=12,
+            text="Overlay: not running", font_size=sp(12),
             size_hint_y=None, height=dp(26), color=(0.6, 0.8, 1, 1))
         layout.add_widget(self._overlay_status)
 
         layout.add_widget(Label(
             text="Note: the overlay is a separate process.\n"
                  "You can move, resize, and minimise it independently.",
-            font_size=11, size_hint_y=None, height=dp(40),
+            font_size=sp(11), size_hint_y=None, height=dp(40),
             halign="left", color=(0.6, 0.6, 0.6, 1)))
 
         fps_note = Label(
@@ -200,7 +200,7 @@ class SystemStatsScreen(Screen):
                  "rate, not this app's - it's a separate lightweight "
                  "process, so treat it as a rough reference, not an exact "
                  "measurement of Srboli's main-window framerate.",
-            font_size=11, size_hint_y=None, height=dp(56),
+            font_size=sp(11), size_hint_y=None, height=dp(56),
             halign="left", valign="top", color=(0.75, 0.6, 0.3, 1))
         fps_note.bind(size=fps_note.setter("text_size"))
         layout.add_widget(fps_note)
