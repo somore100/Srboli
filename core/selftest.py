@@ -40,8 +40,29 @@ def check_data_files():
     return problems
 
 
+def _no_window():
+    """Make `from kivy.core.window import Window` hand out a stand-in instead of opening a real OpenGL window.
+
+    The self-test only needs to know that every screen *imports*. CI runners cannot always open a window: the Windows
+    runner only has the GDI software renderer (OpenGL 1.1, Kivy needs 2.0) and the macOS runner has no GPU / pixel
+    format, so the first screen that imports Window made Kivy abort the whole process before any result was written.
+    Set SRBOLI_SELFTEST_WINDOW=1 to test with the real window instead."""
+    if os.environ.get("SRBOLI_SELFTEST_WINDOW") == "1":
+        return
+    import types
+    from unittest import mock
+    mod = types.ModuleType("kivy.core.window")
+    mod.Window = mock.MagicMock(name="Window")
+    mod.__getattr__ = lambda name: mock.MagicMock(name=name)          # any other name a screen imports (PEP 562)
+    sys.modules["kivy.core.window"] = mod
+    from kivy.metrics import Metrics            # dp()/sp() at import time would otherwise ask the (missing) window for its DPI
+    Metrics.dpi = 96.0
+    Metrics.density = 1.0
+
+
 def run(outfile=None):
     os.environ.setdefault("KIVY_NO_ARGS", "1")
+    _no_window()
     lines = []
     try:
         from screens.registry import SCREENS
