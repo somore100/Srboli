@@ -38,4 +38,32 @@ while s._thinking and time.time() - t0 < 10:
 assert s.game.turn == "w" and len(s.history) == 2, (s.game.turn, len(s.history))
 s._undo(); assert len(s.history) == 0 and s.game.turn == "w"
 s._toggle_mode(); s._tap(52); s._tap(36); assert s._flipped() and s._cells
+
+# two players: the board can stay put
+assert s.mode == "two" and s._flipped()
+s._toggle_flip(); assert not s.flip_board and not s._flipped()
+s._toggle_flip()
+
+# AI vs AI: plays by itself, speed delays the next move, pause stops it, undo steps back
+s._toggle_mode(); assert s.mode == "aivai" and not s.vs_ai
+s.level = s.level_w = "Easy"; s.speed = 2             # fast
+s._new_game()
+t0 = time.time()
+while len(s.history) < 6 and time.time() - t0 < 20:
+    Clock.tick(); time.sleep(0.01)
+assert len(s.history) >= 6, len(s.history)
+s._tap(52)                                           # no human moves in AI vs AI
+s._toggle_pause(); assert s.paused
+n = len(s.history)
+t0 = time.time()
+while time.time() - t0 < 0.6:
+    Clock.tick(); time.sleep(0.01)
+assert len(s.history) == n, "paused game must not move"
+s._undo(); assert len(s.history) == n - 1 and s.paused
+s._toggle_pause()
+t0 = time.time()
+while len(s.history) < n and time.time() - t0 < 10:
+    Clock.tick(); time.sleep(0.01)
+assert len(s.history) >= n
+s._toggle_mode(); assert s.mode == "ai" and s._next_ev is None
 print("screen OK")

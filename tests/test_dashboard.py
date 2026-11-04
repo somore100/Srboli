@@ -128,3 +128,9 @@ tb._released(); assert calls == [("open", "music")]
 calls.clear(); tb._long(0); tb._released(); assert calls == [("pin", "music")]
 tb._released(); assert calls[-1] == ("open", "music")
 print("tool button OK")
+
+# tile text is scaled once (it was sp(sp(14)): huge on a high-density phone)
+from kivy.metrics import sp
+tiles = [w for w in d3.walk() if isinstance(w, ToolButton)]
+assert tiles and all(t.font_size in (sp(14), sp(12)) for t in tiles), {t.font_size for t in tiles}
+print("tile font OK")

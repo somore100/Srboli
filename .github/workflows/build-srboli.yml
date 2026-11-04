@@ -216,6 +216,25 @@ jobs:
           done
           exit 1
 
+      - name: Verify the APK is signed with the stored key
+        run: |
+          # An APK signed with any other key cannot be installed over the one
+          # on a phone ("App not installed"). Compare the APK's real signing
+          # certificate with the stored keystore's.
+          APKSIGNER=$(ls ~/.buildozer/android/platform/android-sdk/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)
+          APK=$(ls bin/*.apk | head -1)
+          if [ -z "$APKSIGNER" ]; then
+            echo "::warning::apksigner not found; signing key not verified"; exit 0
+          fi
+          WANT=$(keytool -list -keystore ~/.android/debug.keystore -storepass android | grep -i 'SHA-256\|SHA256' | head -1 | sed 's/.*: //' | tr -d ': ' | tr 'A-F' 'a-f')
+          GOT=$("$APKSIGNER" verify --print-certs "$APK" | grep -i 'SHA-256 digest' | head -1 | sed 's/.*: //' | tr -d ': ' | tr 'A-F' 'a-f')
+          echo "keystore: $WANT"
+          echo "apk:      $GOT"
+          if [ -n "$WANT" ] && [ "$WANT" != "$GOT" ]; then
+            echo "::error::APK is not signed with the stored keystore - it would not update over earlier installs"
+            exit 1
+          fi
+
       - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v4

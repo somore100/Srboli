@@ -18,12 +18,14 @@ from kivy.uix.textinput import TextInput
 import app_data
 from core import dashboard_core as dash
 from core import theme
+from core import tap_slop
 from core.toast import toast
 from screens.registry import ALIASES, GROUPS, LABELS
 from screens.settings_screen import (effective_menu_order, load_settings,
                                      update_dashboard_state)
 
 LONG_PRESS = 0.6
+SLOP = dp(10)
 TILE_H = dp(52)
 GAP = dp(5)
 
@@ -64,7 +66,8 @@ class ToolButton(Button):
         return super().on_touch_down(touch)
 
     def on_touch_move(self, touch):
-        if self._lp is not None and not self.collide_point(*touch.pos):
+        if self._lp is not None and (not self.collide_point(*touch.pos)
+                                     or tap_slop.moved(touch, SLOP)):
             self._cancel_long()
         return super().on_touch_move(touch)
 
@@ -143,7 +146,7 @@ class Dashboard(Screen):
         self._search.focus = True
 
     # ── the tool list ────────────────────────────────────────────────────
-    def _tool_button(self, route, label, font_size=sp(14), pinned=False):
+    def _tool_button(self, route, label, font_size=14, pinned=False):
         text = f"* {label}" if pinned else label
         btn = ToolButton(route, self._goto, self._toggle_pin, text=text,
                          size_hint_y=None, height=TILE_H, font_size=sp(font_size),
@@ -151,7 +154,7 @@ class Dashboard(Screen):
         btn.bind(size=lambda w, v: setattr(w, "text_size", (v[0] - dp(8), None)))
         return btn
 
-    def _tiles(self, items, cols, font_size=sp(14), pinned=()):
+    def _tiles(self, items, cols, font_size=14, pinned=()):
         """The tools as a grid of `cols` tiles per row."""
         cols = max(1, min(cols, len(items)))
         rows = -(-len(items) // cols)

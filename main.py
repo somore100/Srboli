@@ -86,6 +86,11 @@ else:
     except Exception:
         pass
 Config.set("kivy", "exit_on_escape", "0")
+# Scrolling: start a scroll after ~10sp of travel and give a slow drag 350 ms
+# to get there before the touch is handed to the button under the finger
+# (the defaults, 20sp / 250 ms, turned slow scrolls into taps on a phone).
+Config.set("widgets", "scroll_distance", "10")
+Config.set("widgets", "scroll_timeout", "350")
 try:
     from core import window_state as _ws
     _ws.restore(Config, _ON_ANDROID)        # desktop: last size / position
@@ -106,6 +111,12 @@ from kivy.utils import platform as _platform
 if _platform == "android":
     from core import kivy_patches as _kp
     _kp.apply_android(Window, _bl)
+
+try:
+    from core import tap_slop
+    tap_slop.install()              # a dragging finger is never a click
+except Exception as _e:
+    print(f"tap slop skipped: {_e}")
 
 from kivy.core.text import LabelBase
 # Register NotoColorEmoji so emoji render properly
