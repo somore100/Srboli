@@ -1,6 +1,6 @@
 # Srboli
 
-Pocket swiss-army-knife desktop app — **29 tools in one window**, built with
+Pocket swiss-army-knife desktop app — **30 tools in one window**, built with
 Python + Kivy. Even if you don't see a use for every feature at first, odds
 are at least one will be useful — and you might even end up using several.
 
@@ -24,6 +24,7 @@ tool, with global shortcuts to jump between them.
 | **Text Editor** | Plain-text editor with Raw ⇄ Styled Markdown view, colour wheel, autosave; exports .txt / .html / .md / checked-and-indented .json |
 | **Script / Teleprompter** | Paste full text, auto-copy chunks one at a time; auto-advance on paste |
 | **Full Editor** | Outline document (nested sections with Markdown bodies, colour swatches + wheel) + slides generated from the outline (per-slide colours / image / skip, full-screen presenter) + coloured tables (per-cell fill/text colours, add/remove rows and columns, SUM/AVG/formulas) that can be placed inside sections; exports everything to HTML |
+| **Math Steps** | Type an equation or expression and solve it line by line: every line is checked, the first wrong one is explained ("a sign looks wrong", "you moved 3 across `=` without flipping it"), three levels of hints, and a full solution on request. Covers linear equations and simplifying; other polynomials are checked but not solved |
 | **Basic Tools** | Clock, stopwatch, alarm, real calculator |
 | **System Stats** | CPU / RAM / Disk / GPU + live FPS & ping graphs, plus an always-on-top overlay window |
 | **Gallery Sorter** | Sort images and videos into folders, in-app video player |
@@ -176,6 +177,7 @@ srboli/
 │   ├── reminders_core.py        # Reminder scheduling (shared with the daemon)
 │   ├── daemon.py / daemon_ipc.py / autostart.py  # Background service
 │   ├── chess_core.py            # Chess rules + AI
+│   ├── math_steps_core.py       # Math Steps: parser, step checker, hints, solver (no dependencies)
 │   ├── learn_core.py            # Course engine for Learn
 │   ├── outline_core.py / slides_core.py / table_core.py  # Full Editor
 │   ├── converter_core.py        # File Converter engine

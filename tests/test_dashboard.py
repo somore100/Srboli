@@ -41,7 +41,7 @@ d.manager = MagicMock()
 assert Window.width >= 700   # tests assume a desktop-sized window
 heads = [w.text for w in reversed(d._grid.children) if isinstance(w, Button) and w.text.startswith("[")]
 assert heads[0].startswith("[-]  Writing  (4)") and len(heads) == 6, heads
-L = [t for t in tool_labels(d) if not t[:2] in ("R:", "P:")]; assert len(L) == 29, len(L)
+L = [t for t in tool_labels(d) if not t[:2] in ("R:", "P:")]; assert len(L) == 30, len(L)
 
 
 # using a tool puts it in Recent after coming back
