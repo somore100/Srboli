@@ -1,5 +1,5 @@
 # tests/test_math_steps_core.py - pure test (python3 tests/test_math_steps_core.py)
-import os, sys
+import os, sys, random
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from fractions import Fraction as F
 from core import math_steps_core as m
@@ -78,9 +78,10 @@ r = m.Session("x+1").submit("x+"); assert r.kind == "info" and m.Session("x+1").
 assert m.Session("2x+1=2x+3").submit("1=3").ok            # contradiction is a legal route...
 s = m.Session("2x+1=2x+3"); assert s.status() == "no solution"
 assert m.solved(m.Line("0=0")) == "true" and m.solved(m.Line("2x=2x")) == "true for every value"
-s = m.Session("x^2=4")                                      # quadratics: steps checked, not solved
+s = m.Session("x^2=4")
 assert s.submit("x^2-4=0").ok and s.submit("(x-2)(x+2)=0").ok and not s.submit("(x-2)(x-2)=0").ok
-assert "can't suggest" in s.hint(1) and m.solution("x^2=4") == []
+s = m.Session("x^3=8")                                      # cubics: checked, not solved
+assert s.submit("x^3-8=0").ok and m.solution("x^3=8") == [] and "can't suggest" in s.hint(1)
 
 # the solver
 eq([t for t, _ in m.solution("2x+3=5x-1")], ["-3x + 3 = -1", "-3x = -4", "x = 4/3"])
@@ -106,15 +107,92 @@ s = m.Session("x=2"); assert s.status() == "x = 2" and "done" in s.hint(1)
 
 # complexity
 eq(m.complexity("x+1=3")[0], "Easy"); eq(m.complexity("2x+3=5x-1")[0], "Medium")
-eq(m.complexity("2(x+3)-4(x-1)=3(x+2)-5")[0], "Medium"); eq(m.complexity("3(2x-1)-2(x+4)=5(x-2)+x-7")[0], "Medium"); eq(m.complexity("x^2=4"), ("Hard", None))
+eq(m.complexity("2(x+3)-4(x-1)=3(x+2)-5")[0], "Medium"); eq(m.complexity("3(2x-1)-2(x+4)=5(x-2)+x-7")[0], "Medium"); eq(m.complexity("x^3=8"), ("Hard", None)); eq(m.complexity("x^2=4"), ("Easy", 1))
 eq(m.complexity("x+"), ("Hard", None))
+
+
+# ── quadratics ───────────────────────────────────────────────────────────
+# the three solving routes, step by step
+eq([t for t, _ in m.solution("x^2-5x+6=0")], ["(x - 2)(x - 3) = 0", "x - 2 = 0 or x - 3 = 0", "x = 2 or x = 3"])
+eq([t for t, _ in m.solution("x^2=4")], ["x = \u00b12"])
+eq([t for t, _ in m.solution("x^2-4=0")], ["x^2 = 4", "x = \u00b12"])
+eq([t for t, _ in m.solution("2x^2+3x=0")][-1], "x = 0 or x = -3/2")
+eq([t for t, _ in m.solution("x^2-6x+9=0")], ["(x - 3)^2 = 0", "x - 3 = 0", "x = 3"])
+eq([t for t, _ in m.solution("x^2-3x+1=0")][-1], "x = (3 \u00b1 sqrt(5))/2")
+eq([t for t, _ in m.solution("x^2=12")], ["x = \u00b12sqrt(3)"])
+eq([t for t, _ in m.solution("x^2+1=0")][-1], "no real solutions")
+eq([t for t, _ in m.solution("x^2+x+1=0")], ["no real solutions"])
+eq([t for t, _ in m.solution("x^2=2x+3")][0], "x^2 - 2x - 3 = 0")
+eq(m.complexity("x^2-5x+6=0"), ("Medium", 3))
+
+# every solver step is valid and the session reaches "done" (random quadratics)
+rng2 = random.Random(7)
+for _ in range(400):
+    a = rng2.choice([1, 1, 1, 2, 3, -1, -2]); b = rng2.randint(-9, 9); c = rng2.randint(-9, 9)
+    prob = rng2.choice([f"{a}x^2+{b}x+{c}=0", f"{a}x^2={b}x+{c}", f"{a}x^2+{c}=0",
+                        f"{a}x^2+{b}x=0", f"{a}x^2={c}"]).replace("+-", "-")
+    steps = m.solution(prob)
+    assert steps, prob
+    want = m.line_roots(m.parse_line(prob))
+    s = m.Session(prob)
+    for text, why in steps:
+        r = s.submit(text)
+        assert r.ok, (prob, text, r.message)
+    assert r.done, (prob, steps[-1])
+    if want:
+        assert m.same_roots(m.line_roots(s.current), want), (prob, s.current.text)
+
+# a student's own routes
+s = m.Session("x^2-5x+6=0")
+r = s.submit("(x-2)(x-3)=0"); assert r.ok and "factorised" in r.message, r.message
+r = s.submit("x-2=0 or x-3=0"); assert r.ok and "zero-product" in r.message, r.message
+r = s.submit("x=2 or x=3"); assert r.ok and r.done and s.wrong == 0
+s = m.Session("x^2-5x+6=0")                              # all three steps in one go
+assert s.submit("x=2 or x=3").ok and s.status() == "x=2 or x=3"
+s = m.Session("x^2=4")
+assert "missing" in s.submit("x=2").message and "different" not in s.submit("x = -2").message
+assert s.submit("x = 2 or x = -2").done
+s = m.Session("x^2=4"); r = s.submit("x = \u00b12"); assert r.ok and r.done and "square root" in r.message, r.message
+s = m.Session("x^2=4"); assert not s.submit("x = \u00b13").ok and not s.submit("no real solutions").ok
+s = m.Session("x^2=0"); assert s.submit("x=0").done
+s = m.Session("x^2+1=0"); assert s.submit("no real solutions").done
+s = m.Session("x^2-3x+1=0")
+assert s.submit("x = (3 + sqrt(5))/2 or x = (3 - sqrt(5))/2").done
+s = m.Session("x^2-3x+1=0"); assert s.submit("x = (3 \u00b1 sqrt(5))/2").done
+s = m.Session("x^2-3x+1=0"); assert not s.submit("x = (3 \u00b1 sqrt(6))/2").ok
+r = s.submit("x = 3/2 + sqrt(5)/2 or x = 3/2 - sqrt(5)/2"); assert r.ok and not r.done      # right, but not tidy yet
+assert s.submit("x = (3 \u00b1 sqrt(5))/2").done
+s = m.Session("x^2-3x+1=0"); assert s.submit("x = (3 +- sqrt(5))/2").done
+s = m.Session("x^2-5x+6=0"); s.submit("(x-2)(x-3)=0"); r = s.submit("x=2")
+assert r.kind == "wrong" and "missing" in r.message and "2 solutions" in r.message, r.message
+r = s.submit("(x-2)(x+3)=0"); assert r.kind == "wrong"
+r = s.submit("x-2=0 or x+3=0"); assert r.kind == "wrong"
+r = s.submit("x-2=0 or x-3=0 or x-4=0"); assert "extra" in r.message
+for bad in ("x = ", "x = 2 or", "x = y or x = 2", "x = sqrt(-4)", "x = 1/0 or x = 2", "or", "x = sqrt(x)"):
+    r = s.submit(bad); assert r.kind in ("info", "wrong"), (bad, r.kind)
+
+# hints on a quadratic
+s = m.Session("x^2-5x+6=0")
+h1, h2, h3 = s.hint(1), s.hint(2), s.hint(3)
+assert "actorise" in h1 and "multiply to 6 and add to -5" in h2 and h3 == "(x - 2)(x - 3) = 0"
+s = m.Session("x^2-3x+1=0")
+assert "quadratic formula" in s.hint(1) and "a = 1, b = -3, c = 1" in s.hint(2)
+assert s.submit(s.hint(3)).ok and "Simplify" in s.hint(1)
+assert [t for t, _ in s.solution_from_here()] == ["x = (3 \u00b1 sqrt(5))/2"]
+
+# solution lines are never mistaken for plain maths
+assert m.parse_line("2x+3").kind == "expression" and m.parse_line("x=2").kind == "equation"
+assert m.parse_line("x = 2 or x = 3").kind == "solset" and m.parse_line("None").nosol
+try: m.Session("x = 2 or x = 3"); raise SystemExit("a solution list is not a problem")
+except m.MathError: pass
 
 # a long wrong-step stream never raises
 import random
 rng = random.Random(1)
-alpha = list("x12+-*/()^= ")
-for _ in range(3000):
-    t = "".join(rng.choice(alpha) for _ in range(rng.randint(0, 10)))
-    try: m.Session("2x+3=7").submit(t)
-    except Exception as e: raise SystemExit(f"crashed on {t!r}: {e!r}")
+alpha = list("x12+-*/()^= ") + list("\u00b1orsqt,;")
+for prob in ("2x+3=7", "x^2-5x+6=0", "x^2-3x+1=0"):
+  for _ in range(2500):
+    t = "".join(rng.choice(alpha) for _ in range(rng.randint(0, 12)))
+    try: m.Session(prob).submit(t)
+    except Exception as e: raise SystemExit(f"crashed on {prob!r} / {t!r}: {e!r}")
 print("math steps core OK")

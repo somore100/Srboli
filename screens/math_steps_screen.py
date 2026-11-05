@@ -6,6 +6,7 @@ from kivy.clock import Clock
 from kivy.metrics import dp, sp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
+from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.textinput import TextInput
@@ -15,7 +16,7 @@ from core import theme
 from screens.scaffold import ToolScreen
 
 GOOD, BAD, NOTE = "7fdc94", "ff8a80", "9fb0c8"
-KEYS = ("x", "^", "/", "(", ")", "=", "*", "+", "-")
+KEYS = ("x", "^", "/", "(", ")", "=", "+", "-", "\u00b1", "sqrt", "or")
 
 
 class MathStepsScreen(ToolScreen):
@@ -40,8 +41,9 @@ class MathStepsScreen(ToolScreen):
 
         keys = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(4))
         for k in KEYS:
-            b = Button(text=k, font_size=sp(15))
-            b.bind(on_release=lambda inst, k=k: self._type(k))
+            b = Button(text=k, font_size=sp(15 if len(k) == 1 else 12))
+            b.bind(on_release=lambda inst, k=k: self._type(
+                {"sqrt": "sqrt(", "or": " or "}.get(k, k)))
             keys.add_widget(b)
         root.add_widget(keys)
 
@@ -51,11 +53,13 @@ class MathStepsScreen(ToolScreen):
         root.add_widget(self.info)
 
         sv = ScrollView(do_scroll_x=False)
-        self.log = BoxLayout(orientation="vertical", size_hint_y=None,
-                             spacing=dp(2), padding=(dp(2), dp(2)))
-        self.log.bind(minimum_height=self.log.setter("height"))
-        sv.add_widget(self.log)
+        self.log = GridLayout(cols=1, size_hint_y=None, spacing=dp(2),
+                              padding=(dp(2), dp(2)))      # fills from the top
         self._sv = sv
+        # at least as tall as the view, so a short log starts at the top
+        self.log.bind(minimum_height=self._fit_log)
+        sv.bind(height=lambda *a: self._fit_log())
+        sv.add_widget(self.log)
         root.add_widget(sv)
 
         self.feedback = self._label("", NOTE, dp(52))
@@ -112,9 +116,12 @@ class MathStepsScreen(ToolScreen):
         self.log.add_widget(lbl)
         Clock.schedule_once(self._scroll_end, 0.05)
 
+    def _fit_log(self, *a):
+        self.log.height = max(self.log.minimum_height, self._sv.height)
+
     def _scroll_end(self, dt):
         # keep the newest line in view; a short log stays at the top
-        self._sv.scroll_y = 0 if self.log.height > self._sv.height else 1
+        self._sv.scroll_y = 0 if self.log.minimum_height > self._sv.height else 1
 
     def _say(self, text, color):
         self.feedback.text = f"[color={color}]{text}[/color]"

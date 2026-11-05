@@ -14,7 +14,7 @@ s = MathStepsScreen(name="m"); tick()
 assert s.step_in.disabled and s.session is None
 s.check(); s.hint()                                  # nothing happens before Start
 s.problem_in.text = "2x+"; s.start(); assert s.session is None and "ends too early" in s.feedback.text
-s.problem_in.text = "x^2=4"; s.start()
+s.problem_in.text = "x^3=8"; s.start()
 assert s.session and "can't solve" in s.info.text and not s.step_in.disabled   # hard: checked, not solved
 s.problem_in.text = "2x+3=5x-1"; s.start(); tick()
 assert s.session.level == "Medium" and "Equation" in s.info.text and len(s.log.children) == 1
@@ -34,6 +34,16 @@ assert "Done" in s.feedback.text and s.step_in.disabled and "No wrong steps" in 
 
 s.problem_in.text = "2x+3=7"; s.start(); s.show_solution(); tick()
 assert "That was the solution" in s.feedback.text and len(s.log.children) == 3
+
+# quadratics: factor route, with the zero-product rule and a wrong "x = 2"
+s.problem_in.text = "x^2-5x+6=0"; s.start(); assert "medium" in s.info.text
+s.step_in.text = "(x-2)(x-3)=0"; s.check(); tick()
+s.step_in.text = "x=2"; s.check(); tick(); assert "missing" in s.feedback.text
+s.step_in.text = "x-2=0 or x-3=0"; s.check(); tick()
+s.step_in.text = "x = 2 or x = 3"; s.check(); tick()
+assert "Done" in s.feedback.text and s.step_in.disabled
+s.problem_in.text = "x^2-3x+1=0"; s.start(); s.hint(); s.hint(); s.hint(); tick()
+s.show_solution(); tick(); assert "\u00b1" in s.log.children[0].text and "sqrt(5)" in s.log.children[0].text
 
 # the keypad types into the active box
 s.problem_in.text = "2"; s._active = s.problem_in; s.problem_in.cursor = (1, 0)
