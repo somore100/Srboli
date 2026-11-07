@@ -1,6 +1,6 @@
 # Srboli
 
-Pocket swiss-army-knife desktop app — **30 tools in one window**, built with
+Pocket swiss-army-knife desktop app — **31 tools in one window**, built with
 Python + Kivy. Even if you don't see a use for every feature at first, odds
 are at least one will be useful — and you might even end up using several.
 
@@ -44,6 +44,7 @@ tool, with global shortcuts to jump between them.
 | **Fast File Transfer** | Parallel copy / move for folders of many smaller files, with a real Auto-tune that measures the best worker count on your disk; same "is it finished?" protection and verified moves |
 | **Quick Switcher** | Global keyboard shortcuts — jump to a screen, launch an app/script, open the file picker, or run a terminal command |
 | **Minesweeper** | Classic Minesweeper: 3 difficulties, long-press to flag, tap a number to chord, timer and best times |
+| **Infinite Mines** | Raw demo of an endless minesweeper: pan and zoom a map that is generated as you explore. Stepping on a mine leaves a crater with a scorched zone that heals as you solve the cells around it; solved 9x9 sectors earn points that pay for instant repairs |
 | **Chess** | Full-rules chess (castling, en passant, promotion, check/mate/stalemate) vs. a built-in AI at 3 levels or two-player pass-and-play, with undo |
 | **Learn** | Import an AI-written course (JSON) and study it Duolingo-style |
 | **Cover / Privacy Boxes** | Desktop-only privacy boxes, blackout and hide-from-recording with global hotkeys |
@@ -177,6 +178,7 @@ srboli/
 │   ├── reminders_core.py        # Reminder scheduling (shared with the daemon)
 │   ├── daemon.py / daemon_ipc.py / autostart.py  # Background service
 │   ├── chess_core.py            # Chess rules + AI
+│   ├── infinite_mines_core.py   # Infinite Mines: seeded endless world, blasts, healing (no dependencies)
 │   ├── math_steps_core.py       # Math Steps: parser, step checker, hints, linear + quadratic solver (no dependencies)
 │   ├── learn_core.py            # Course engine for Learn
 │   ├── outline_core.py / slides_core.py / table_core.py  # Full Editor

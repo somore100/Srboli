@@ -41,7 +41,7 @@ d.manager = MagicMock()
 assert Window.width >= 700   # tests assume a desktop-sized window
 heads = [w.text for w in reversed(d._grid.children) if isinstance(w, Button) and w.text.startswith("[")]
 assert heads[0].startswith("[-]  Writing  (4)") and len(heads) == 6, heads
-L = [t for t in tool_labels(d) if not t[:2] in ("R:", "P:")]; assert len(L) == 30, len(L)
+L = [t for t in tool_labels(d) if not t[:2] in ("R:", "P:")]; assert len(L) == 31, len(L)
 
 
 # using a tool puts it in Recent after coming back
@@ -55,7 +55,7 @@ print("recent row OK")
 # collapse a section: its tools disappear, header flips, state survives a new Dashboard
 d._toggle_section("fun")
 heads = [w.text for w in reversed(d._grid.children) if isinstance(w, Button) and w.text.startswith("[")]
-assert [h for h in heads if "Fun" in h] == ["[+]  Fun  (5)"], heads
+assert [h for h in heads if "Fun" in h] == ["[+]  Fun  (6)"], heads
 assert "Minesweeper" not in tool_labels(d)
 d2 = Dashboard(name="d2"); d2.manager = MagicMock()
 assert "Minesweeper" not in tool_labels(d2) and "R:Chess" in tool_labels(d2)

@@ -36,6 +36,7 @@ SCREENS = [
     ("fast_transfer",  "screens.fast_transfer_screen",    "FastTransferScreen"),
     ("quickswitcher",  "screens.quickswitcher_screen",    "QuickSwitcherScreen"),
     ("minesweeper",    "screens.minesweeper_screen",      "MinesweeperScreen"),
+    ("infinite_mines", "screens.infinite_mines_screen",   "InfiniteMinesScreen"),
     ("chess",          "screens.chess_screen",            "ChessScreen"),
     ("touch_test",     "screens.touch_test_screen",       "TouchTestScreen"),
     ("converter",      "screens.file_converter_screen",   "FileConverterScreen"),
@@ -69,6 +70,7 @@ LABELS = {
     "fast_transfer":  "Fast File Transfer",
     "quickswitcher":  "Quick Switcher",
     "minesweeper":    "Minesweeper",
+    "infinite_mines": "Infinite Mines",
     "chess":          "Chess",
     "touch_test":     "Touch Test",
     "converter":      "File Converter",
@@ -106,6 +108,7 @@ ALIASES = {
     "shortcut":       ["desktop", "launcher", "icon", ".desktop", "linux"],
     "touch_test":     ["tap", "screen", "multitouch"],
     "minesweeper":    ["game", "mines"],
+    "infinite_mines": ["game", "mines", "minesweeper", "endless", "sapper"],
     "chess":          ["game", "board"],
     "spin":           ["wheel", "random", "names", "game"],
     "backrooms":      ["levels", "wiki", "game"],
@@ -132,7 +135,7 @@ GROUPS = [
      ["system_stats", "reminders", "loading_timer", "quickswitcher", "cover",
       "shortcut", "touch_test"]),
     ("fun", "Fun",
-     ["minesweeper", "chess", "spin", "backrooms", "unhelpful_calc"]),
+     ["minesweeper", "infinite_mines", "chess", "spin", "backrooms", "unhelpful_calc"]),
 ]
 
 
