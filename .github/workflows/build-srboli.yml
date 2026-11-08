@@ -216,6 +216,22 @@ jobs:
           done
           exit 1
 
+      - name: Re-sign the APK with the stored key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_DEBUG_KEYSTORE_B64 }}
+        run: |
+          # Gradle does not use ~/.android/debug.keystore here: the CI log showed
+          # the APK carrying a different, random certificate on every build, so
+          # phones refused every update. Sign the finished APK ourselves.
+          APKSIGNER=$(ls ~/.buildozer/android/platform/android-sdk/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)
+          APK=$(ls bin/*.apk | head -1)
+          if [ -z "$APKSIGNER" ] || [ ! -f ~/.android/debug.keystore ] || [ -z "$KEYSTORE_B64" ]; then
+            echo "::warning::not re-signing (apksigner, keystore or secret missing)"; exit 0
+          fi
+          "$APKSIGNER" sign --ks ~/.android/debug.keystore --ks-pass pass:android \
+            --key-pass pass:android --ks-key-alias androiddebugkey "$APK"
+          echo "re-signed $APK"
+
       - name: Verify the APK is signed with the stored key
         run: |
           # An APK signed with any other key cannot be installed over the one
