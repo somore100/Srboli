@@ -5,6 +5,7 @@
 # = the other one of Dig/Flag, drag = pan, pinch or wheel = zoom.
 import math
 import os
+import time
 
 from kivy.clock import Clock
 from kivy.core.text import Label as CoreLabel
@@ -36,7 +37,8 @@ NUM_C = {1: (0.45, 0.70, 1.0, 1), 2: (0.40, 0.85, 0.50, 1), 3: (1.0, 0.45, 0.45,
          4: (0.70, 0.55, 1.0, 1), 5: (1.0, 0.65, 0.30, 1), 6: (0.35, 0.90, 0.90, 1),
          7: (0.90, 0.90, 0.90, 1), 8: (0.60, 0.60, 0.60, 1)}
 MIN_ZOOM, MAX_ZOOM = 0.45, 2.6
-LONG_PRESS = 0.45
+LONG_PRESS = 0.38                       # the same hold as the normal Minesweeper
+GHOST_WINDOW = 0.6
 HELP = ("Tap to dig. Brown = scorched (can't be touched), pale = fallout. "
         "Solve the cells around brown to heal it.")
 
@@ -179,9 +181,11 @@ class MapView(Widget):
         if touch.is_mouse_scrolling:
             self.zoom_by(1.15 if touch.button == "scrollup" else 1 / 1.15, touch.pos)
             return True
+        if self._is_ghost(touch):
+            return True
         touch.grab(self)
         self._touches[touch.uid] = touch
-        touch.ud.update(o=touch.pos, moved=False, long=False)
+        touch.ud.update(o=touch.pos, moved=False, long=False, t0=time.monotonic())
         if len(self._touches) > 1:
             for t in self._touches.values():
                 t.ud["moved"] = True
@@ -230,6 +234,21 @@ class MapView(Widget):
         if touch.uid in self._touches and not touch.ud["moved"]:
             touch.ud["long"] = True
             self.act(touch.pos, "flag" if self.mode == "dig" else "dig")
+
+    def _is_ghost(self, touch):
+        """Android delivers one finger twice: as a finger touch and as the
+        mouse event made from it, at the same spot. Treated as two fingers
+        that looked like a pinch: no tap, no pan, no long-press. A second touch
+        from the OTHER input device, on top of a live one, is that duplicate.
+        (A real second finger comes from the same device, or lands further
+        away.)"""
+        now = time.monotonic()
+        for t in self._touches.values():
+            if (getattr(t, "device", "") != getattr(touch, "device", "")
+                    and now - t.ud.get("t0", 0) < GHOST_WINDOW
+                    and math.hypot(t.x - touch.x, t.y - touch.y) < dp(12)):
+                return True
+        return False
 
     @staticmethod
     def _cancel(touch):

@@ -169,6 +169,8 @@ assert r.craters == w.craters and r.scorch == w.scorch and r.ash == w.ash
 assert r.mended == w.mended and r.solved == w.solved
 assert (r.points, r.dug, r.blasts) == (w.points, w.dug, w.blasts)
 assert [r.view(x, y) for x, y in grid[:500]] == [w.view(x, y) for x, y in grid[:500]]
+for big in (2017031098, 2 ** 31 - 1, 10 ** 9, 12345):                # seeds are random up to 2**31: all must survive a save
+    assert im.World.from_dict(json.loads(json.dumps(im.World(seed=big).to_dict()))).seed == big
 for bad in (None, [], "x", {}, {"v": 2}, {"v": 1, "seed": "abc"}):
     assert im.World.from_dict(bad) is None, bad                      # unusable saves are rejected
 g = im.World.from_dict({"v": 1, "seed": 3, "revealed": [1, 2, 3], "flags": "no", "craters": [1, "a", 2, 3],

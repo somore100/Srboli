@@ -56,6 +56,58 @@ w.points = 9
 m.act(m.pos_of(sx, sy), "repair"); assert "Repaired" in s.msg.text and (sx, sy) not in w.scorch
 m.zoom = 0.5; m.cx, m.cy = 0.5, 0.5; m.redraw()           # zoomed far out still draws
 
+# touch: one finger arrives twice on Android (finger + mouse). It must stay ONE
+# finger: a tap acts once, a drag pans, a hold flags - never a phantom pinch.
+import time
+class FT:
+    n = 0
+    def __init__(self, dev, x, y):
+        FT.n += 1
+        self.uid, self.device, self.x, self.y = FT.n, dev, x, y
+        self.pos, self.dx, self.dy = (x, y), 0, 0
+        self.is_mouse_scrolling, self.ud, self.grab_current = False, {}, None
+    def grab(self, w): self.grab_current = w
+    def ungrab(self, w): self.grab_current = None
+    def go(self, x, y):
+        self.dx, self.dy, self.x, self.y, self.pos = x - self.x, y - self.y, x, y, (x, y)
+m.zoom = 1.0; m.cx = m.cy = 40.5; m.mode = "flag"            # look at cell 40, far from the opened start
+px, py = m.pos_of(40, 40)
+f, g = FT("sdl", px, py), FT("mouse", px, py)
+m.on_touch_down(f); m.on_touch_down(g)
+assert len(m._touches) == 1 and m._pinch is None            # the ghost is not a second finger
+m.on_touch_up(g); m.on_touch_up(f)
+assert s.world.view(40, 40) == im.FLAG                      # flagged once, not toggled back off
+f, g = FT("sdl", px, py), FT("mouse", px, py)
+m.on_touch_down(g); m.on_touch_down(f)                      # the ghost may also come first
+m.on_touch_up(f); m.on_touch_up(g)
+assert s.world.view(40, 40) == im.HIDDEN                    # a second real tap toggles it off
+m.mode = "dig"
+f, g = FT("sdl", px, py), FT("mouse", px, py)
+m.on_touch_down(f); m.on_touch_down(g)
+f.go(px + 120, py + 60); g.go(px + 120, py + 60)
+m.on_touch_move(f); m.on_touch_move(g)
+assert m.cx < 40.5 and m.cy < 40.5                            # dragging pans (the world follows the finger)
+m.on_touch_up(g); m.on_touch_up(f)
+assert s.world.view(40, 40) == im.HIDDEN                    # and a drag is not a tap
+m.cx = m.cy = 41.5
+px, py = m.pos_of(41, 41)
+f, g = FT("sdl", px, py), FT("mouse", px, py)
+m.on_touch_down(f); m.on_touch_down(g)
+assert f.ud.get("lp") is not None                           # the hold timer is running
+m._long(f)                                                  # (what the timer calls; a tick would re-lay out the map)
+m.on_touch_up(g); m.on_touch_up(f)
+assert s.world.view(41, 41) == im.FLAG                      # holding in Dig mode flags
+m.cx = m.cy = 41.5
+a, b2 = FT("sdl", m.center_x - 60, m.center_y), FT("sdl", m.center_x + 60, m.center_y)
+z0 = m.zoom
+m.on_touch_down(a); m.on_touch_down(b2)
+assert len(m._touches) == 2                                 # two real fingers still pinch
+a.go(m.center_x - 120, m.center_y); b2.go(m.center_x + 120, m.center_y)
+m.on_touch_move(a); m.on_touch_move(b2)
+assert m.zoom > z0
+m.on_touch_up(a); m.on_touch_up(b2)
+m.zoom = 1.0; m.go_home(); m.redraw(); s.world.toggle_flag(41, 41)
+
 # saving: leaving writes the file and a second screen picks the same world up
 s.on_leave(); assert os.path.exists(tmp)
 t = ims.InfiniteMinesScreen(name="j"); tick()

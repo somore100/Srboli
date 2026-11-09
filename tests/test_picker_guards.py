@@ -46,6 +46,24 @@ b2 = Button(text="U", size_hint=(None, None), size=(200, 100), pos=(100, 300))
 hits = []; b2.bind(on_release=lambda *a: hits.append(1)); Window.add_widget(b2); tick(5)
 b.dispatch("on_touch_down", type("T", (), {"pos": b.center, "is_mouse_scrolling": False, "grab": lambda *a: None, "ud": {}, "grab_current": None, "button": "left", "profile": []})()) if False else None
 
+# the ghost can trail the finger by 100-400 ms (ScrollView holds the real touch
+# back for scroll_timeout): the other device within 0.6 s is still a ghost
+assert tg.is_ghost(0.10, "sdl", "sdl") and tg.is_ghost(0.30, "mouse", "sdl")
+assert not tg.is_ghost(0.30, "sdl", "sdl") and not tg.is_ghost(0.70, "mouse", "sdl")
+presses.clear(); releases.clear()
+def tap_late_ghost(i):
+    fx, fy = b.center_x / Window.width, b.center_y / Window.height
+    Window.dispatch("on_mouse_down", b.center_x, Window.height - b.center_y, "left", [])
+    tick(); time.sleep(0.3)
+    SDL2MotionEventProvider.q.appendleft(("fingerdown", 200 + i, fx, 1 - fy, 0.5))
+    tick()
+    Window.dispatch("on_mouse_up", b.center_x, Window.height - b.center_y, "left", [])
+    SDL2MotionEventProvider.q.appendleft(("fingerup", 200 + i, fx, 1 - fy, 0.5))
+    tick()
+for i in range(4): tap_late_ghost(i); time.sleep(0.7)
+print("LATE ghost:    4 taps ->", len(presses), "presses")
+assert len(presses) == 4, len(presses)
+
 # ---- picker: stay inside the allowed roots, revert from bad folders ---------------
 root = tempfile.mkdtemp(); sub = os.path.join(root, "sub"); os.mkdir(sub)
 pb._is_android = lambda: True

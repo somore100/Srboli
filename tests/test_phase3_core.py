@@ -10,7 +10,9 @@ assert P.needed("gallery", False, False, False, asked) is None            # not 
 assert P.needed("gallery", True, False, False, asked) == "storage"
 assert P.needed("gallery", True, True, False, asked) is None              # already granted
 assert P.needed("reminders", True, True, False, asked) == "notify"
-assert P.needed("music", True, False, False, asked) is None               # needs nothing
+assert P.needed("music", True, False, False, asked) == "storage"          # Music folder reads empty without it
+assert P.needed("music", True, True, False, asked) is None
+assert P.needed("morse", True, False, False, asked) is None               # needs nothing
 assert P.needed("gallery", True, False, False, {"storage"}) is None       # never twice
 
 assert W.valid({"width": 900, "height": 640, "left": 10, "top": 20}) == \

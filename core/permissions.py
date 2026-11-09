@@ -2,7 +2,11 @@
 # The app no longer asks for everything at startup: a tool asks the first time
 # it is opened, with a one-line reason. Kivy-free, so it is unit-testable.
 
-STORAGE_ROUTES = {"gallery", "file_sorter", "fast_transfer"}
+# Every tool that browses the phone's shared storage. Without "all files
+# access" Android lists folders such as Music as EMPTY (no error), which looked
+# like "no files" in the Music Player.
+STORAGE_ROUTES = {"gallery", "file_sorter", "fast_transfer", "music",
+                  "converter", "metadata", "image_text"}
 NOTIFY_ROUTES = {"reminders"}
 
 REASONS = {

@@ -244,18 +244,6 @@ class SrboliApp(App):
         except Exception as e:
             print(f"permission prompt skipped: {e}")
 
-    def _first_run_setup(self, dt):
-        """First launch: choose which tools the Dashboard shows (Settings can
-        change it later; hidden tools stay reachable via the Quick Switcher)."""
-        try:
-            if load_settings().get("onboarded"):
-                return
-            from screens.onboarding import open_onboarding
-            open_onboarding(on_done=lambda: self.root.get_screen(
-                "dashboard").on_enter())
-        except Exception as e:
-            print(f"first-run setup skipped: {e}")
-
     def on_stop(self):
         try:
             from core import window_state
@@ -387,8 +375,6 @@ class SrboliApp(App):
         install_keys(Window, sm,
                      focus_search=lambda: sm.get_screen("dashboard").focus_search(),
                      on_back_at_home=self._back_at_home)
-        from kivy.clock import Clock as _OC
-        _OC.schedule_once(self._first_run_setup, 0.5)
 
         if _bl:
             _bl.log("App.build end (dashboard ready)")

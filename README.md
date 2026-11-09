@@ -194,7 +194,7 @@ srboli/
 │   ├── registry.py              # Single source of truth for the screen list
 │   ├── dashboard_screen.py      # Tile dashboard
 │   ├── scaffold.py              # ToolScreen: shared top bar + content width
-│   ├── settings_screen.py / data_location.py / onboarding.py
+│   ├── settings_screen.py / data_location.py
 │   ├── dialogs.py               # Shared confirm / message popups
 │   └── *_screen.py              # One file per tool (see Features)
 └── tests/                       # Run with pytest; each test_*.py also runs on its own

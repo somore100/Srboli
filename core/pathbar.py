@@ -298,8 +298,19 @@ class PathBar(BoxLayout):
         if not self._input.focus:
             self._input.text = p
         state = folder_state(p)
+        empty = "Empty folder"
+        if state == "empty" and _is_android():
+            try:
+                from core.android_storage import has_full_storage_access
+                if not has_full_storage_access():
+                    # Android shows folders like Music as empty without it
+                    empty = ("Looks empty - Android hides other apps' files "
+                             "until Srboli gets \"all files access\" "
+                             "(Settings > Apps > Srboli > Permissions).")
+            except Exception:
+                pass
         self._status.text = {
-            "ok": "", "empty": "Empty folder",
+            "ok": "", "empty": empty,
             "denied": "Can't read this folder (no permission?)",
             "missing": "Folder not found"}.get(state, "")
 
@@ -314,25 +325,30 @@ def install():
     _Orig = fc.FileChooserIconView
 
     class FileChooserIconView(_Orig):
-        def _ghost(self, kind):
-            """True if this entry event repeats the previous one within
-            150 ms - one tap arriving twice. Android only (on desktop a quick
-            double-click on a file is a real gesture)."""
+        def _ghost(self, kind, touch=None):
+            """True if this entry event repeats the previous one - one tap
+            arriving twice (as a finger touch and as the mouse event Android
+            makes from it). A repeat from the OTHER input device is a ghost
+            for up to 0.6 s, since the list scrolls and holds the real touch
+            back for scroll_timeout; a repeat from the same device only within
+            0.15 s. Android only (on desktop a quick double-click is real)."""
             if not _is_android():
                 return False
             import time as _t
+            from core import tap_guard
             now = _t.monotonic()
-            last = getattr(self, "_ghost_" + kind, 0.0)
-            setattr(self, "_ghost_" + kind, now)
-            return now - last < 0.15
+            dev = getattr(touch, "device", "")
+            last = getattr(self, "_ghost_" + kind, (0.0, ""))
+            setattr(self, "_ghost_" + kind, (now, dev))
+            return tap_guard.is_ghost(now - last[0], dev, last[1])
 
         def entry_touched(self, entry, touch):
-            if self._ghost("touched"):
+            if self._ghost("touched", touch):
                 return False
             return super().entry_touched(entry, touch)
 
         def entry_released(self, entry, touch):
-            if self._ghost("released"):
+            if self._ghost("released", touch):
                 return False
             # Folder pickers (dirselect=True): stock behaviour is tap =
             # select, DOUBLE tap = open - on a phone that meant a dead second

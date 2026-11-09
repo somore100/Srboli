@@ -31,6 +31,21 @@ except Exception:
     HAS_PYGAME = False
 
 AUDIO_EXTS     = (".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aac")
+REPEAT_ORDER = ("all", "one", "off")
+REPEAT_TEXT = {"all": "Repeat: All", "one": "Repeat: One", "off": "Repeat: Off"}
+
+
+def next_index(mode, index, count):
+    """Which track follows when `index` ends, or None to stop."""
+    if not count or index is None:
+        return None
+    if mode == "one":
+        return index
+    if mode == "off":
+        return index + 1 if index + 1 < count else None
+    return (index + 1) % count
+
+
 def _playlists_dir():
     # Android: "~" isn't writable (PermissionError at import time), so use
     # the app's own data folder there. Desktop keeps the old location so
@@ -101,7 +116,7 @@ class MusicScreen(Screen):
         self.current_index = None
         self.playing       = False
         self.paused        = False
-        self.autonext      = True
+        self.repeat        = "all"  # "all" loops the list, "one" repeats a track, "off" stops at the end
         self._current_start_pos = 0.0
         self._durations    = {}
         self._update_ev    = None
@@ -201,10 +216,10 @@ class MusicScreen(Screen):
             b = Button(text=txt, font_size=sp(12))
             b.bind(on_release=cb)
             ctrl.add_widget(b)
-        self.autonext_btn = Button(text="AutoNext: ON", font_size=sp(11),
-                                   size_hint_x=None, width=dp(110))
-        self.autonext_btn.bind(on_release=self._toggle_autonext)
-        ctrl.add_widget(self.autonext_btn)
+        self.repeat_btn = Button(text=REPEAT_TEXT[self.repeat], font_size=sp(11),
+                                 size_hint_x=None, width=dp(96))
+        self.repeat_btn.bind(on_release=self._cycle_repeat)
+        ctrl.add_widget(self.repeat_btn)
         layout.add_widget(ctrl)
 
         tab.add_widget(layout)
@@ -498,11 +513,12 @@ class MusicScreen(Screen):
             busy = False
 
         if self.playing and not busy and not self.paused:
-            if self.autonext and self.playlist:
-                self.current_index = (self.current_index + 1) % len(self.playlist)
-                self._play_current()
-            else:
+            nxt = next_index(self.repeat, self.current_index, len(self.playlist))
+            if nxt is None:
                 self._stop()
+            else:
+                self.current_index = nxt
+                self._play_current()
             return
 
         try:
@@ -559,10 +575,10 @@ class MusicScreen(Screen):
         self.current_index = ((self.current_index or 0) + 1) % len(self.playlist)
         self._play_current()
 
-    def _toggle_autonext(self, *a):
-        self.autonext = not self.autonext
-        self.autonext_btn.text = ("AutoNext: ON" if self.autonext
-                                  else "AutoNext: OFF")
+    def _cycle_repeat(self, *a):
+        self.repeat = REPEAT_ORDER[(REPEAT_ORDER.index(self.repeat) + 1)
+                                   % len(REPEAT_ORDER)]
+        self.repeat_btn.text = REPEAT_TEXT[self.repeat]
 
     def _get_duration(self, path):
         if path in self._durations:
