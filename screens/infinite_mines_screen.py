@@ -225,6 +225,8 @@ class MapView(Widget):
         return True
 
     def _long(self, touch):
+        if self.mode == "repair":
+            return                      # repair is a paid action: never by accident
         if touch.uid in self._touches and not touch.ud["moved"]:
             touch.ud["long"] = True
             self.act(touch.pos, "flag" if self.mode == "dig" else "dig")
@@ -309,9 +311,10 @@ class InfiniteMinesScreen(ToolScreen):
             print(f"Infinite Mines: could not save: {e}")
 
     def _later_save(self):
-        if self._save_ev is not None:
-            self._save_ev.cancel()
-        self._save_ev = Clock.schedule_once(self._save, 2.0)
+        # One save at most 2 s after the first unsaved action. Restarting the
+        # timer on every action would starve it during continuous play.
+        if self._save_ev is None:
+            self._save_ev = Clock.schedule_once(self._save, 2.0)
 
     def on_leave(self, *a):
         self._save()

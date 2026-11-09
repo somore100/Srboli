@@ -340,8 +340,10 @@ class World:
             v = d.get(key, default)
             return v if ok(v) and v >= 0 else default
 
+        if not ok(d.get("seed")):
+            return None                 # without the seed the cells would not match the world
         try:
-            w = cls(seed=d.get("seed"), density=d.get("density", DEFAULT_DENSITY))
+            w = cls(seed=d["seed"], density=d.get("density", DEFAULT_DENSITY))
         except (TypeError, ValueError):
             return None
         for c in pairs("revealed"):

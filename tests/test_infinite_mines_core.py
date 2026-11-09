@@ -170,7 +170,7 @@ assert r.mended == w.mended and r.solved == w.solved
 assert (r.points, r.dug, r.blasts) == (w.points, w.dug, w.blasts)
 assert [r.view(x, y) for x, y in grid[:500]] == [w.view(x, y) for x, y in grid[:500]]
 for bad in (None, [], "x", {}, {"v": 2}, {"v": 1, "seed": "abc"}):
-    assert im.World.from_dict(bad) is None or isinstance(im.World.from_dict(bad), im.World)
+    assert im.World.from_dict(bad) is None, bad                      # unusable saves are rejected
 g = im.World.from_dict({"v": 1, "seed": 3, "revealed": [1, 2, 3], "flags": "no", "craters": [1, "a", 2, 3],
                         "points": -5, "dug": True, "scorch": [10 ** 12, 1]})
 assert g is not None and g.points == 0 and g.dug == 0 and not g.scorch and (1, 2) in g.revealed
