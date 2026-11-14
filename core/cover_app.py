@@ -203,15 +203,17 @@ class ControlServer:
     def _one(self, conn):
         try:
             conn.settimeout(2.0)
+            challenge = cc.new_challenge()
+            conn.sendall(f"challenge {challenge}\n".encode("ascii"))
             data = b""
             while b"\n" not in data and len(data) < 512:
                 chunk = conn.recv(256)
                 if not chunk:
                     break
                 data += chunk
-            token, cmd, arg = cc.parse_control_line(
+            mac, cmd, arg = cc.parse_control_line(
                 data.decode("utf-8", "replace"))
-            if cmd is None or not cc.token_ok(token):
+            if cmd is None or not cc.mac_ok(challenge, mac, cmd, arg):
                 reply = "err auth"
             elif cmd == "ping":
                 reply = f"ok {os.getpid()}"

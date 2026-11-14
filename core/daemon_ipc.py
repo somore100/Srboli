@@ -34,7 +34,12 @@ _CONNECT_TIMEOUT = 2.0     # seconds to wait for a response to one request
 
 
 def _daemon_dir():
-    return app_data.subdir(_DAEMON_DIR_NAME)
+    path = app_data.subdir(_DAEMON_DIR_NAME)
+    try:
+        os.chmod(path, 0o700)       # the socket and the key live here
+    except OSError:
+        pass                        # not POSIX (Windows) or not ours
+    return path
 
 
 def _address_and_family():
@@ -55,7 +60,21 @@ def get_authkey():
     except OSError:
         pass
     key = os.urandom(32)
-    with open(path, "wb") as f:
+    # Created 0600 from the first byte (writing, then chmod-ing, left a window
+    # where other users could read it). O_EXCL: if another process won the
+    # race, use its key instead of overwriting it.
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        try:
+            with open(path, "rb") as f:
+                other = f.read()
+            if other:
+                return other
+        except OSError:
+            pass
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "wb") as f:
         f.write(key)
     try:
         os.chmod(path, 0o600)

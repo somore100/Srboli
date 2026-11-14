@@ -255,27 +255,61 @@ def new_box_id(cfg):
 
 
 # ── control channel ─────────────────────────────────────────────────────
-def _token():
+# The key itself NEVER crosses the socket: another local program can grab the
+# fixed port before Cover starts, and used to receive the key from the first
+# client that connected. Now the server sends a random challenge and the client
+# answers with an HMAC of (challenge, command), which proves it knows the key
+# without revealing it and cannot be replayed for another challenge or command.
+def _key():
     from core.daemon_ipc import get_authkey
-    return get_authkey().hex()
+    return get_authkey()
+
+
+def new_challenge():
+    import secrets
+    return secrets.token_hex(16)
+
+
+def make_mac(challenge, cmd, arg="", key=None):
+    import hashlib
+    import hmac
+    msg = f"{challenge} {cmd} {arg}".encode("utf-8")
+    return hmac.new(key if key is not None else _key(), msg,
+                    hashlib.sha256).hexdigest()
+
+
+def mac_ok(challenge, given, cmd, arg="", key=None):
+    import hmac
+    try:
+        return hmac.compare_digest(str(given),
+                                   make_mac(challenge, cmd, arg, key))
+    except Exception:
+        return False
+
+
+def _read_line(s, limit=512):
+    data = b""
+    while not data.endswith(b"\n") and len(data) < limit:
+        chunk = s.recv(256)
+        if not chunk:
+            break
+        data += chunk
+    return data.decode("utf-8", "replace").strip()
 
 
 def send_cover_command(cmd, arg="", timeout=1.5):
     """Send one command to the running cover process. Returns the reply
     string ('ok', 'ok <info>', 'err <why>') or None if nothing answered."""
-    line = f"{_token()} {cmd} {arg}".rstrip() + "\n"
     try:
         with socket.create_connection((CONTROL_HOST, CONTROL_PORT),
                                       timeout=timeout) as s:
             s.settimeout(timeout)
+            hello = _read_line(s, 128).split()
+            if len(hello) != 2 or hello[0] != "challenge":
+                return None                 # not a Cover process
+            line = f"{make_mac(hello[1], cmd, arg)} {cmd} {arg}".rstrip() + "\n"
             s.sendall(line.encode("utf-8"))
-            data = b""
-            while not data.endswith(b"\n"):
-                chunk = s.recv(256)
-                if not chunk:
-                    break
-                data += chunk
-            return data.decode("utf-8", "replace").strip() or None
+            return _read_line(s) or None
     except OSError:
         return None
 
@@ -285,19 +319,13 @@ def is_running():
 
 
 def parse_control_line(line):
-    """'<token> cmd arg...' -> (token, cmd, arg). Tolerates junk."""
+    """'<mac> cmd arg...' -> (mac, cmd, arg). Tolerates junk."""
     parts = (line or "").strip().split(None, 2)
     if len(parts) < 2:
         return None, None, ""
     return parts[0], parts[1].lower(), parts[2] if len(parts) > 2 else ""
 
 
-def token_ok(given):
-    import hmac
-    try:
-        return hmac.compare_digest(str(given), _token())
-    except Exception:
-        return False
 
 
 # ── launching ───────────────────────────────────────────────────────────

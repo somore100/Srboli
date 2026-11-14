@@ -26,7 +26,7 @@ def _escape_powershell(s):
 
 
 def _linux_command(title, message):
-    return ["notify-send", "--app-name=Srboli", title, message]
+    return ["notify-send", "--app-name=Srboli", "--", title, message]   # "--": a title starting with "-" is not an option
 
 
 def _macos_command(title, message):

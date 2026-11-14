@@ -154,6 +154,35 @@ else:
     try: cc.convert_file(big, out, "flac", {}, cancel=ev); check("cancel", False)
     except cc.ConvertError as e: check("cancel works", "Cancel" in str(e))
 
+# ---- security: an untrusted .md must not turn into a page that runs script
+evil = os.path.join(tmp, "evil.md")
+open(evil, "w", encoding="utf-8").write(
+    '![logo](x" onerror="alert(1))\n\n[site](javascript:alert(1))\n\n'
+    '[tab](java\tscript:alert(1))\n\n[data](data:text/html;base64,PHNjcmlwdD4=)\n\n'
+    '[ok](https://example.com/a?b=1&c=2)\n\n[rel](notes/page.html)\n\n'
+    '![pic](data:image/png;base64,AAAA)\n\n<script>alert(1)</script>\n')
+page = open(conv(evil, "html"), encoding="utf-8").read()
+low = page.lower().replace("&quot;", "")
+check("html: no javascript: link", "javascript:" not in low and 'href="java' not in low)
+check("html: no data:text link", "data:text" not in low)
+check("html: no attribute breakout", '" onerror' not in page and 'onerror="' not in page)
+check("html: no raw script tag", "<script>" not in page)
+check("html: https link kept", 'href="https://example.com/a?b=1&amp;c=2"' in page)
+check("html: relative link kept", 'href="notes/page.html"' in page)
+check("html: image data URI kept", 'src="data:image/png;base64,AAAA"' in page)
+check("safe_href schemes", [cc.safe_href(u) for u in ("JaVaScRiPt:x", "vbscript:x", " data:text/html,x", "ftp://h")] == ["#"] * 4)
+check("safe_href image/mailto", cc.safe_href("data:image/svg+xml,x", True) == "#" and cc.safe_href("mailto:a@b.c") == "mailto:a@b.c" and cc.safe_href("mailto:a@b.c", True) == "#")
+
+# ---- security: a tiny .docx that expands to a huge document.xml is refused
+bomb = os.path.join(tmp, "bomb.docx")
+with zipfile.ZipFile(bomb, "w", zipfile.ZIP_DEFLATED) as z:
+    z.writestr("word/document.xml", b"<a>" + b"x" * (cc.MAX_DOCX_XML + 1024) + b"</a>")
+check("docx bomb is small on disk", os.path.getsize(bomb) < 200000)
+try:
+    conv(bomb, "txt"); check("docx bomb refused", False)
+except cc.ConvertError as e:
+    check("docx bomb refused", "too large" in str(e), str(e))
+
 # android availability message
 os.environ["ANDROID_ARGUMENT"] = "1"
 check("android: audio unavailable", "Android" in (cc.unavailable_reason("a.mp3", "wav") or ""))

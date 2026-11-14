@@ -59,8 +59,14 @@ check("parse ok", cc.parse_control_line("tok toggle\n"), ("tok", "toggle", ""))
 check("parse arg", cc.parse_control_line("tok toggle_box b2"),
       ("tok", "toggle_box", "b2"))
 check("parse junk", cc.parse_control_line("x"), (None, None, ""))
-check("token good", cc.token_ok(cc._token()), True)
-check("token bad", cc.token_ok("nope"), False)
+K = b"k" * 32
+m = cc.make_mac("c1", "toggle", "", K)
+check("mac good", cc.mac_ok("c1", m, "toggle", "", K), True)
+check("mac bad", cc.mac_ok("c1", "nope", "toggle", "", K), False)
+check("mac other challenge", cc.mac_ok("c2", m, "toggle", "", K), False)       # no replay
+check("mac other command", cc.mac_ok("c1", m, "quit", "", K), False)
+check("mac other key", cc.mac_ok("c1", m, "toggle", "", b"z" * 32), False)
+check("challenges differ", cc.new_challenge() != cc.new_challenge(), True)
 check("capture exclusion only on nt", cc.capture_exclusion_supported(),
       os.name == "nt")
 

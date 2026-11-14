@@ -582,10 +582,19 @@ def _html_to_blocks(text):
 _W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 
 
+MAX_DOCX_XML = 50 * 1024 * 1024      # a 300 KB .docx can expand to over 600 MB
+
+
 def _docx_to_blocks(path):
     try:
         with zipfile.ZipFile(path) as z:
-            xml = z.read("word/document.xml")
+            info = z.getinfo("word/document.xml")
+            if info.file_size > MAX_DOCX_XML:
+                raise ConvertError("This .docx is too large to open safely.")
+            with z.open(info) as f:
+                xml = f.read(MAX_DOCX_XML + 1)
+            if len(xml) > MAX_DOCX_XML:
+                raise ConvertError("This .docx is too large to open safely.")
     except (zipfile.BadZipFile, KeyError):
         raise ConvertError("Not a valid .docx file.")
     root = ET.fromstring(xml)
@@ -672,14 +681,39 @@ def _docx_par(p):
 
 # ── documents: writers (blocks ->) ──────────────────────────────────────────
 def _esc(s):
-    return _html.escape(s, quote=False)
+    # quote=True: the result is also used inside "..." attributes
+    return _html.escape(s, quote=True)
+
+
+_SCHEME = re.compile(r"^[a-z][a-z0-9+.\-]*:")
+_IMG_DATA = re.compile(r"^data:image/(png|jpe?g|gif|webp);", re.I)
+
+
+def safe_href(url, image=False):
+    """`url` made safe to put in href= / src=: http(s) and mailto links,
+    #anchors and relative paths pass; javascript:, vbscript:, data: (images
+    may be data:image/png etc.) and every other scheme become '#'. Browsers
+    ignore tabs, newlines and spaces inside a scheme ("java\tscript:"), so
+    those are removed before looking. Returns text ready for an attribute."""
+    raw = _html.unescape(url or "").strip()
+    probe = "".join(c for c in raw if ord(c) > 32 and ord(c) != 127).lower()
+    m = _SCHEME.match(probe)
+    if m:
+        ok = m.group(0) in ("http:", "https:") or (
+            m.group(0) == "mailto:" and not image)
+        if not ok and not (image and _IMG_DATA.match(probe)):
+            return "#"
+    return _html.escape(raw, quote=True)
 
 
 def inline_to_html(s):
     s = _esc(s)
     s = re.sub(r"`([^`]+)`", r"<code>\1</code>", s)
-    s = re.sub(r"!\[([^\]]*)\]\(([^)]*)\)", r'<img alt="\1" src="\2">', s)
-    s = re.sub(r"\[([^\]]+)\]\(([^)]*)\)", r'<a href="\2">\1</a>', s)
+    s = re.sub(r"!\[([^\]]*)\]\(([^)]*)\)",
+               lambda m: f'<img alt="{m.group(1)}" '
+                         f'src="{safe_href(m.group(2), True)}">', s)
+    s = re.sub(r"\[([^\]]+)\]\(([^)]*)\)",
+               lambda m: f'<a href="{safe_href(m.group(2))}">{m.group(1)}</a>', s)
     s = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", s, flags=re.S)
     s = re.sub(r"__(.+?)__", r"<strong>\1</strong>", s, flags=re.S)
     s = re.sub(r"(?<![\w*])\*(?!\s)(.+?)(?<!\s)\*(?![\w*])", r"<em>\1</em>", s,
@@ -742,7 +776,7 @@ def blocks_to_html(blocks, title="Document"):
                            f"<tbody>{rows}</tbody></table>")
             elif t == "image":
                 out.append(f'<img alt="{_esc(b.get("alt", ""))}" '
-                           f'src="{_esc(b.get("src", b.get("url", "")))}">')
+                           f'src="{safe_href(b.get("src", b.get("url", "")), True)}">')
         return "\n".join(out)
     css = ("body{font-family:system-ui,sans-serif;max-width:46em;margin:2em "
            "auto;padding:0 1em;line-height:1.6;color:#222;background:#fff}"
