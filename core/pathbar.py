@@ -18,6 +18,7 @@ from kivy.metrics import dp, sp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
+from kivy.uix.popup import Popup
 from kivy.uix.textinput import TextInput
 
 from core.android_storage import shared_storage_root
@@ -315,6 +316,89 @@ class PathBar(BoxLayout):
             "missing": "Folder not found"}.get(state, "")
 
 
+# ── desktop: right-click "New folder / New file" ──────────────────────────
+def valid_new_name(folder, name):
+    """(clean name, None) or (None, why) for a file or folder to create in
+    `folder`."""
+    n = (name or "").strip()
+    if not n:
+        return None, "Type a name."
+    if n in (".", "..") or any(c in n for c in "/\\\0") or n.endswith((" ", ".")):
+        return None, "That name can't be used."
+    if os.path.lexists(os.path.join(folder, n)):
+        return None, "Something with that name already exists."
+    return n, None
+
+
+def create_item(folder, name, kind):
+    """Make an empty file or a folder. Returns (path, None) or (None, why)."""
+    n, why = valid_new_name(folder, name)
+    if why:
+        return None, why
+    path = os.path.join(folder, n)
+    try:
+        if kind == "folder":
+            os.mkdir(path)
+        else:
+            with open(path, "x"):
+                pass
+    except OSError as e:
+        return None, e.strerror or "Could not create it."
+    return path, None
+
+
+def _ask_new_item(chooser, kind):
+    box = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(10))
+    inp = TextInput(multiline=False, write_tab=False, font_size=sp(14),
+                    size_hint_y=None, height=dp(40),
+                    hint_text="Name of the new " + kind,
+                    text="New folder" if kind == "folder" else "New file.txt")
+    msg = Label(text="", font_size=sp(12), size_hint_y=None, height=dp(22),
+                color=(1, 0.6, 0.4, 1))
+    row = BoxLayout(size_hint_y=None, height=dp(42), spacing=dp(8))
+    ok = Button(text="Create")
+    cancel = Button(text="Cancel")
+    for w in (cancel, ok):
+        row.add_widget(w)
+    for w in (inp, msg, row):
+        box.add_widget(w)
+    pop = Popup(title="New " + kind, content=box, size_hint=(None, None),
+                size=(dp(360), dp(200)), auto_dismiss=True)
+
+    def create(*_):
+        path, why = create_item(chooser.path, inp.text, kind)
+        if why:
+            msg.text = why
+            return
+        pop.dismiss()
+        try:
+            chooser._update_files()          # list the new item
+        except Exception:
+            pass
+        if kind == "file" and os.path.isfile(path):
+            chooser.selection = [path]
+
+    ok.bind(on_release=create)
+    cancel.bind(on_release=lambda *a: pop.dismiss())
+    inp.bind(on_text_validate=create)
+    pop.open()
+    Clock.schedule_once(lambda dt: (setattr(inp, "focus", True),
+                                    inp.select_all()), 0.15)
+
+
+def _context_menu(chooser):
+    box = BoxLayout(orientation="vertical", spacing=dp(6), padding=dp(8))
+    pop = Popup(title="This folder", content=box, size_hint=(None, None),
+                size=(dp(260), dp(190)))
+    for text, fn in (("New folder", lambda: _ask_new_item(chooser, "folder")),
+                     ("New file", lambda: _ask_new_item(chooser, "file")),
+                     ("Refresh", lambda: chooser._update_files())):
+        b = Button(text=text, font_size=sp(14))
+        b.bind(on_release=lambda inst, f=fn: (pop.dismiss(), f()))
+        box.add_widget(b)
+    pop.open()
+
+
 def install():
     """Replace kivy's FileChooserIconView with the path-bar subclass.
     Safe to call twice. Call before screens are imported."""
@@ -342,14 +426,46 @@ def install():
             setattr(self, "_ghost_" + kind, (now, dev))
             return tap_guard.is_ghost(now - last[0], dev, last[1])
 
+        def _desktop_click(self, entry, touch):
+            """Desktop: one click only SELECTS, a double-click opens (the
+            usual file-manager habit). Stock Kivy opens a folder on a single
+            click. Returns True when the click was handled here."""
+            if getattr(touch, "button", "left") == "right":
+                return True                  # the right button opens the menu
+            if not self.file_system.is_dir(entry.path):
+                return False                 # files: stock (select, double = submit)
+            if getattr(touch, "is_double_tap", False):
+                self.open_entry(entry)
+            elif self.dirselect:
+                return False                 # a folder picker selects the folder
+            return True
+
+        def on_touch_down(self, touch):
+            if (not _is_android() and getattr(touch, "button", "") == "right"
+                    and self.collide_point(*touch.pos)):
+                _context_menu(self)
+                return True
+            return super().on_touch_down(touch)
+
         def entry_touched(self, entry, touch):
             if self._ghost("touched", touch):
                 return False
+            if not _is_android() and not self._is_scroll(touch) \
+                    and self._desktop_click(entry, touch):
+                return False if getattr(touch, "button", "") == "right" else None
             return super().entry_touched(entry, touch)
+
+        @staticmethod
+        def _is_scroll(touch):
+            return ("button" in touch.profile and touch.button in (
+                "scrollup", "scrolldown", "scrollleft", "scrollright"))
 
         def entry_released(self, entry, touch):
             if self._ghost("released", touch):
                 return False
+            if (not _is_android() and not self._is_scroll(touch)
+                    and self.file_system.is_dir(entry.path)):
+                return False                 # opening is decided on touch down
             # Folder pickers (dirselect=True): stock behaviour is tap =
             # select, DOUBLE tap = open - on a phone that meant a dead second
             # tap and an unreliable double tap. Now one tap opens the folder

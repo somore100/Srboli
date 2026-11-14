@@ -122,3 +122,49 @@ bar._open(root); tick()                                           # unrelated ju
 assert bar._down == [] or bar._fwd.disabled
 bar._toggle_mode(); assert bar._mode_btn.text == "Hist"
 print("picker < > modes passed")
+
+# ---- desktop: one click selects, a double-click opens; right-click makes things ----
+pb._is_android = lambda: False
+class DT:
+    def __init__(self, dbl=False, btn="left"):
+        self.profile, self.button, self.is_double_tap, self.pos = ["button"], btn, dbl, ch.center
+sub = os.path.join(root, "a")
+class ED: path = sub
+ch.path = root; tick(6); ch.selection = []
+ch.entry_touched(ED(), DT()); ch.entry_released(ED(), DT())
+assert ch.path == root, ch.path                                   # a single click does not open a folder
+ch.entry_touched(ED(), DT(True)); ch.entry_released(ED(), DT(True)); tick()
+assert os.path.abspath(ch.path) == os.path.abspath(sub), ch.path  # a double-click does
+ch.path = root; tick(6)
+dc = FileChooserIconView(path=root, dirselect=True)               # a folder picker
+dl = BoxLayout(orientation="vertical"); dl.add_widget(dc); Window.add_widget(dl); tick(6)
+dc.entry_touched(ED(), DT()); dc.entry_released(ED(), DT())
+assert dc.path == root and dc.selection == [sub], (dc.path, dc.selection)   # click = select the folder
+dc.entry_touched(ED(), DT(True)); dc.entry_released(ED(), DT(True)); tick()
+assert os.path.abspath(dc.path) == os.path.abspath(sub)           # double-click = open it
+ch.selection = []; ch.entry_touched(E(), DT())
+assert ch.selection == [f]                                        # files still select on one click
+asked = []
+orig_menu = pb._context_menu; pb._context_menu = lambda c: asked.append(c)
+assert ch.on_touch_down(DT(btn="right")) is True and asked == [ch]    # right-click -> menu
+assert ch.selection == [f]                                        # ... without selecting anything
+pb._context_menu = orig_menu
+pb._is_android = lambda: True
+asked.clear(); pb._context_menu = lambda c: asked.append(c)
+import kivy.uix.filechooser as _fc
+_stock = _fc.FileChooserController.on_touch_down
+_fc.FileChooserController.on_touch_down = lambda self, t: False   # (a fake touch can't go through the stock handler)
+ch.on_touch_down(DT(btn="right")); assert asked == []             # the phone has no right button
+_fc.FileChooserController.on_touch_down = _stock
+pb._context_menu = orig_menu; pb._is_android = lambda: False
+
+# creating a file / folder from the menu
+new = tempfile.mkdtemp()
+p, why = pb.create_item(new, "notes.txt", "file"); assert why is None and os.path.isfile(p)
+p, why = pb.create_item(new, "stuff", "folder"); assert why is None and os.path.isdir(p)
+assert pb.create_item(new, "notes.txt", "file")[1]                # exists: refused, nothing overwritten
+for bad in ("", "  ", ".", "..", "a/b", "a\\b", "x\0y", "trail."):
+    assert pb.create_item(new, bad, "file") == (None, pb.valid_new_name(new, bad)[1]) and pb.valid_new_name(new, bad)[1], bad
+assert sorted(os.listdir(new)) == ["notes.txt", "stuff"]
+assert pb.create_item(os.path.join(new, "nope"), "a", "file")[1]  # missing folder: a message, no crash
+print("picker desktop clicks and new-item menu passed")

@@ -81,6 +81,9 @@ else:
     # "active", and Kivy's raw /dev/input reader (the [MTD] lines in the log)
     # can leave one stuck (touchpad / touchscreen), which froze all clicks.
     Config.set("input", "mouse", "mouse,disable_multitouch")
+    # file pickers: click selects, double-click opens; Kivy's default 250 ms
+    # is shorter than most people's double-click
+    Config.set("postproc", "double_tap_time", "400")
     try:
         Config.remove_option("input", "hid_%(name)s")
     except Exception:
