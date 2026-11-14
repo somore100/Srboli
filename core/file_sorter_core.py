@@ -515,7 +515,7 @@ def _action_one_liner(action):
     kind = action.get("type")
     if kind in ("move", "copy"):
         verb = "Move" if kind == "move" else "Copy"
-        return f"{verb} TO {action.get('dest', '?')}"
+        return f"{verb} TO {action.get('dest') or '?'}"
     if kind == "rename":
         return f"Rename TO {action.get('pattern', '?')}"
     if kind == "delete":
@@ -523,11 +523,76 @@ def _action_one_liner(action):
     return kind or "?"
 
 
-def rule_one_liner(rule):
-    """Compact "IF ... THEN ..." summary for the rules overview list."""
+def _rule_core_text(rule):
     conds = rule.get("conditions", [])
     joiner = " AND " if rule.get("logic", "AND") == "AND" else " OR "
     cond_text = joiner.join(_condition_one_liner(c) for c in conds) or "(no conditions)"
-    action_text = _action_one_liner(rule.get("action", {}))
+    return f"IF {cond_text} THEN {_action_one_liner(rule.get('action', {}))}"
+
+
+def auto_rule_name(rule):
+    """The name a rule gets when the user leaves the name box empty: the rule
+    itself, e.g. 'IF File name contains roblox THEN Move TO /home/videos'."""
+    return _rule_core_text(rule)
+
+
+def rule_one_liner(rule):
+    """Compact "IF ... THEN ..." summary for the rules overview list."""
     cont = ", then keep checking more rules" if rule.get("continue_after_match") else ""
-    return f"IF {cond_text} THEN {action_text}{cont}"
+    return f"{_rule_core_text(rule)}{cont}"
+
+
+def rule_title(rule):
+    """Overview line: a custom name, then the rule; an auto-named rule is
+    already its own description, so it is not shown twice."""
+    if rule.get("auto_name"):
+        return rule_one_liner(rule)
+    return f"{rule.get('name', '?')}: {rule_one_liner(rule)}"
+
+
+def _cond_norm(c):
+    """A condition reduced to what decides its meaning, for comparing."""
+    field, op = c.get("field", ""), c.get("op", "")
+    spec = FIELDS.get(field, {})
+    if spec.get("kind") == "bool" or op == "is_missing":
+        return (field, op, "")
+    value = str(c.get("value", "")).strip().lower()
+    if spec.get("kind") == "text_list":
+        value = ",".join(sorted(t.strip().lstrip(".") for t in value.split(",")
+                                if t.strip()))
+    return (field, op, value)
+
+
+_EXCLUSIVE_OPS = {"is", "equals"}
+_OPPOSITE_OPS = {("is", "is_not"), ("is_true", "is_false"),
+                 ("contains", "not_contains"), ("is_one_of", "is_not_one_of")}
+
+
+def condition_problem(conditions, logic="AND"):
+    """Why this list of conditions makes no sense, or None when it is fine.
+    Two identical conditions say the same thing twice; and with AND, two that
+    contradict each other (type is Image AND type is Video) can never both be
+    true, so the rule would never match anything."""
+    seen = []
+    for c in conditions:
+        n = _cond_norm(c)
+        if n in seen:
+            label = FIELD_LABELS.get(n[0], n[0])
+            return (f"Two conditions are identical ({label}). A condition "
+                    f"only needs to be there once - remove the copy.")
+        seen.append(n)
+    if logic == "AND":
+        for i, a in enumerate(seen):
+            for b in seen[i + 1:]:
+                if a[0] != b[0]:
+                    continue
+                label = FIELD_LABELS.get(a[0], a[0])
+                clash = (a[1] in _EXCLUSIVE_OPS and b[1] in _EXCLUSIVE_OPS
+                         and a[2] != b[2])
+                clash = clash or ((a[1], b[1]) in _OPPOSITE_OPS
+                                  or (b[1], a[1]) in _OPPOSITE_OPS) and a[2] == b[2]
+                if clash:
+                    return (f"The {label} conditions contradict each other, so "
+                            f"with AND this rule could never match. Remove "
+                            f"one, or switch AND to OR.")
+    return None
