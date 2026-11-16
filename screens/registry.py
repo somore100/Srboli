@@ -43,6 +43,7 @@ SCREENS = [
     ("learn",          "screens.learn_screen",            "LearnScreen"),
     ("shortcut",       "screens.shortcut_screen",         "ShortcutScreen"),
     ("backup",         "screens.backup_screen",           "BackupScreen"),
+    ("sync",           "screens.sync_screen",             "SyncScreen"),
 ]
 
 LABELS = {
@@ -78,6 +79,7 @@ LABELS = {
     "learn":          "Learn (AI courses)",
     "shortcut":       "Linux Shortcut Creator",
     "backup":         "Backup",
+    "sync":           "Folder Sync",
 }
 
 
@@ -91,6 +93,7 @@ ALIASES = {
     "learn":          ["course", "quiz", "study", "ai"],
     "file_sorter":    ["rules", "organize", "move files", "clean"],
     "fast_transfer":  ["copy", "move", "speed", "usb"],
+    "sync":           ["mirror", "match", "copy", "folders", "usb", "one way"],
     "backup":         ["incremental", "differential", "full", "restore", "copy",
                        "archive", "usb", "safe"],
     "converter":      ["pdf", "docx", "convert", "image", "format"],
@@ -128,7 +131,7 @@ GROUPS = [
     ("writing", "Writing",
      ["text_editor", "full_editor", "script_mode", "learn"]),
     ("files", "Files",
-     ["file_sorter", "fast_transfer", "backup", "converter", "gallery", "metadata",
+     ["file_sorter", "fast_transfer", "backup", "sync", "converter", "gallery", "metadata",
       "image_text"]),
     ("media", "Media",
      ["music", "shape_gen"]),

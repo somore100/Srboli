@@ -33,6 +33,27 @@ def _home():
     return shared_storage_root()
 
 
+def pick_folder(title, start, on_pick):
+    """A popup to choose a folder; on_pick(folder) is called with it."""
+    chooser = FileChooserIconView(path=start if start and os.path.isdir(start)
+                                  else _home(), dirselect=True)
+    use = Button(text="Use this folder", size_hint_y=None, height=dp(44))
+    lay = BoxLayout(orientation="vertical")
+    lay.add_widget(chooser)
+    lay.add_widget(use)
+    popup = Popup(title=title, content=lay, size_hint=(0.92, 0.92))
+
+    def _use(*a):
+        folder = chooser.selection[0] if chooser.selection else chooser.path
+        if os.path.isfile(folder):
+            folder = os.path.dirname(folder)
+        popup.dismiss()
+        on_pick(folder)
+
+    use.bind(on_release=_use)
+    popup.open()
+
+
 class BackupScreen(ToolScreen):
     title = "Backup"
 
@@ -165,23 +186,7 @@ class BackupScreen(ToolScreen):
 
     # ── choosing folders ─────────────────────────────────────────────────
     def _pick_folder(self, title, start, on_pick):
-        chooser = FileChooserIconView(path=start if start and os.path.isdir(start)
-                                      else _home(), dirselect=True)
-        use = Button(text="Use this folder", size_hint_y=None, height=dp(44))
-        lay = BoxLayout(orientation="vertical")
-        lay.add_widget(chooser)
-        lay.add_widget(use)
-        popup = Popup(title=title, content=lay, size_hint=(0.92, 0.92))
-
-        def _use(*a):
-            folder = chooser.selection[0] if chooser.selection else chooser.path
-            if os.path.isfile(folder):
-                folder = os.path.dirname(folder)
-            popup.dismiss()
-            on_pick(folder)
-
-        use.bind(on_release=_use)
-        popup.open()
+        pick_folder(title, start, on_pick)
 
     def _pick_source(self):
         def done(f):

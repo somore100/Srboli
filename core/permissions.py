@@ -6,7 +6,7 @@
 # access" Android lists folders such as Music as EMPTY (no error), which looked
 # like "no files" in the Music Player.
 STORAGE_ROUTES = {"gallery", "file_sorter", "fast_transfer", "music",
-                  "converter", "metadata", "image_text", "backup"}
+                  "converter", "metadata", "image_text", "backup", "sync"}
 NOTIFY_ROUTES = {"reminders"}
 
 REASONS = {
