@@ -42,6 +42,7 @@ SCREENS = [
     ("converter",      "screens.file_converter_screen",   "FileConverterScreen"),
     ("learn",          "screens.learn_screen",            "LearnScreen"),
     ("shortcut",       "screens.shortcut_screen",         "ShortcutScreen"),
+    ("backup",         "screens.backup_screen",           "BackupScreen"),
 ]
 
 LABELS = {
@@ -76,6 +77,7 @@ LABELS = {
     "converter":      "File Converter",
     "learn":          "Learn (AI courses)",
     "shortcut":       "Linux Shortcut Creator",
+    "backup":         "Backup",
 }
 
 
@@ -88,7 +90,9 @@ ALIASES = {
     "script_mode":    ["prompter", "teleprompter", "script"],
     "learn":          ["course", "quiz", "study", "ai"],
     "file_sorter":    ["rules", "organize", "move files", "clean"],
-    "fast_transfer":  ["copy", "move", "speed", "usb", "backup"],
+    "fast_transfer":  ["copy", "move", "speed", "usb"],
+    "backup":         ["incremental", "differential", "full", "restore", "copy",
+                       "archive", "usb", "safe"],
     "converter":      ["pdf", "docx", "convert", "image", "format"],
     "gallery":        ["photos", "pictures", "images", "video"],
     "metadata":       ["exif", "info", "properties"],
@@ -124,7 +128,7 @@ GROUPS = [
     ("writing", "Writing",
      ["text_editor", "full_editor", "script_mode", "learn"]),
     ("files", "Files",
-     ["file_sorter", "fast_transfer", "converter", "gallery", "metadata",
+     ["file_sorter", "fast_transfer", "backup", "converter", "gallery", "metadata",
       "image_text"]),
     ("media", "Media",
      ["music", "shape_gen"]),
