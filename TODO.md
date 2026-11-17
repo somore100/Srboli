@@ -5,6 +5,9 @@ to see what is half-done and what is planned. Newest decisions first.
 
 ## Ideas (not started)
 
+- Big backlog of possible tools and the rules for keeping the app lean:
+  `docs/IDEAS.md`.
+
 - Dashboard: tile layout (2-3 per row on wide windows), user-made sections,
   pinned favourites (today only the automatic Recent row), a section order
   setting. Sections are fixed in `screens/registry.py` (GROUPS).
