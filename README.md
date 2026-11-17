@@ -44,6 +44,7 @@ tool, with global shortcuts to jump between them.
 | **Fast File Transfer** | Parallel copy / move for folders of many smaller files, with a real Auto-tune that measures the best worker count on your disk; same "is it finished?" protection and verified moves |
 | **Backup** | Full, incremental and differential backups of a folder, with a preview first, a list of your backups and restore. Restoring never overwrites, deleting a backup is refused while later ones need it |
 | **Folder Sync** | One way (mirror) or two way, with a preview first. Two way carries changes and deletions both ways and keeps both versions on a conflict. Overwritten or removed files are moved to a ".srboli-replaced" folder, never deleted |
+| **AI (optional)** | Off by default. In Settings: turn it on, pick Ollama (a model on your PC) or an API key, and tick which tools may use it. Then File Sorter can write a rule from plain words, and Text Editor can fix, shorten or rewrite text. The AI only proposes; you review before anything changes |
 | **Quick Switcher** | Global keyboard shortcuts — jump to a screen, launch an app/script, open the file picker, or run a terminal command |
 | **Minesweeper** | Classic Minesweeper: 3 difficulties, long-press to flag, tap a number to chord, timer and best times |
 | **Infinite Mines** | Raw demo of an endless minesweeper: pan and zoom a map that is generated as you explore. Stepping on a mine leaves a crater with a scorched zone that heals as you solve the cells around it; solved 9x9 sectors earn points that pay for instant repairs |
@@ -179,6 +180,8 @@ srboli/
 │   ├── backup_core.py           # Full / incremental / differential backup + restore
 │   ├── sync_core.py             # One-way folder mirror (nothing deleted)
 │   ├── twoway_core.py           # Two-way folder sync (keeps both versions on conflict)
+│   ├── ai_core.py               # AI settings and requests (Ollama / API), off by default
+│   ├── ai_rules.py              # Plain words -> a checked File Sorter rule
 │   ├── transfer_core.py         # Fast Transfer engine + auto-tune
 │   ├── reminders_core.py        # Reminder scheduling (shared with the daemon)
 │   ├── daemon.py / daemon_ipc.py / autostart.py  # Background service

@@ -323,6 +323,18 @@ class TextEditorScreen(Screen):
                                  size_hint_x=None, width=dp(64)))
         root.add_widget(rowC)
 
+        # AI row: absent unless switched on in Settings (see on_pre_enter)
+        self._ai_row = _row()
+        self._ai_row.add_widget(Label(text="AI:", size_hint_x=None,
+                                      width=dp(46), font_size=sp(12)))
+        for lbl, mode in [("Fix", "fix"), ("Shorter", "shorter"),
+                          ("Rewrite", "rewrite"), ("Ask...", "custom")]:
+            self._ai_row.add_widget(_btn(
+                lbl, lambda inst, m=mode: self._ai_edit(m)))
+        root.add_widget(self._ai_row)
+        self._ai_row.height, self._ai_row.opacity = 0, 0
+        self._ai_row.disabled = True
+
         # ── formatting bar (Markdown / HTML only) ────────────────────────────
         # Tap a button: the markers are inserted with the cursor BETWEEN them
         # (**|**), or wrapped around the selected text. Tap the same button
@@ -795,6 +807,69 @@ padding:24px;line-height:1.6}}</style></head>
             pass
 
     # ── lifecycle ─────────────────────────────────────────────────────────────
+    def on_pre_enter(self, *a):
+        from screens import ai_ui
+        ai_ui.sync_button(self._ai_row, "text_editor", dp(40))
+
+    def _ai_edit(self, mode):
+        """Send the selection (or the whole text) to the AI and show what
+        comes back; the text only changes if the user presses Use it."""
+        from screens import ai_ui
+        from core import ai_core
+        ed = self._ed
+        if ed.selection_text:
+            a, b = sorted((ed.selection_from, ed.selection_to))
+            original = ed.text[a:b]
+        else:
+            a, b, original = 0, len(ed.text), ed.text
+        if not original.strip():
+            return self._status_msg("Nothing to send: the editor is empty.")
+
+        def run(instruction=""):
+            def done(res, err):
+                if err:
+                    return ai_ui.show_error(err)
+                self._ai_review(original, res, a, b)
+            ai_ui.work(lambda: ai_core.edit_text(mode, original, instruction),
+                       done)
+
+        if mode == "custom":
+            ai_ui.ask("What should the AI do with the text?",
+                      "e.g. translate to German, make it more formal...",
+                      run, button="Go")
+        else:
+            run()
+
+    def _status_msg(self, msg):
+        self._status.text = msg
+
+    def _ai_review(self, original, new, a, b):
+        if new == original:
+            return self._status_msg("The AI changed nothing.")
+        lay = BoxLayout(orientation="vertical", padding=dp(8), spacing=dp(6))
+        box = TextInput(text=new, readonly=True, font_size=sp(13))
+        lay.add_widget(box)
+        row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
+        use, no = Button(text="Use it"), Button(text="Discard")
+        row.add_widget(use)
+        row.add_widget(no)
+        lay.add_widget(row)
+        pop = Popup(title="The AI's version", content=lay, size_hint=(0.94, 0.8))
+
+        def _use(*_):
+            cur = self._ed.text
+            if cur[a:b] != original:         # edited meanwhile: don't guess
+                pop.dismiss()
+                return self._status_msg(
+                    "The text changed while waiting; nothing was replaced.")
+            self._ed.text = cur[:a] + new + cur[b:]
+            pop.dismiss()
+            self._status_msg("AI version applied (undo with Ctrl+Z).")
+
+        use.bind(on_release=_use)
+        no.bind(on_release=lambda *x: pop.dismiss())
+        pop.open()
+
     def on_enter(self, *a):
         if not self._ed.text:
             p = os.path.join(app_data.subdir("autosave"), "text_autosave.txt")

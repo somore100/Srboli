@@ -300,6 +300,14 @@ class SettingsScreen(Screen):
         adv_row.add_widget(adv_lbl)
         content.add_widget(adv_row)
 
+        # ── AI ──────────────────────────────────────────────────────────
+        content.add_widget(Label(text="[b]AI (optional, off by default)[/b]",
+                                 markup=True, font_size=sp(15),
+                                 size_hint_y=None, height=dp(26)))
+        from screens.ai_settings import AISettings
+        self._ai_settings = AISettings()
+        content.add_widget(self._ai_settings)
+
         # ── background service ──────────────────────────────────────────
         content.add_widget(Label(text="[b]Background service[/b]", markup=True,
                               font_size=sp(15), size_hint_y=None, height=dp(26)))

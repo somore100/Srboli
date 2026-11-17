@@ -525,6 +525,13 @@ class FileSorterScreen(Screen):
         add_rule_btn.bind(on_release=lambda *a: self._open_rule_editor())
         root.add_widget(add_rule_btn)
 
+        # AI: only there when switched on in Settings (see ai_ui.sync_button)
+        self._ai_btn = Button(text="Describe a rule in words (AI)...",
+                              size_hint_y=None, height=0, opacity=0,
+                              disabled=True, font_size=sp(13))
+        self._ai_btn.bind(on_release=lambda *a: self._ai_rule())
+        root.add_widget(self._ai_btn)
+
         # source folder
         src_row = BoxLayout(size_hint_y=None, height=dp(38), spacing=4)
         self._src_lbl = Label(text="(no source folder chosen)", font_size=sp(11),
@@ -637,6 +644,49 @@ class FileSorterScreen(Screen):
         lbl = Label(text=text, font_size=sp(12), halign="left")
         lbl.bind(size=lbl.setter("text_size"))
         return lbl
+
+    def on_pre_enter(self, *a):
+        from screens import ai_ui
+        ai_ui.sync_button(self._ai_btn, "file_sorter", dp(38))
+
+    def _ai_rule(self):
+        from screens import ai_ui
+        from core import ai_rules
+
+        def go(text):
+            def done(res, err):
+                if err:
+                    return ai_ui.show_error(err)
+                rule, note = res
+                if rule is None:
+                    return ai_ui.show_error(note)
+                self._open_ai_rule(rule, note)
+            ai_ui.work(lambda: ai_rules.rule_from_words(text), done)
+
+        ai_ui.ask("Describe the rule",
+                  "e.g. move every video with roblox in its name to my "
+                  "Videos/roblox folder", go, button="Write the rule")
+
+    def _open_ai_rule(self, rule, note):
+        """Open the Rule Editor on the AI's proposal. Nothing is added until
+        the user presses Save Rule there."""
+        groups = sorted({r.get("group", "") for r in self._rules
+                         if r.get("group")})
+
+        def _on_save(saved):
+            self._rules.append(saved)
+            self._refresh_group_filter_values()
+            self._refresh_rules_list()
+            self._mark_stale()
+            self._autosave_last_used()
+
+        RuleEditorPopup(on_save=_on_save, existing=rule,
+                        existing_groups=groups).open()
+        if note:
+            from screens import ai_ui
+            ai_ui._msg("Written by the AI - check it", note + "\n\nThe rule is "
+                       "open in the editor. Nothing is saved until you press "
+                       "Save Rule.", 0.4)
 
     # ── rules list management ───────────────────────────────────────────
     def _mark_stale(self):
