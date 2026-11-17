@@ -40,6 +40,7 @@ SCREENS = [
     ("chess",          "screens.chess_screen",            "ChessScreen"),
     ("touch_test",     "screens.touch_test_screen",       "TouchTestScreen"),
     ("converter",      "screens.file_converter_screen",   "FileConverterScreen"),
+    ("text_workbench", "screens.text_workbench_screen",   "TextWorkbenchScreen"),
     ("learn",          "screens.learn_screen",            "LearnScreen"),
     ("shortcut",       "screens.shortcut_screen",         "ShortcutScreen"),
     ("backup",         "screens.backup_screen",           "BackupScreen"),
@@ -76,6 +77,7 @@ LABELS = {
     "chess":          "Chess",
     "touch_test":     "Touch Test",
     "converter":      "File Converter",
+    "text_workbench": "Text Workbench",
     "learn":          "Learn (AI courses)",
     "shortcut":       "Linux Shortcut Creator",
     "backup":         "Backup",
@@ -90,6 +92,7 @@ ALIASES = {
     "full_editor":    ["document", "word", "slides", "presentation", "table",
                        "outline", "docs"],
     "script_mode":    ["prompter", "teleprompter", "script"],
+    "text_workbench": ["lines", "sort", "regex", "diff", "stats", "extract", "dedupe", "text"],
     "learn":          ["course", "quiz", "study", "ai"],
     "file_sorter":    ["rules", "organize", "move files", "clean"],
     "fast_transfer":  ["copy", "move", "speed", "usb"],
@@ -129,7 +132,7 @@ ALIASES = {
 # automatic "Other" section, so nothing can silently disappear.
 GROUPS = [
     ("writing", "Writing",
-     ["text_editor", "full_editor", "script_mode", "learn"]),
+     ["text_editor", "full_editor", "script_mode", "text_workbench", "learn"]),
     ("files", "Files",
      ["file_sorter", "fast_transfer", "backup", "sync", "converter", "gallery", "metadata",
       "image_text"]),
