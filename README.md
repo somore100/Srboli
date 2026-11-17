@@ -43,7 +43,7 @@ tool, with global shortcuts to jump between them.
 | **Reminders** | To-do + timed reminders, daily/weekly repeats, desktop notifications via the background service |
 | **Fast File Transfer** | Parallel copy / move for folders of many smaller files, with a real Auto-tune that measures the best worker count on your disk; same "is it finished?" protection and verified moves |
 | **Backup** | Full, incremental and differential backups of a folder, with a preview first, a list of your backups and restore. Restoring never overwrites, deleting a backup is refused while later ones need it |
-| **Folder Sync** | One-way mirror: makes a target folder match a source, with a preview first. Overwritten or removed files are moved to a ".srboli-replaced" folder in the target, never deleted; the source is never touched |
+| **Folder Sync** | One way (mirror) or two way, with a preview first. Two way carries changes and deletions both ways and keeps both versions on a conflict. Overwritten or removed files are moved to a ".srboli-replaced" folder, never deleted |
 | **Quick Switcher** | Global keyboard shortcuts — jump to a screen, launch an app/script, open the file picker, or run a terminal command |
 | **Minesweeper** | Classic Minesweeper: 3 difficulties, long-press to flag, tap a number to chord, timer and best times |
 | **Infinite Mines** | Raw demo of an endless minesweeper: pan and zoom a map that is generated as you explore. Stepping on a mine leaves a crater with a scorched zone that heals as you solve the cells around it; solved 9x9 sectors earn points that pay for instant repairs |
@@ -178,6 +178,7 @@ srboli/
 │   ├── file_sorter_watch.py     # Folder watcher for the background service
 │   ├── backup_core.py           # Full / incremental / differential backup + restore
 │   ├── sync_core.py             # One-way folder mirror (nothing deleted)
+│   ├── twoway_core.py           # Two-way folder sync (keeps both versions on conflict)
 │   ├── transfer_core.py         # Fast Transfer engine + auto-tune
 │   ├── reminders_core.py        # Reminder scheduling (shared with the daemon)
 │   ├── daemon.py / daemon_ipc.py / autostart.py  # Background service

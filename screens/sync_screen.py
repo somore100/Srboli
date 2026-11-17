@@ -1,8 +1,10 @@
-# screens/sync_screen.py - Folder Sync: make one folder match another (one
-# way). Always preview first; Sync is only enabled for the preview you just
-# looked at. Whatever a sync would overwrite or remove is moved to a
-# ".srboli-replaced" folder in the target, never deleted. Engine:
-# core/sync_core.py.
+# screens/sync_screen.py - Folder Sync, two modes:
+#   One way (mirror): make folder B match folder A (core/sync_core.py).
+#   Two way: carry changes both ways, keep both versions on a conflict
+#   (core/twoway_core.py).
+# Always preview first; Sync is only enabled for the preview you just looked
+# at. Whatever a sync would overwrite or remove is moved to a
+# ".srboli-replaced" folder, never deleted.
 import os
 import threading
 
@@ -14,9 +16,11 @@ from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.progressbar import ProgressBar
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.togglebutton import ToggleButton
 
 import app_data
 from core import sync_core as sc
+from core import twoway_core as tw
 from core import theme
 from core.backup_core import fmt_size
 from core.jsonio import read_json, write_json_atomic
@@ -24,6 +28,17 @@ from screens.backup_screen import pick_folder
 from screens.scaffold import ToolScreen
 
 MAX_LINES = 200
+HELP = {
+    "mirror": "One way: the target is changed to match the source. The source "
+              "is never touched. Files that would be overwritten or removed "
+              "are moved to a \".srboli-replaced\" folder in the target, not "
+              "deleted.",
+    "two": "Two way: changes in either folder are carried to the other, and "
+           "deleting a file on one side deletes it on the other. If both "
+           "sides changed the same file, the newer one wins and the other "
+           "version is kept next to it as \"(conflict ...)\". Nothing is "
+           "really deleted: it goes to \".srboli-replaced\".",
+}
 
 
 def _cfg_path():
@@ -37,6 +52,7 @@ class SyncScreen(ToolScreen):
         super().__init__(**kw)
         self.a = ""
         self.b = ""
+        self.mode = "mirror"
         self._plan = None
         self._busy = False
         self._stop = False
@@ -44,14 +60,28 @@ class SyncScreen(ToolScreen):
         cfg = read_json(_cfg_path(), {})
         if isinstance(cfg, dict):
             self.a, self.b = cfg.get("a", ""), cfg.get("b", "")
+            if cfg.get("mode") in HELP:
+                self.mode = cfg["mode"]
 
-        self.a_lbl = self._row(root, "Copy FROM", self._pick_a)
-        self.b_lbl = self._row(root, "Make this match (TO)", self._pick_b)
-        root.add_widget(self._text(
-            "One way: the target is changed to match the source. The source "
-            "is never touched. Files that would be overwritten or removed "
-            "are moved to a \".srboli-replaced\" folder in the target, not "
-            "deleted.", height=dp(64), color=theme.MUTED))
+        modes = BoxLayout(size_hint_y=None, height=dp(42), spacing=theme.PAD["s"])
+        self._mode_btns = {}
+        for key, label in (("mirror", "One way (mirror)"), ("two", "Two way")):
+            b = ToggleButton(text=label, group="sync_mode", font_size=sp(14),
+                             allow_no_selection=False,
+                             state="down" if key == self.mode else "normal")
+            b.bind(on_release=lambda inst, k=key: self._set_mode(k))
+            b.bind(state=lambda inst, st: setattr(
+                inst, "background_color",
+                theme.ACCENT if st == "down" else theme.SURFACE2))
+            b.background_color = theme.ACCENT if b.state == "down" else theme.SURFACE2
+            self._mode_btns[key] = b
+            modes.add_widget(b)
+        root.add_widget(modes)
+
+        self.a_btn, self.a_lbl = self._row(root, "", self._pick_a)
+        self.b_btn, self.b_lbl = self._row(root, "", self._pick_b)
+        self.help_lbl = self._text("", height=dp(76), color=theme.MUTED)
+        root.add_widget(self.help_lbl)
 
         acts = BoxLayout(size_hint_y=None, height=dp(44), spacing=theme.PAD["s"])
         self.preview_btn = Button(text="Preview", font_size=sp(14))
@@ -108,12 +138,13 @@ class SyncScreen(ToolScreen):
         row.add_widget(btn)
         row.add_widget(lbl)
         root.add_widget(row)
-        return lbl
+        return btn, lbl
 
     # ── state ────────────────────────────────────────────────────────────
     def _save_cfg(self):
         try:
-            write_json_atomic(_cfg_path(), {"a": self.a, "b": self.b})
+            write_json_atomic(_cfg_path(), {"a": self.a, "b": self.b,
+                                            "mode": self.mode})
         except Exception:
             pass
 
@@ -121,11 +152,26 @@ class SyncScreen(ToolScreen):
         self._plan = None
         self.sync_btn.disabled = True
 
+    def _set_mode(self, mode):
+        self.mode = mode
+        self._stale()
+        self.log.text = ""
+        self._save_cfg()
+        self._refresh()
+
     def _refresh(self):
+        two = self.mode == "two"
+        self.a_btn.text = "Folder A" if two else "Copy FROM"
+        self.b_btn.text = "Folder B" if two else "Make this match (TO)"
+        self.help_lbl.text = HELP[self.mode]
         self.a_lbl.text = self.a or "(none chosen)"
         self.b_lbl.text = self.b or "(none chosen)"
-        n, size = (sc.replaced_info(self.b) if self.b and os.path.isdir(self.b)
-                   else (0, 0))
+        n = size = 0
+        if self.b and os.path.isdir(self.b):
+            if two and self.a and os.path.isdir(self.a):
+                n, size = tw.replaced_total(self.a, self.b)
+            else:
+                n, size = sc.replaced_info(self.b)
         self.replaced_lbl.text = (f"Replaced folder: {n} file(s), {fmt_size(size)}"
                                   if n else "")
         self.clear_btn.disabled = not n
@@ -144,30 +190,32 @@ class SyncScreen(ToolScreen):
         def done(f):
             self.a = f
             self._stale(); self._save_cfg(); self._refresh()
-        pick_folder("Copy FROM this folder", self.a, done)
+        pick_folder("Folder A" if self.mode == "two" else "Copy FROM this folder",
+                    self.a, done)
 
     def _pick_b(self):
         def done(f):
             self.b = f
             self._stale(); self._save_cfg(); self._refresh()
-        pick_folder("Make THIS folder match", self.b, done)
+        pick_folder("Folder B" if self.mode == "two" else "Make THIS folder match",
+                    self.b, done)
 
     # ── preview ──────────────────────────────────────────────────────────
     def preview(self):
         if self._busy:
             return
-        problem = sc.check_folders(self.a, self.b)
+        problem = (tw if self.mode == "two" else sc).check_folders(self.a, self.b)
         if problem:
             self._say(problem)
             return
         self._set_busy(True)
         self._say("Comparing the folders...")
         self.log.text = ""
-        a, b = self.a, self.b
+        a, b, mode = self.a, self.b, self.mode
 
         def work():
             try:
-                plan = sc.make_plan(a, b)
+                plan = (tw if mode == "two" else sc).make_plan(a, b)
                 Clock.schedule_once(lambda dt: self._preview_done(plan))
             except Exception as e:
                 Clock.schedule_once(lambda dt: self._failed(str(e)))
@@ -177,16 +225,27 @@ class SyncScreen(ToolScreen):
     def _preview_done(self, plan):
         self._set_busy(False)
         self._plan = plan
-        lines = []
-        for tag, rels in (("COPY   ", plan.new), ("REPLACE", plan.changed),
-                          ("MOVE AWAY", plan.removed)):
-            lines += [f"{tag}  {r}" for r in rels]
+        if self.mode == "two":
+            groups = (("A -> B", plan.a2b), ("B -> A", plan.b2a),
+                      ("DELETE on A", plan.del_a), ("DELETE on B", plan.del_b),
+                      ("CONFLICT", plan.conflicts))
+            head = (f"{len(plan.a2b)} to B, {len(plan.b2a)} to A, "
+                    f"{len(plan.del_a) + len(plan.del_b)} deletions to carry over, "
+                    f"{len(plan.conflicts)} conflict(s), "
+                    f"{plan.same + len(plan.adopt)} already the same.")
+            if plan.note:
+                head += "\n" + plan.note
+        else:
+            groups = (("COPY", plan.new), ("REPLACE", plan.changed),
+                      ("MOVE AWAY", plan.removed))
+            head = (f"{len(plan.new)} new, {len(plan.changed)} changed (old "
+                    f"version kept aside), {len(plan.removed)} only in the "
+                    f"target (moved aside), {plan.same} the same. Copies "
+                    f"{fmt_size(plan.copy_bytes)}.")
+        lines = [f"{tag}  {r}" for tag, rels in groups for r in rels]
         if len(lines) > MAX_LINES:
             lines = lines[:MAX_LINES] + [f"... and {len(lines) - MAX_LINES} more"]
         self.log.text = "\n".join(lines) if lines else "The folders already match."
-        head = (f"{len(plan.new)} new, {len(plan.changed)} changed (old version "
-                f"kept aside), {len(plan.removed)} only in the target (moved "
-                f"aside), {plan.same} the same. Copies {fmt_size(plan.copy_bytes)}.")
         if plan.warning:
             head += "\n[b]Careful:[/b] " + plan.warning
         self._say(head)
@@ -229,15 +288,15 @@ class SyncScreen(ToolScreen):
         self._stop = False
         self.bar.value = 0
         self._say("Starting...")
-        a, b = self.a, self.b
+        a, b, mode = self.a, self.b, self.mode
 
         def progress(done, total, rel):
             Clock.schedule_once(lambda dt: self._progress(done, total, rel))
 
         def work():
             try:
-                res = sc.run_sync(a, b, progress=progress,
-                                  stop=lambda: self._stop, plan=plan)
+                res = (tw if mode == "two" else sc).run_sync(
+                    a, b, progress=progress, stop=lambda: self._stop, plan=plan)
                 Clock.schedule_once(lambda dt: self._done(res))
             except Exception as e:
                 Clock.schedule_once(lambda dt: self._failed(str(e)))
@@ -267,9 +326,16 @@ class SyncScreen(ToolScreen):
         if res.error:
             self._say(res.error)
         else:
-            text = (f"{'Stopped' if res.stopped else 'Done'}: {res.copied} "
-                    f"copied, {res.replaced} old version(s) and {res.removed} "
-                    f"removed file(s) moved to the replaced folder.")
+            head = 'Stopped' if res.stopped else 'Done'
+            if self.mode == "two":
+                text = (f"{head}: {res.to_b} to B, {res.to_a} to A, "
+                        f"{res.deleted_a + res.deleted_b} deleted (kept in the "
+                        f"replaced folder), {res.conflicts} conflict(s) with "
+                        f"both versions kept.")
+            else:
+                text = (f"{head}: {res.copied} copied, {res.replaced} old "
+                        f"version(s) and {res.removed} removed file(s) moved "
+                        f"to the replaced folder.")
             if res.stopped:
                 text += " Run Preview and Sync again to finish."
             if res.failed:
@@ -282,7 +348,10 @@ class SyncScreen(ToolScreen):
     def _clear_replaced(self):
         if not self.b:
             return
-        n, size = sc.replaced_info(self.b)
+        if self.mode == "two" and self.a and os.path.isdir(self.a):
+            n, size = tw.replaced_total(self.a, self.b)
+        else:
+            n, size = sc.replaced_info(self.b)
         box = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(10))
         box.add_widget(Label(
             text=f"Permanently delete replaced files older than 30 days?\n"
@@ -300,7 +369,10 @@ class SyncScreen(ToolScreen):
 
         def _do(*a):
             popup.dismiss()
-            k = sc.purge_replaced(self.b, 30)
+            if self.mode == "two" and self.a:
+                k = tw.purge_both(self.a, self.b, 30)
+            else:
+                k = sc.purge_replaced(self.b, 30)
             self._say(f"Removed {k} old batch(es) from the replaced folder.")
             self._refresh()
 
