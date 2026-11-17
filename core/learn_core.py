@@ -71,6 +71,24 @@ def build_prompt(topic, level="beginner"):
     return PROMPT.format(topic=topic, level=level)
 
 
+def ai_course(topic, level="beginner", cfg=None):
+    """Ask the AI set up in Settings for a whole course. Returns (plan,
+    warnings); nothing is saved. Raises core.ai_core.AIError."""
+    from core import ai_core
+    cfg = cfg or ai_core.load()
+    if not (topic or "").strip():
+        raise ai_core.AIError("Say what you want to learn.")
+    text = ai_core.chat("You write courses. Reply with ONLY the JSON object asked for.",
+                        build_prompt(topic, level), cfg,
+                        timeout=max(cfg["timeout"], 400), max_tokens=8000)
+    try:
+        return parse_plan(text)
+    except ValueError as e:
+        raise ai_core.AIError(
+            f"The model's course wasn't usable ({e}). Small models often "
+            f"can't do this: try a bigger one, or use the copy-and-paste way.")
+
+
 # ---- parsing / validation ------------------------------------------------
 def _extract_json(text):
     """Accept raw JSON, or JSON wrapped in ``` fences / chatter."""

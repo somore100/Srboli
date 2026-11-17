@@ -155,4 +155,36 @@ assert "file_type" in sysmsg and "is_one_of" in sysmsg
 ANSWER["text"] = "I cannot help"
 rule, note = ai_rules.rule_from_words("x", mk("ollama"))
 assert rule is None and "didn't answer" in note
+
+# ── model advice and install steps ──
+assert ai_core.suggest_model(2)[0] == "llama3.2:1b"
+assert ai_core.suggest_model(8)[0] == "llama3.2:3b"
+assert ai_core.suggest_model(16)[0] == "qwen2.5:7b"
+assert ai_core.suggest_model(64)[0] == "qwen2.5:14b"
+steps = ai_core.install_steps("linux", "m1")
+assert any("install.sh" in (c or "") for _t, c in steps) and any(c == "ollama pull m1" for _t, c in steps)
+assert ai_core.install_steps("win32", "m1")[0][1] is None            # a download, not a command
+found, up, models = ai_core.ollama_state(URL)
+assert up and models == ["llama3.2:latest"]
+assert ai_core.ollama_state("http://127.0.0.1:1")[1] is False
+
+# ── learn: a whole course from a topic ──
+from core import learn_core
+def lesson(n):
+    return {"title": f"L{n}", "intro": "Intro text.", "items": [
+        {"type": "choice", "q": "Q?", "options": ["a", "b"], "answer": 1, "explain": "b"},
+        {"type": "tf", "q": "T?", "answer": True, "explain": "yes"},
+        {"type": "type", "q": "2+2?", "answer": ["4"], "explain": "four"}]}
+course = {"title": "Tiny", "topic": "t", "level": "beginner", "description": "d",
+          "units": [{"title": "U1", "lessons": [lesson(1), lesson(2)]}]}
+ANSWER["text"] = "Sure!\n```json\n" + json.dumps(course) + "\n```"
+plan, warns = learn_core.ai_course("python", "beginner", mk("ollama"))
+assert plan["title"] == "Tiny" and len(plan["units"][0]["lessons"]) == 2
+assert "python" in seen[-1][3]["messages"][1]["content"]
+assert seen[-1][3]["messages"][0]["role"] == "system"
+ANSWER["text"] = "I'd rather chat."
+try: learn_core.ai_course("python", "beginner", mk("ollama")); assert False
+except ai_core.AIError as e: assert "wasn't usable" in str(e)
+try: learn_core.ai_course("  ", "beginner", mk("ollama")); assert False
+except ai_core.AIError: pass
 print("ai core ok")

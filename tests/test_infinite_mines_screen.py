@@ -117,4 +117,45 @@ assert t.world.seed == w.seed and t.world.craters == w.craters and t.world.point
 seed = s.world.seed
 s._new_press(); assert s.world.seed == seed and "Sure" in s.new_btn.text
 s._new_press(); assert s.world.seed != seed and s.new_btn.text == "New world" and not s.world.craters
+
+# rewards: a dig bursts dots, effects animate and then stop on their own
+s2 = ims.InfiniteMinesScreen(name="k"); tick()
+m2 = s2.map; m2.size = (420, 640); m2.pos = (0, 0); m2.go_home(); m2.redraw()
+m2.act(m2.pos_of(0, 0), "dig")                        # opening the start area again: noop
+w2 = s2.world
+fx = next(x for x in range(20, 80) if not w2.is_mine(x, 0))
+m2.cx, m2.cy = fx + .5, .5; m2.redraw()
+m2.act(m2.pos_of(fx, 0), "dig")
+assert m2._parts and m2._fx_ev is not None
+m2._fx_tick(0); assert len(m2._fxg.children) > 3
+m2.stop_fx(); assert not m2._parts and m2._fx_ev is None
+# a blast makes a big burst and a flag a small one
+mx = next(x for x in range(20, 400) if w2.is_mine(x, 3))
+m2.cx, m2.cy = mx + .5, 3.5; m2.redraw()
+m2.act(m2.pos_of(mx, 3), "dig"); assert len(m2._parts) >= 30 and m2._texts
+m2.stop_fx()
+# defused flags are drawn green: the colour is chosen by world.defused
+w2.defused.add((900, 900)); w2.flags.add((900, 900)); m2.cx, m2.cy = 900.5, 900.5; m2.redraw()
+
+# hint: costs points, shows a gold cell, goes away on the next action
+s2.world.points = 0; s2._hint(); assert "costs" in s2.msg.text and m2.hint_cell is None
+s2.world.points = 20
+found = None
+for step in range(40):
+    h = w2.find_hint(m2.cx, m2.cy, 40)
+    if h: found = h; break
+    cells = [c for c in w2.revealed if w2.revealed[c] == 0 and abs(c[0]) < 10 and abs(c[1]) < 10]
+    w2.dig(*cells[step % len(cells)][::1]) if cells else None
+    break
+m2.go_home(); m2.redraw()
+cell = next((c for c in w2.revealed if w2.revealed[c] > 0), None)
+p0 = s2.world.points
+s2._hint()
+if m2.hint_cell:
+    assert s2.world.points == p0 - im.HINT_COST and "gold" in s2.msg.text or "wrong" in s2.msg.text
+    m2._fx_tick(0)
+    m2.act(m2.pos_of(30, 30), "flag"); assert m2.hint_cell is None
+else:
+    assert "No certain move" in s2.msg.text and s2.world.points == p0
+m2.stop_fx()
 print("infinite mines screen OK")

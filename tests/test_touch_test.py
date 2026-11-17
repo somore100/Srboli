@@ -24,6 +24,13 @@ td.set_enabled(True); assert td.decide_at_startup() is True
 td.mark_healthy(); assert td.load_cfg() == {"enabled": True, "pending": False}
 assert td.decide_at_startup() is True                             # still on next time
 td.set_enabled(False)
+# on a phone the filter is on unless the user switched it off
+os.environ["ANDROID_ARGUMENT"] = "1"
+os.remove(td._cfg_path())
+assert td.load_cfg()["enabled"] is True and td.decide_at_startup() is True
+td.set_enabled(False); assert td.load_cfg()["enabled"] is False     # their choice sticks
+os.remove(td._cfg_path()); del os.environ["ANDROID_ARGUMENT"]
+assert td.load_cfg()["enabled"] is False
 
 # --- the screen ---------------------------------------------------------------
 from screens.touch_test_screen import TouchTestScreen

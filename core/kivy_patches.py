@@ -179,8 +179,8 @@ def apply_android(Window, _bl=None):
     except Exception as _e:
         print(f"modal patch skipped: {_e}")
 
-    # Duplicate-tap filter (core/touch_dedupe.py). OFF by default: turn it on
-    # in the Touch Test screen. It switches itself off again if taps stop
+    # Duplicate-tap filter (core/touch_dedupe.py). ON by default on Android
+    # (switch it off in the Touch Test screen). It switches itself off again if taps stop
     # working. Flag files (Srboli_no_dedupe / Srboli_safe_mode) still force it
     # off when the app can read them.
     try:

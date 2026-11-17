@@ -11,10 +11,19 @@
 # Stepping on a mine does not end the game. It makes an explosion:
 #   crater   the mine itself - permanent, counts as a known mine for numbers
 #   scorch   brown cells around it (radius 1-5) that cannot be touched
-#   ash      the next 1-2 cells out: pale, numbers erased (they can be dug again)
+#   fallout  the next 1-2 cells out: every SAFE cell there is opened for you
+#            (its number shown), so the hidden ones left in that ring are all
+#            mines. That ring is the anchor you solve the brown area from, so
+#            recovering never needs a blind guess at the edge.
+#   ash      a healed (formerly brown) cell: pale, dig it again
 # Scorched cells heal from the edge inwards as the cells around them get
 # solved (opened, or a correct flag). Healing runs one layer per action, so it
 # is slow on purpose. Opened cells lost to a blast are capped (MAX_ERASE).
+# Defusing: when a sector is solved every correctly flagged mine in it pays an
+# extra point ("defused"); a flag put on a mine of an already solved sector
+# pays one too. Nothing pays at the moment of flagging, so a flag never tells
+# you whether it was right.
+# Hints cost HINT_COST points and only ever name a move that is certain.
 import math
 import random
 from collections import deque
@@ -28,6 +37,7 @@ RADII = [1] * 30 + [2] * 25 + [3] * 20 + [4] * 15 + [5] * 10   # blast radius od
 MAX_ERASE = 60             # most opened/flagged cells one blast can wipe
 HEAL_NEED = 3              # solved neighbours a scorched cell needs to heal
 REPAIR_COST = 3            # points for an instant repair (3x3 around a cell)
+HINT_COST = 2              # points for a hint (a move that is certain)
 FLOOD_CAP = 3000           # most cells one dig opens (tap a 0 to carry on)
 
 _MASK = (1 << 64) - 1
@@ -51,7 +61,7 @@ class Outcome:
     """What one action did. `kind` is one of: dug, chord, blast, flag, unflag,
     repair, scorch, crater, flagged, revealed, poor, noop."""
     __slots__ = ("kind", "revealed", "blast", "radius", "erased", "healed",
-                 "sectors", "points")
+                 "sectors", "points", "defused", "target", "action")
 
     def __init__(self, kind):
         self.kind = kind
@@ -62,6 +72,9 @@ class Outcome:
         self.healed = 0         # scorched cells that healed
         self.sectors = []       # [((cx, cy), points)] newly solved
         self.points = 0         # points gained (repair: spent, negative)
+        self.defused = 0        # mines paid as defused
+        self.target = None      # hint: the cell to act on
+        self.action = None      # hint: "dig" / "flag" / "unflag"
 
 
 class World:
@@ -74,6 +87,7 @@ class World:
         self.scorch = set()
         self.ash = set()        # pale cells: fallout and healed cells, not yet dug
         self.mended = set()     # the healed part of ash; counts as solved
+        self.defused = set()    # mines whose defuse point is paid
         self.solved = set()     # sectors already paid out
         self.points = 0
         self.dug = 0
@@ -147,7 +161,14 @@ class World:
             self.flags.discard(c)
             return self._finish(Outcome("unflag"))
         self.flags.add(c)
-        return self._finish(Outcome("flag"))
+        out = Outcome("flag")
+        if (chunk_of(x, y) in self.solved and c not in self.defused
+                and self.is_mine(x, y)):
+            # the sector is solved, so this hidden cell is surely a mine
+            self.defused.add(c)
+            self.points += 1
+            out.points = out.defused = 1
+        return self._finish(out)
 
     def repair(self, x, y):
         """Spend points to heal the scorched cells in the 3x3 around x, y."""
@@ -165,6 +186,70 @@ class World:
                     self._mend(c)
                     out.healed += 1
         return self._finish(out)
+
+    def find_hint(self, cx, cy, reach=30):
+        """A certain move near (cx, cy): (action, (x, y)) with action "dig",
+        "flag" or "unflag" (a flag that is surely wrong), or None. Uses only
+        what is opened: a number whose unknown neighbours must all be mines or
+        all be safe, and two numbers one of which sits inside the other."""
+        cons, index = [], {}
+        for (x, y), n in self.revealed.items():
+            if n == 0 or abs(x - cx) > reach or abs(y - cy) > reach:
+                continue
+            unk, known = set(), 0
+            for nb in self._nbrs((x, y)):
+                if nb in self.craters:
+                    known += 1
+                elif nb not in self.revealed:
+                    unk.add(nb)
+            if unk:
+                cons.append((frozenset(unk), n - known))
+        for i, (u, _k) in enumerate(cons):
+            for c in u:
+                index.setdefault(c, []).append(i)
+        safe, mines = set(), set()
+        for u, k in cons:
+            if k == 0:
+                safe |= u
+            elif k == len(u):
+                mines |= u
+        for i, (ua, ka) in enumerate(cons):
+            near = {j for c in ua for j in index[c] if j != i}
+            for j in near:
+                ub, kb = cons[j]
+                if ua < ub:
+                    diff, dk = ub - ua, kb - ka
+                    if dk == 0:
+                        safe |= diff
+                    elif dk == len(diff):
+                        mines |= diff
+        found = []
+        for c in safe - mines:
+            if c in self.scorch or c in self.craters or c in self.revealed:
+                continue
+            found.append((0 if c not in self.flags else 2, c))
+        for c in mines - safe:
+            if c in self.scorch or c in self.craters or c in self.flags:
+                continue
+            found.append((1, c))
+        if not found:
+            return None
+        found.sort(key=lambda t: (t[0], (t[1][0] - cx) ** 2 + (t[1][1] - cy) ** 2))
+        order, c = found[0]
+        return ("dig", "flag", "unflag")[order], c
+
+    def hint(self, cx, cy, reach=30):
+        """Spend HINT_COST points to be shown a certain move."""
+        if self.points < HINT_COST:
+            return Outcome("poor_hint")
+        found = self.find_hint(cx, cy, reach)
+        if not found:
+            return Outcome("nohint")            # nothing certain: nothing charged
+        self.points -= HINT_COST
+        out = Outcome("hint")
+        out.points = -HINT_COST
+        out.action, out.target = found
+        return out
 
     # ---------------- internals ----------------
     def _nbrs(self, c):
@@ -235,21 +320,28 @@ class World:
             c = (cx, cy)
             if c in self.craters:
                 continue
+            if c in self.scorch and d > core:
+                continue                # never soften an older, harder scar
+            if d > core:
+                # fallout ring: safe cells are opened, mines stay hidden
+                # (a flag on a mine stays; a flag on a safe cell is dropped)
+                if self.is_mine(cx, cy):
+                    continue
+                self.flags.discard(c)
+                if c not in self.revealed:
+                    self._reveal(c)
+                    out.revealed += 1
+                continue
             opened = c in self.revealed or c in self.flags
             if opened:
                 if erased >= MAX_ERASE:
                     continue
                 erased += 1
-            if c in self.scorch and d > core:
-                continue                # never soften an older, harder scar
             self.revealed.pop(c, None)
             self.flags.discard(c)
             self.mended.discard(c)
-            if d <= core:
-                self.scorch.add(c)
-                self.ash.discard(c)
-            else:
-                self.ash.add(c)
+            self.scorch.add(c)
+            self.ash.discard(c)
         out.blast, out.radius = c0, r
         out.erased += erased
 
@@ -293,7 +385,8 @@ class World:
         return self._sector_stats(chunk_of(x, y))
 
     def _finish(self, out):
-        out.healed += self._heal()
+        if out.kind != "blast":           # the blast itself heals nothing
+            out.healed += self._heal()
         for ch in sorted(self._touched):
             if ch in self.solved:
                 continue
@@ -302,6 +395,11 @@ class World:
                 self.solved.add(ch)
                 mines = CHUNK * CHUNK - total
                 pts = max(1, mines)
+                good = [c for c in self.flags if chunk_of(*c) == ch
+                        and self.is_mine(*c) and c not in self.defused]
+                self.defused.update(good)
+                pts += len(good)
+                out.defused += len(good)
                 self.points += pts
                 out.points += pts
                 out.sectors.append((ch, pts))
@@ -316,7 +414,8 @@ class World:
                 "revealed": flat(self.revealed), "flags": flat(self.flags),
                 "craters": flat(self.craters), "scorch": flat(self.scorch),
                 "ash": flat(self.ash), "mended": flat(self.mended),
-                "solved": flat(self.solved), "points": self.points,
+                "solved": flat(self.solved), "defused": flat(self.defused),
+                "points": self.points,
                 "dug": self.dug, "blasts": self.blasts}
 
     @classmethod
@@ -355,5 +454,6 @@ class World:
         w.ash = set(pairs("ash"))
         w.mended = set(pairs("mended")) & w.ash
         w.solved = set(pairs("solved"))
+        w.defused = set(pairs("defused"))
         w.points, w.dug, w.blasts = num("points"), num("dug"), num("blasts")
         return w

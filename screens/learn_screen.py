@@ -96,6 +96,10 @@ class LearnScreen(Screen):
                             color=ACCENT))
         row.add_widget(_btn("Get AI prompt", self._prompt_popup))
         self._root.add_widget(row)
+        from screens import ai_ui
+        if ai_ui.is_on("learn"):
+            self._root.add_widget(_btn("Write a course with AI...", self._ai_course,
+                                       color=ACCENT))
 
         col = self._scroll()
         plans = L.list_plans()
@@ -116,6 +120,48 @@ class LearnScreen(Screen):
 
     def _leave(self):
         self.manager.current = "dashboard"
+
+    def _ai_course(self):
+        """Ask the AI in Settings for a course; it is imported like a pasted one."""
+        from screens import ai_ui
+        box = BoxLayout(orientation="vertical", padding=dp(8), spacing=dp(6))
+        topic = TextInput(hint_text="What do you want to learn?", multiline=False,
+                          size_hint_y=None, height=dp(40))
+        level = TextInput(text="beginner", multiline=False, size_hint_y=None,
+                          height=dp(40))
+        box.add_widget(topic)
+        box.add_widget(level)
+        box.add_widget(_wrap_label(
+            "A whole course is a lot to write: a local model can take several "
+            "minutes, and small ones often get it wrong. Your topic is sent to "
+            "the AI you set up in Settings.", 12, color=(0.7, 0.7, 0.7, 1)))
+        row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
+        go = _btn("Write it", lambda: start(), color=ACCENT)
+        row.add_widget(go)
+        row.add_widget(_btn("Cancel", lambda: p.dismiss()))
+        box.add_widget(row)
+        p = Popup(title="Course from AI", content=box, size_hint=(0.92, 0.6))
+
+        def start():
+            t, lv = topic.text.strip(), level.text.strip() or "beginner"
+            if not t:
+                return
+            p.dismiss()
+
+            def done(res, err):
+                if err:
+                    return ai_ui.show_error(err)
+                plan, warns = res
+                L.save_plan(plan)
+                self._show_home()
+                if warns:
+                    self._toast("Made, but some parts were skipped:\n"
+                                + "\n".join(warns[:8]))
+
+            ai_ui.work(lambda: L.ai_course(t, lv), done,
+                       title="Writing the course...")
+
+        p.open()
 
     # ---- import / prompt popups ------------------------------------------
     def _import_popup(self):

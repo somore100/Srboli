@@ -34,6 +34,7 @@ DEFAULT_URLS = {"ollama": "http://localhost:11434",
 TOOLS = {
     "file_sorter": "File Sorter - write a rule from a plain-words description",
     "text_editor": "Text Editor - fix, shorten or rewrite text",
+    "learn": "Learn - write a whole course from a topic",
 }
 
 DEFAULTS = {
@@ -300,3 +301,50 @@ def edit_text(mode, text, instruction="", cfg=None):
     out = chat(system, text, cfg)
     out = re.sub(r"^```[a-zA-Z]*\n|\n```$", "", out.strip())
     return out
+
+
+# ── Ollama set-up help (nothing is installed for you: you get the steps) ────
+# (minimum RAM in GB, model, what to expect)
+MODEL_TIERS = [
+    (0, "llama3.2:1b", "tiny and fast, fine for fixing text, weak at rules and courses"),
+    (6, "llama3.2:3b", "small; good for fixing text, OK for rules"),
+    (12, "qwen2.5:7b", "good all-rounder; rules and short courses work well"),
+    (24, "qwen2.5:14b", "strong; needs a good PC, slower without a GPU"),
+]
+
+
+def suggest_model(ram_gb):
+    """The biggest tier the machine can comfortably hold (a model wants
+    roughly its file size in free RAM, and the rest of the system needs some)."""
+    best = MODEL_TIERS[0]
+    for tier in MODEL_TIERS:
+        if ram_gb >= tier[0]:
+            best = tier
+    return best[1], best[2]
+
+
+def install_steps(os_name, model):
+    """[(text, command or None)] for putting Ollama on this computer."""
+    if os_name.startswith("win"):
+        first = ("Download and run the installer from https://ollama.com/download", None)
+    elif os_name == "darwin":
+        first = ("Install Ollama (or download it from https://ollama.com/download):",
+                 "brew install ollama")
+    else:
+        first = ("Install Ollama (this runs the official install script):",
+                 "curl -fsSL https://ollama.com/install.sh | sh")
+    return [first,
+            ("Download the model (a few GB, once):", f"ollama pull {model}"),
+            ("Back here: fill in the address and model, then press Test connection.", None)]
+
+
+def ollama_state(url=None):
+    """(binary_found, server_answers, [installed model names])."""
+    import shutil
+    url = url or DEFAULT_URLS["ollama"]
+    found = shutil.which("ollama") is not None
+    try:
+        out = _http(_join(url, "/api/tags"), timeout=3)
+        return found, True, [m.get("name", "") for m in out.get("models", [])]
+    except AIError:
+        return found, False, []

@@ -5,12 +5,13 @@
 # = the other one of Dig/Flag, drag = pan, pinch or wheel = zoom.
 import math
 import os
+import random
 import time
 
 from kivy.clock import Clock
 from kivy.core.text import Label as CoreLabel
-from kivy.graphics import (Color, Ellipse, Line, Rectangle, ScissorPop,
-                           ScissorPush, Triangle)
+from kivy.graphics import (Color, Ellipse, InstructionGroup, Line, Rectangle,
+                           ScissorPop, ScissorPush, Triangle)
 from kivy.metrics import dp, sp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -33,14 +34,21 @@ ASH_C = (0.82, 0.82, 0.80, 1)
 CRATER_C = (0.0, 0.0, 0.0, 1)
 CRATER_IN = (0.14, 0.14, 0.15, 1)
 FLAG_C = (0.92, 0.30, 0.35, 1)
+DEFUSED_C = (0.35, 0.85, 0.50, 1)       # a flag on a mine that has been paid
+HINT_C = (1.0, 0.85, 0.2, 1)
+BURST_RED = (0.95, 0.25, 0.35)
+BURST_BLUE = (0.45, 0.70, 1.0)
+BURST_GREEN = (0.40, 0.90, 0.55)
+BURST_FIRE = (1.0, 0.60, 0.20)
 NUM_C = {1: (0.45, 0.70, 1.0, 1), 2: (0.40, 0.85, 0.50, 1), 3: (1.0, 0.45, 0.45, 1),
          4: (0.70, 0.55, 1.0, 1), 5: (1.0, 0.65, 0.30, 1), 6: (0.35, 0.90, 0.90, 1),
          7: (0.90, 0.90, 0.90, 1), 8: (0.60, 0.60, 0.60, 1)}
 MIN_ZOOM, MAX_ZOOM = 0.45, 2.6
 LONG_PRESS = 0.38                       # the same hold as the normal Minesweeper
 GHOST_WINDOW = 0.6
-HELP = ("Tap to dig. Brown = scorched (can't be touched), pale = fallout. "
-        "Solve the cells around brown to heal it.")
+HELP = ("Tap to dig, hold to flag. Brown = scorched: solve the ring around it "
+        "to heal it. Flags on mines pay bonus points when their sector is "
+        f"solved. A hint costs {im.HINT_COST} pts.")
 
 
 def save_path():
@@ -60,6 +68,15 @@ class MapView(Widget):
         self._tex, self._tex_size = {}, 0
         self._redraw = Clock.create_trigger(self.redraw, 0)
         self.bind(pos=self._redraw, size=self._redraw)
+        # effects live in their own group above the map, redrawn by a timer
+        # that only runs while something is animating
+        self._fxg = InstructionGroup()
+        self.canvas.after.add(self._fxg)
+        self._parts, self._flashes, self._texts = [], [], []
+        self.hint_cell = None
+        self._fx_ev = None
+        self._fx_last = 0.0
+        self._ftex = {}
 
     @property
     def cs(self):
@@ -137,7 +154,7 @@ class MapView(Widget):
                                       pos=(px + (cs - tex.width) / 2,
                                            py + (cs - tex.height) / 2))
                     elif v == im.FLAG:
-                        Color(*FLAG_C)
+                        Color(*(DEFUSED_C if (x, y) in world.defused else FLAG_C))
                         Triangle(points=[px + cs * .38, py + cs * .48, px + cs * .38,
                                          py + cs * .86, px + cs * .82, py + cs * .67])
                         Rectangle(pos=(px + cs * .33, py + cs * .14), size=(cs * .07, cs * .72))
@@ -168,11 +185,141 @@ class MapView(Widget):
     def act(self, pos, mode):
         x, y = self.cell_at(*pos)
         w = self.world
+        self.hint_cell = None
         out = (w.dig(x, y) if mode == "dig" else
                w.toggle_flag(x, y) if mode == "flag" else w.repair(x, y))
         self.on_outcome(out)
+        self._celebrate(out, x, y)
         self._redraw()
         return out
+
+    # ---- rewards: dots that fly out of the cell, flashes, floating points
+    def _celebrate(self, out, x, y):
+        k = out.kind
+        if k == "dug" and out.revealed:
+            self.burst(x + .5, y + .5, BURST_BLUE, min(14, 4 + out.revealed // 4),
+                       speed=1.6 + min(out.revealed, 60) / 30)
+        elif k == "chord" and out.revealed:
+            self.burst(x + .5, y + .5, BURST_BLUE, 10, speed=2.2)
+        elif k == "flag":
+            self.burst(x + .5, y + .5, BURST_RED, 7, speed=1.3, life=.45)
+            if out.defused:
+                self.burst(x + .5, y + .5, BURST_GREEN, 10, speed=2.0)
+                self.float_text(x + .5, y + .5, "+1 defused", BURST_GREEN)
+        elif k == "blast" and out.blast:
+            bx, by = out.blast
+            self.burst(bx + .5, by + .5, BURST_FIRE, 38, speed=4.0 + out.radius,
+                       life=.8, size=.2)
+            self.burst(bx + .5, by + .5, BURST_RED, 16, speed=2.5, life=.7)
+            self.float_text(bx + .5, by + .5, "BOOM!", BURST_FIRE)
+        elif k == "repair":
+            self.burst(x + .5, y + .5, (0.9, 0.9, 0.9), 14, speed=2.0)
+        for (cx, cy), pts in out.sectors:
+            mx, my = (cx + .5) * im.CHUNK, (cy + .5) * im.CHUNK
+            self._flashes.append([cx * im.CHUNK, cy * im.CHUNK, im.CHUNK,
+                                  time.monotonic(), 1.0, BURST_GREEN])
+            self.burst(mx, my, BURST_GREEN, 36, speed=5.0, life=.9, size=.2)
+            self.float_text(mx, my, f"+{pts}", (1, 1, 1))
+        self._fx_start()
+
+    def burst(self, wx, wy, color, n, speed=2.0, life=.6, size=.14):
+        now = time.monotonic()
+        for _ in range(n):
+            a = random.uniform(0, 2 * math.pi)
+            v = speed * random.uniform(.35, 1.0)
+            self._parts.append([wx, wy, math.cos(a) * v, math.sin(a) * v, now,
+                                life * random.uniform(.7, 1.1), color,
+                                size * random.uniform(.7, 1.3)])
+        if len(self._parts) > 260:
+            del self._parts[:len(self._parts) - 260]
+
+    def float_text(self, wx, wy, text, color):
+        self._texts.append([wx, wy, text, time.monotonic(), 1.3, color])
+
+    def show_hint(self, cell):
+        """Pulse a gold frame on a cell, and bring it into view."""
+        self.hint_cell = cell
+        x, y = cell
+        w, h = self.size
+        cs = self.cs
+        if (abs(x + .5 - self.cx) > w / 2 / cs - 1.2
+                or abs(y + .5 - self.cy) > h / 2 / cs - 1.2):
+            self.cx, self.cy = x + .5, y + .5
+        self._redraw()
+        self._fx_start()
+
+    def stop_fx(self):
+        if self._fx_ev is not None:
+            self._fx_ev.cancel()
+            self._fx_ev = None
+        self._parts, self._flashes, self._texts = [], [], []
+        self.hint_cell = None
+        self._fxg.clear()
+
+    def _fx_start(self):
+        if self._fx_ev is None:
+            self._fx_last = time.monotonic()
+            self._fx_ev = Clock.schedule_interval(self._fx_tick, 1 / 30.)
+
+    def _ftext(self, text):
+        t = self._ftex.get(text)
+        if t is None:
+            if len(self._ftex) > 30:
+                self._ftex.clear()
+            lab = CoreLabel(text=text, font_size=int(sp(20)), bold=True)
+            lab.refresh()
+            t = self._ftex[text] = lab.texture
+        return t
+
+    def _fx_tick(self, dt):
+        now = time.monotonic()
+        step, self._fx_last = now - self._fx_last, now
+        self._parts = [p for p in self._parts if now - p[4] < p[5]]
+        self._flashes = [f for f in self._flashes if now - f[3] < f[4]]
+        self._texts = [t for t in self._texts if now - t[3] < t[4]]
+        g = self._fxg
+        g.clear()
+        if not (self._parts or self._flashes or self._texts or self.hint_cell):
+            self._fx_ev.cancel()
+            self._fx_ev = None
+            return
+        cs = self.cs
+        ox, oy = self.center_x - self.cx * cs, self.center_y - self.cy * cs
+        g.add(ScissorPush(x=int(self.x), y=int(self.y), width=int(self.width),
+                          height=int(self.height)))
+        for f in self._flashes:
+            a = 1 - (now - f[3]) / f[4]
+            g.add(Color(f[5][0], f[5][1], f[5][2], .35 * a))
+            g.add(Rectangle(pos=(ox + f[0] * cs, oy + f[1] * cs),
+                            size=(f[2] * cs, f[2] * cs)))
+            g.add(Color(f[5][0], f[5][1], f[5][2], a))
+            g.add(Line(rectangle=(ox + f[0] * cs, oy + f[1] * cs, f[2] * cs, f[2] * cs),
+                       width=dp(2.5)))
+        for p in self._parts:
+            p[0] += p[2] * step
+            p[1] += p[3] * step
+            p[2] *= .93
+            p[3] *= .93
+            t = (now - p[4]) / p[5]
+            r = p[7] * cs * (1 - .5 * t)
+            g.add(Color(p[6][0], p[6][1], p[6][2], 1 - t))
+            g.add(Ellipse(pos=(ox + p[0] * cs - r, oy + p[1] * cs - r), size=(2 * r, 2 * r)))
+        for tx in self._texts:
+            t = (now - tx[3]) / tx[4]
+            tex = self._ftext(tx[2])
+            g.add(Color(tx[5][0], tx[5][1], tx[5][2], 1 - t * t))
+            g.add(Rectangle(texture=tex, size=tex.size,
+                            pos=(ox + tx[0] * cs - tex.width / 2,
+                                 oy + (tx[1] + t * 1.5) * cs)))
+        if self.hint_cell:
+            hx, hy = self.hint_cell
+            pulse = .5 + .5 * math.sin(now * 7)
+            px, py = ox + hx * cs, oy + hy * cs
+            g.add(Color(HINT_C[0], HINT_C[1], HINT_C[2], .18 + .25 * pulse))
+            g.add(Rectangle(pos=(px, py), size=(cs, cs)))
+            g.add(Color(*HINT_C))
+            g.add(Line(rectangle=(px + 2, py + 2, cs - 4, cs - 4), width=dp(2 + 1.5 * pulse)))
+        g.add(ScissorPop())
 
     # ---- touch: tap, long-press, drag to pan, pinch / wheel to zoom
     def on_touch_down(self, touch):
@@ -284,19 +431,23 @@ class InfiniteMinesScreen(ToolScreen):
         root.add_widget(self.map)
 
         self.msg = Label(text=HELP, font_size=sp(12), color=theme.MUTED, halign="left",
-                         valign="middle", size_hint_y=None, height=dp(48))
+                         valign="middle", size_hint_y=None, height=dp(62))
         self.msg.bind(size=lambda w, v: setattr(w, "text_size", v))
         root.add_widget(self.msg)
 
         modes = BoxLayout(size_hint_y=None, height=dp(44), spacing=theme.PAD["s"])
         self.mode_btns = {}
         for key, text in (("dig", "Dig"), ("flag", "Flag"),
-                          ("repair", f"Repair ({im.REPAIR_COST} pts)")):
+                          ("repair", f"Repair ({im.REPAIR_COST})")):
             b = ToggleButton(text=text, group="imode", font_size=sp(13),
                              allow_no_selection=False, state="down" if key == "dig" else "normal")
             b.bind(on_release=lambda inst, k=key: self._set_mode(k))
             self.mode_btns[key] = b
             modes.add_widget(b)
+        self.hint_btn = Button(text=f"Hint ({im.HINT_COST})", font_size=sp(13),
+                               background_color=(0.55, 0.45, 0.1, 1))
+        self.hint_btn.bind(on_release=lambda *a: self._hint())
+        modes.add_widget(self.hint_btn)
         root.add_widget(modes)
 
         tools = BoxLayout(size_hint_y=None, height=dp(40), spacing=theme.PAD["s"])
@@ -336,7 +487,16 @@ class InfiniteMinesScreen(ToolScreen):
             self._save_ev = Clock.schedule_once(self._save, 2.0)
 
     def on_leave(self, *a):
+        self.map.stop_fx()
         self._save()
+
+    def _hint(self):
+        m = self.map
+        reach = int(max(m.width, m.height) / m.cs / 2) + 4
+        out = self.world.hint(m.cx, m.cy, reach)
+        self._outcome(out)
+        if out.kind == "hint":
+            m.show_hint(out.target)
 
     def _set_mode(self, key):
         self.map.mode = key
@@ -350,8 +510,19 @@ class InfiniteMinesScreen(ToolScreen):
     def _outcome(self, out):
         k, parts = out.kind, []
         if k == "blast":
-            parts.append(f"BOOM! Crater, radius {out.radius}. "
-                         f"{out.erased} opened cells lost. Dig around the brown area to heal it.")
+            parts.append(f"BOOM! Crater, radius {out.radius}. {out.erased} cells lost. "
+                         f"The ring around the brown area is opened for you: "
+                         f"hidden cells left in it are mines. Solve from there.")
+        elif k == "hint":
+            what = {"dig": "Safe: dig the gold cell.",
+                    "flag": "A mine: flag the gold cell.",
+                    "unflag": "That flag is wrong: remove it."}[out.action]
+            parts.append(f"{what} (-{im.HINT_COST} pts)")
+        elif k == "nohint":
+            parts.append("No certain move near here (nothing charged). Move the "
+                         "map, or the next step needs a guess.")
+        elif k == "poor_hint":
+            parts.append(f"A hint costs {im.HINT_COST} points. Solve sectors to earn them.")
         elif k == im.SCORCH:
             parts.append(f"Scorched: heal it by solving the cells around it, or Repair ({im.REPAIR_COST} pts).")
         elif k == im.CRATER:
@@ -365,7 +536,10 @@ class InfiniteMinesScreen(ToolScreen):
         elif k == "noop":
             parts.append("Nothing to open: the flags around that number don't match it.")
         for _, pts in out.sectors:
-            parts.append(f"Sector solved! +{pts} points.")
+            parts.append(f"Sector solved! +{pts} points"
+                         + (f" ({out.defused} defused)." if out.defused else "."))
+        if k == "flag" and out.defused and not out.sectors:
+            parts.append("Defused! +1 point.")
         if out.healed and k != "repair":
             parts.append(f"{out.healed} scorched cells healed.")
         if k in ("dug", "chord") and not parts:
@@ -373,7 +547,8 @@ class InfiniteMinesScreen(ToolScreen):
         if parts:
             self.msg.text = "  ".join(parts)
         self._status()
-        if k not in (im.SCORCH, im.CRATER, "flagged", "poor", "noop", "revealed"):
+        if k not in (im.SCORCH, im.CRATER, "flagged", "poor", "noop", "revealed",
+                     "nohint", "poor_hint"):
             self._later_save()
 
     def _new_press(self):
@@ -385,6 +560,7 @@ class InfiniteMinesScreen(ToolScreen):
         self.world = im.World()
         self.world.start()
         self.map.world = self.world
+        self.map.stop_fx()
         self.map.go_home()
         self.msg.text = "A new world. " + HELP
         self._status()

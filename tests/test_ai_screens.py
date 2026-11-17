@@ -75,4 +75,25 @@ te._ai_review("hello wrold", "hello world", 0, 11)
 pops = [w for w in Window.children if isinstance(w, Popup)]
 pops[0].content.children[0].children[-1].dispatch("on_release")
 assert te._ed.text == "hello world", te._ed.text
+
+# Learn: the AI button only exists when the learn tool is ticked
+import screens.learn_screen as lsx
+ls = lsx.LearnScreen(name="l"); ls._show_home()
+def texts(w):
+    out = []
+    for c in w.walk():
+        if getattr(c, "text", None): out.append(c.text)
+    return out
+assert not any("with AI" in t for t in texts(ls))
+cfg = ai_core.load(); cfg["tools"]["learn"] = True; ai_core.save(cfg)
+ls._show_home()
+assert any("Write a course with AI" in t for t in texts(ls))
+ls._ai_course()
+# the Ollama guide opens and offers a model
+s3 = AISettings()
+s3._guide()
+from kivy.uix.popup import Popup
+from kivy.core.window import Window as W
+guide = [w for w in W.children if isinstance(w, Popup) and w.title == "Set up Ollama"]
+assert guide and any("Use " in t for t in texts(guide[0]))
 print("ai screens ok")

@@ -16,6 +16,10 @@ from kivy.uix.textinput import TextInput
 from core import ai_core
 
 
+def is_on(tool):
+    return ai_core.enabled(tool)
+
+
 def sync_button(btn, tool, full_height):
     """Hidden (no space, no touches) unless the master switch, the provider
     and this tool's tick box are all on. Call from on_enter, so a change made

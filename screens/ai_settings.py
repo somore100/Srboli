@@ -98,6 +98,10 @@ class AISettings(BoxLayout):
         btns.add_widget(self.test_btn)
         btns.add_widget(self.save_btn)
         b.add_widget(btns)
+        guide = Button(text="Help me set up Ollama...", font_size=sp(12),
+                       size_hint_y=None, height=dp(38))
+        guide.bind(on_release=lambda *a: self._guide())
+        b.add_widget(guide)
         self.status = _label("", 11, (0.8, 0.8, 0.8, 1), dp(40))
         b.add_widget(self.status)
 
@@ -197,3 +201,90 @@ class AISettings(BoxLayout):
             Clock.schedule_once(show)
 
         threading.Thread(target=run, daemon=True).start()
+
+    # ── Ollama set-up guide ──────────────────────────────────────────────
+    def _guide(self):
+        """Shows what this computer can run and the exact steps. Nothing is
+        installed for you."""
+        import sys
+        from kivy.core.clipboard import Clipboard
+        from kivy.uix.popup import Popup
+        from kivy.uix.scrollview import ScrollView
+        from kivy.utils import platform
+
+        col = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(6),
+                        padding=dp(6))
+        col.bind(minimum_height=col.setter("height"))
+        sv = ScrollView(do_scroll_x=False)
+        sv.add_widget(col)
+        outer = BoxLayout(orientation="vertical", spacing=dp(6))
+        outer.add_widget(sv)
+
+        def line(text, size=12, color=(0.9, 0.9, 0.9, 1), h=None):
+            lbl = _label(text, size, color, h or dp(24))
+            lbl.height = h or dp(24)
+            lbl.bind(texture_size=lambda w, ts: setattr(w, "height", max(dp(24), ts[1] + dp(6))))
+            col.add_widget(lbl)
+            return lbl
+
+        if platform == "android":
+            line("A phone is too small to run a useful model well. Run Ollama "
+                 "on your PC instead (open this guide on the PC for the steps), "
+                 "start it so it accepts the network "
+                 "(set OLLAMA_HOST=0.0.0.0), and put the PC's address here, "
+                 "e.g. http://192.168.1.20:11434 (same Wi-Fi). Or use an API key.")
+            model = "llama3.2:3b"
+        else:
+            try:
+                try:
+                    import psutil
+                    total = psutil.virtual_memory().total
+                except ImportError:
+                    from core import psutil_lite
+                    total = psutil_lite.virtual_memory().total
+                ram = total / 1024 ** 3 or 8
+            except Exception:
+                ram = 8
+            model, why = ai_core.suggest_model(ram)
+            line(f"This computer has about {ram:.0f} GB of memory. Suggested "
+                 f"model: {model} ({why}).")
+            state = line("Checking for Ollama...", 12, (0.7, 0.7, 0.7, 1))
+            for text, cmd in ai_core.install_steps(sys.platform, model):
+                line(text)
+                if cmd:
+                    box = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(6))
+                    ti = TextInput(text=cmd, readonly=True, multiline=False,
+                                   font_size=sp(12))
+                    cp = Button(text="Copy", size_hint_x=None, width=dp(70),
+                                font_size=sp(12))
+                    cp.bind(on_release=lambda i, c=cmd: Clipboard.copy(c))
+                    box.add_widget(ti)
+                    box.add_widget(cp)
+                    col.add_widget(box)
+
+            def check():
+                found, up, models = ai_core.ollama_state(self.url.text.strip() or None)
+                msg = ("Ollama is installed" if found else "Ollama was not found on this computer")
+                msg += (f"; the server is running, models: {', '.join(models) or 'none yet'}."
+                        if up else "; the server is not answering (start it with: ollama serve).")
+                Clock.schedule_once(lambda dt: setattr(state, "text", msg))
+            threading.Thread(target=check, daemon=True).start()
+
+        use = Button(text=f"Use {model} here", size_hint_y=None, height=dp(42),
+                     background_color=(0.2, 0.55, 0.2, 1))
+        close = Button(text="Close", size_hint_y=None, height=dp(42))
+        outer.add_widget(use)
+        outer.add_widget(close)
+        pop = Popup(title="Set up Ollama", content=outer, size_hint=(0.94, 0.88))
+
+        def apply(*_):
+            self.provider.text = ai_core.PROVIDER_LABELS["ollama"]
+            if platform != "android":
+                self.url.text = ai_core.DEFAULT_URLS["ollama"]
+            self.model.text = model
+            self.status.text = "Filled in. Press Test connection once Ollama has the model."
+            pop.dismiss()
+
+        use.bind(on_release=apply)
+        close.bind(on_release=lambda *a: pop.dismiss())
+        pop.open()

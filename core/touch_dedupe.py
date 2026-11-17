@@ -113,7 +113,9 @@ def stats():
 # ── persisted switch (Touch Test screen) ───────────────────────────────────
 # Flag files in the phone's root are unreliable (a fresh install can't read
 # them until "all files access" is granted), so the switch lives in the app's
-# own data dir. DEFAULT IS OFF: the filter only runs if you turned it on.
+# own data dir. On Android the filter is ON unless the user switched it off in
+# Touch Test (the phone really does send every tap twice: a finger touch and a
+# mouse touch at the same spot ~2 ms apart). Elsewhere it is OFF.
 #
 # Self-healing: when the filter starts it sets "pending". The first time any
 # button actually reacts to a tap, mark_healthy() clears "pending". If the next
@@ -125,6 +127,12 @@ import json
 import os
 
 
+def default_enabled():
+    return bool(os.environ.get("ANDROID_ARGUMENT")
+                or os.environ.get("ANDROID_ROOT")
+                and os.path.exists("/system/build.prop"))
+
+
 def _cfg_path():
     import app_data
     return os.path.join(app_data.subdir("touch"), "touch_dedupe.json")
@@ -134,10 +142,10 @@ def load_cfg():
     try:
         with open(_cfg_path(), encoding="utf-8") as f:
             d = json.load(f)
-        return {"enabled": bool(d.get("enabled", False)),
+        return {"enabled": bool(d.get("enabled", default_enabled())),
                 "pending": bool(d.get("pending", False))}
     except Exception:
-        return {"enabled": False, "pending": False}
+        return {"enabled": default_enabled(), "pending": False}
 
 
 def save_cfg(cfg):

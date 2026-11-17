@@ -61,18 +61,18 @@ for dx in range(-8, 9):
         if d <= r + 0.5:
             assert v == im.SCORCH, (dx, dy, v)
         elif d <= r + 0.5 + fw:
-            assert v == im.ASH, (dx, dy, v)
+            # fallout ring: safe cells opened with their number, mines hidden
+            if w.is_mine(mx + dx, my + dy):
+                assert v in (im.HIDDEN, im.FLAG, im.CRATER, im.SCORCH), (dx, dy, v)
+            else:
+                assert isinstance(v, int) and v == w.number(mx + dx, my + dy), (dx, dy, v)
         else:
             assert v != im.SCORCH and v != im.ASH
 assert w.dig(mx, my).kind == im.CRATER                            # a crater is permanent
 assert w.toggle_flag(mx, my).kind == im.CRATER
 sx, sy = next(iter(w.scorch))
 assert w.dig(sx, sy).kind == im.SCORCH and w.toggle_flag(sx, sy).kind == im.SCORCH
-ax, ay = next(iter(w.ash))
-d0 = w.dug
-assert w.dig(ax, ay).kind in ("dug", "blast") or w.is_mine(ax, ay)    # ash is diggable
-if not w.is_mine(ax, ay):
-    assert (ax, ay) not in w.ash and (ax, ay) in w.revealed
+assert not w.ash                                                   # fallout is opened, not pale
 # the crater counts as a known mine for the numbers next to it
 nx = mx + r + 3
 assert w.number(nx, my) == sum(w.is_mine(nx + i, my + j) for i in (-1, 0, 1) for j in (-1, 0, 1) if i or j)
@@ -93,8 +93,8 @@ z = im.World(seed=5, density=0)
 bx = next(x for x in range(30, 400) if z.blast_shape(x, 0)[0] >= 3)
 r, fw = z.blast_shape(bx, 0)
 z._blast(bx, 0, im.Outcome("blast"))
-n_scorch = len(z.scorch); assert n_scorch >= 28 and len(z.ash) >= 8
-assert z._heal() == 0                                             # nothing solved around it yet
+n_scorch = len(z.scorch); assert n_scorch >= 28 and len(z.revealed) >= 8
+assert len(z.scorch) == n_scorch                                  # the blast itself healed nothing
 for dx in range(-12, 13):                                         # solve everything outside the scorch
     for dy in range(-12, 13):
         if _m.hypot(dx, dy) > r + 0.5 and (bx + dx, dy) not in z.revealed:
@@ -110,9 +110,10 @@ assert (bx, 0) in z.craters and not z.scorch
 # a hidden mine next to the rim is solved only by a correct flag
 w = im.World(seed=21); w.start()
 mx, my = first_mine(w, lo=20); w.dig(mx, my)
-assert w._heal() == 0
-for c in list(w.scorch):
-    assert not w._settled(c)
+n0 = len(w.scorch)
+w._heal()                                  # only the rim, next to the opened fallout ring, can mend
+assert len(w.scorch) >= n0 - (n0 // 2 + 8)
+assert (mx + 0, my + 1) in w.scorch or (mx + 1, my) in w.scorch or w.blast_shape(mx, my)[0] == 1
 
 # ---- instant repair: costs points, heals a 3x3
 z = im.World(seed=5, density=0); z._blast(30, 0, im.Outcome("blast"))
@@ -178,3 +179,79 @@ g = im.World.from_dict({"v": 1, "seed": 3, "revealed": [1, 2, 3], "flags": "no",
 assert g is not None and g.points == 0 and g.dug == 0 and not g.scorch and (1, 2) in g.revealed
 assert g.craters == {(2, 3)}
 print("infinite mines core OK")
+
+
+# ---- recovery without guessing: after a blast, every hidden cell left in the
+# fallout ring is a mine (all safe ones there were opened for the player)
+for seed in range(1, 40):
+    w = im.World(seed=seed); w.start()
+    mx, my = first_mine(w, lo=15)
+    w.dig(mx, my)
+    r, fw = w.blast_shape(mx, my)
+    for dy in range(-8, 9):
+        for dx in range(-8, 9):
+            d = math.hypot(dx, dy)
+            c = (mx + dx, my + dy)
+            if r + 0.5 < d <= r + 0.5 + fw and w.view(*c) == im.HIDDEN:
+                assert w.is_mine(*c), (seed, dx, dy)
+
+# ---- defusing: flags pay when the sector is solved, never at flag time
+w = im.World(seed=3); w.start()
+assert w.toggle_flag(40, 40).points == 0                           # no tell-tale reward
+w.toggle_flag(40, 40)
+ch = (0, 0)
+mines0 = [(x, y) for x in range(0, 9) for y in range(0, 9) if w.is_mine(x, y)]
+assert mines0
+for x in range(0, 9):
+    for y in range(0, 9):
+        if not w.is_mine(x, y) and (x, y) not in w.revealed:
+            w._reveal((x, y))
+w.flags.add(mines0[0])                                              # one correct flag
+w.flags.add((-30, -30)) if not w.is_mine(-30, -30) else None        # a wrong one elsewhere pays nothing
+before = w.points
+out = w.toggle_flag(500, 500)                                       # any action finishes the sector
+sec = dict(out.sectors)
+assert ch in sec and out.defused == 1, (out.sectors, out.defused)
+assert sec[ch] == max(1, len(mines0)) + 1                           # mines + 1 defused flag
+assert mines0[0] in w.defused
+# flagging a mine of a solved sector pays once
+o = w.toggle_flag(*mines0[1]) if len(mines0) > 1 else None
+if o:
+    assert o.defused == 1 and o.points == 1
+    p0 = w.points; w.toggle_flag(*mines0[1]); w.toggle_flag(*mines0[1])
+    assert w.points == p0                                            # not twice
+r = im.World.from_dict(w.to_dict())
+assert r.defused == w.defused
+
+# ---- hints: only certain moves, cost points, nothing charged when none
+import random
+bad = 0; checked = 0
+for seed in range(1, 12):
+    w = im.World(seed=seed); w.start()
+    rnd = random.Random(seed)
+    for step in range(60):
+        h = w.find_hint(0, 0, reach=40)
+        if h:
+            act, c = h; checked += 1
+            if act == "dig": assert not w.is_mine(*c), (seed, c)
+            elif act == "flag": assert w.is_mine(*c), (seed, c)
+            else: assert not w.is_mine(*c)
+            if act == "dig": w.dig(*c)
+            elif act == "flag": w.toggle_flag(*c)
+            else: w.toggle_flag(*c)
+        else:
+            cells = [c for c in w.revealed if w.revealed[c] == 0]
+            x, y = rnd.choice(cells) if cells else (0, 0)
+            nb = [(x + dx, y + dy) for dx in (-2, -1, 0, 1, 2) for dy in (-2, -1, 0, 1, 2)]
+            safe = [c for c in nb if not w.is_mine(*c) and c not in w.revealed and c not in w.scorch]
+            if safe: w.dig(*rnd.choice(safe))
+assert checked > 30, checked
+w = im.World(seed=3); w.start(); w.points = 1
+assert w.hint(0, 0).kind == "poor_hint" and w.points == 1
+w.points = 10
+o = w.hint(0, 0)
+assert o.kind in ("hint", "nohint")
+assert w.points == (10 - im.HINT_COST if o.kind == "hint" else 10)
+if o.kind == "hint":
+    assert o.action in ("dig", "flag", "unflag") and o.target
+print("infinite mines recovery/defuse/hint ok")
