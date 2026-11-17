@@ -45,6 +45,7 @@ SCREENS = [
     ("shortcut",       "screens.shortcut_screen",         "ShortcutScreen"),
     ("backup",         "screens.backup_screen",           "BackupScreen"),
     ("sync",           "screens.sync_screen",             "SyncScreen"),
+    ("bulk_rename",    "screens.bulk_rename_screen",      "BulkRenameScreen"),
 ]
 
 LABELS = {
@@ -78,6 +79,7 @@ LABELS = {
     "touch_test":     "Touch Test",
     "converter":      "File Converter",
     "text_workbench": "Text Workbench",
+    "bulk_rename":    "Bulk Renamer",
     "learn":          "Learn (AI courses)",
     "shortcut":       "Linux Shortcut Creator",
     "backup":         "Backup",
@@ -92,6 +94,7 @@ ALIASES = {
     "full_editor":    ["document", "word", "slides", "presentation", "table",
                        "outline", "docs"],
     "script_mode":    ["prompter", "teleprompter", "script"],
+    "bulk_rename":    ["rename", "batch", "files", "numbering", "regex", "undo"],
     "text_workbench": ["lines", "sort", "regex", "diff", "stats", "extract", "dedupe", "text"],
     "learn":          ["course", "quiz", "study", "ai"],
     "file_sorter":    ["rules", "organize", "move files", "clean"],
@@ -134,7 +137,7 @@ GROUPS = [
     ("writing", "Writing",
      ["text_editor", "full_editor", "script_mode", "text_workbench", "learn"]),
     ("files", "Files",
-     ["file_sorter", "fast_transfer", "backup", "sync", "converter", "gallery", "metadata",
+     ["file_sorter", "bulk_rename", "fast_transfer", "backup", "sync", "converter", "gallery", "metadata",
       "image_text"]),
     ("media", "Media",
      ["music", "shape_gen"]),
