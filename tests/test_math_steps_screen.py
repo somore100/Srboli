@@ -32,6 +32,8 @@ for t in ("3x+6=15", "3x=9", "x=3"):
     s.step_in.text = t; s.check(); tick()
 assert "Done" in s.feedback.text and s.step_in.disabled and "No wrong steps" in s.feedback.text
 
+for lv in ("Easy", "Medium", "Hard"):
+    s.level.text = lv; s.practice(); assert s.session and s.problem_in.text
 s.problem_in.text = "2x+3=7"; s.start(); s.show_solution(); tick()
 assert "That was the solution" in s.feedback.text and len(s.log.children) == 3
 

@@ -38,7 +38,14 @@ class NotSupported(MathError):
 _TOKEN = re.compile(r"\s*(\d+\.\d+|\d+|\.\d+|sqrt|√|[A-Za-z]|[-+*/^()=]|\S)")
 
 
+_VULGAR = {"\u00bd": "(1/2)", "\u2153": "(1/3)", "\u2154": "(2/3)", "\u00bc": "(1/4)",
+           "\u00be": "(3/4)", "\u2155": "(1/5)", "\u2159": "(1/6)", "\u215b": "(1/8)"}
+_SUPER = {"\u00b2": "^2", "\u00b3": "^3", "\u2074": "^4", "\u2075": "^5"}
+
+
 def _tokens(text):
+    for ch, plain in {**_VULGAR, **_SUPER}.items():
+        text = text.replace(ch, plain)
     text = (text.replace("−", "-").replace("–", "-")
             .replace("×", "*").replace("·", "*").replace("÷", "/")
             .replace("**", "^"))
@@ -1259,3 +1266,71 @@ class Session:
             how = f"{self.wrong} wrong " + ("step" if self.wrong == 1 else "steps") + " along the way."
         hints = f" {self.hints} hint" + ("" if self.hints == 1 else "s") + " used." if self.hints else ""
         return f"{good} step" + ("" if good == 1 else "s") + f" written. {how}{hints}"
+
+
+# ── practice problems ─────────────────────────────────────────────────────
+def _signed(n):
+    """' + 3' / ' - 3' / '' (for 0), to append after a term."""
+    return "" if n == 0 else (f" + {n}" if n > 0 else f" - {-n}")
+
+
+def _coef(a, var="x"):
+    return var if a == 1 else f"-{var}" if a == -1 else f"{a}{var}"
+
+
+LEVELS = ("Easy", "Medium", "Hard")
+
+
+def generate(level="Easy", rng=None):
+    """A practice problem (text) the solver can walk through, with an integer
+    answer so the steps stay clean. Easy: one or two steps. Medium: brackets and
+    x on both sides, or simplifying. Hard: quadratics and fractions."""
+    import random
+    rng = rng or random.Random()
+    for _ in range(50):
+        x = rng.choice([v for v in range(-9, 10) if v])
+        a = rng.randint(2, 9)
+        b = rng.choice([v for v in range(-9, 10) if v])
+        if level == "Easy":
+            kind = rng.choice(("two", "one", "div"))
+            if kind == "one":
+                text = f"x{_signed(b)} = {x + b}"
+            elif kind == "div":
+                text = f"x/{a} = {x}"
+            else:
+                text = f"{a}x{_signed(b)} = {a * x + b}"
+        elif level == "Medium":
+            kind = rng.choice(("brackets", "both", "simplify"))
+            if kind == "brackets":
+                text = f"{a}(x{_signed(b)}) = {a * (x + b)}"
+            elif kind == "both":
+                c = rng.choice([v for v in range(1, 9) if v != a])
+                text = f"{_coef(a)}{_signed(b)} = {_coef(c)}{_signed(a * x + b - c * x)}"
+            else:
+                c = rng.randint(2, 6)
+                text = f"{a}(x{_signed(b)}) - {c}x{_signed(rng.randint(-9, 9))}"
+        else:
+            kind = rng.choice(("quad", "square", "frac"))
+            if kind == "quad":
+                q = rng.choice([v for v in range(-6, 7) if v])
+                p_ = rng.choice([v for v in range(-6, 7) if v])
+                mid = p_ + q
+                text = ("x^2" + (f" + {_coef(mid)}" if mid > 0 else f" - {_coef(-mid)}" if mid < 0 else "")
+                        + _signed(p_ * q) + " = 0")
+            elif kind == "square":
+                k = rng.randint(2, 9)
+                text = f"x^2 = {k * k}"
+            else:
+                m, n = rng.sample([2, 3, 4, 5, 6], 2)
+                x = rng.randint(1, 6) * m * n
+                text = f"x/{m} + x/{n} = {x // m + x // n}"
+        try:
+            line = parse_line(text)
+        except MathError:
+            continue
+        if line.kind == "solset" or not can_solve(line):
+            continue
+        if not solution(text):
+            continue
+        return text
+    return "2x + 3 = 11"

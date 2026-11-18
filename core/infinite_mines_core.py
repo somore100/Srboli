@@ -16,9 +16,14 @@
 #            mines. That ring is the anchor you solve the brown area from, so
 #            recovering never needs a blind guess at the edge.
 #   ash      a healed (formerly brown) cell: pale, dig it again
-# Scorched cells heal from the edge inwards as the cells around them get
-# solved (opened, or a correct flag). Healing runs one layer per action, so it
-# is slow on purpose. Opened cells lost to a blast are capped (MAX_ERASE).
+# Blasts scale with how much you have explored: early on they are small
+# (max_radius), and the opened cells one can wipe are a fraction of what you
+# dug (erase_cap), so a blast can never undo most of your progress.
+# Scorched cells heal from the edge inwards, one layer per action, and only
+# NEAR the cells you just opened (or the blast's own ring, on the next action):
+# digging far away heals nothing. Only OPENED cells count towards healing, never
+# flags, so spamming flags around a crater can't clear it; the pale cells a
+# layer leaves behind are dug to carry the healing one layer further in.
 # Defusing: when a sector is solved every correctly flagged mine in it pays an
 # extra point ("defused"); a flag put on a mine of an already solved sector
 # pays one too. Nothing pays at the moment of flagging, so a flag never tells
@@ -34,8 +39,9 @@ CHUNK = 9                  # sector size (cells per side)
 SAFE_RADIUS = 2            # nothing within this many cells of (0,0) is a mine
 DEFAULT_DENSITY = 0.17
 RADII = [1] * 30 + [2] * 25 + [3] * 20 + [4] * 15 + [5] * 10   # blast radius odds
-MAX_ERASE = 60             # most opened/flagged cells one blast can wipe
-HEAL_NEED = 3              # solved neighbours a scorched cell needs to heal
+MAX_ERASE = 60             # absolute most opened/flagged cells one blast can wipe
+HEAL_NEED = 3              # opened neighbours a scorched cell needs to heal
+HEAL_REACH = 2             # a dug cell heals scar cells this close to it
 REPAIR_COST = 3            # points for an instant repair (3x3 around a cell)
 HINT_COST = 2              # points for a hint (a move that is certain)
 FLOOD_CAP = 3000           # most cells one dig opens (tap a 0 to carry on)
@@ -93,6 +99,7 @@ class World:
         self.dug = 0
         self.blasts = 0
         self._touched = set()
+        self._changed = set()   # cells opened since the last heal (heal triggers)
         self._safe_total = {}
 
     # ---------------- the world itself (pure) ----------------
@@ -105,9 +112,19 @@ class World:
         return sum(1 for dx, dy in _NB if self.is_mine(x + dx, y + dy))
 
     def blast_shape(self, x, y):
-        """(radius, fallout width) of a blast at x, y - fixed by the seed."""
+        """(radius, fallout width) of a blast at x, y - fixed by the seed, and
+        kept small while little of the world has been explored."""
         h = _mix(self.seed, x, y, 1)
-        return RADII[h % 100], 1 + ((h >> 8) & 1)
+        return min(RADII[h % 100], self.max_radius()), 1 + ((h >> 8) & 1)
+
+    def max_radius(self):
+        """Biggest blast radius for the progress so far: 1 at the start, +1
+        for every 30 cells dug, never more than 5."""
+        return max(1, min(5, 1 + self.dug // 30))
+
+    def erase_cap(self):
+        """Most opened cells one blast may wipe: an eighth of what you dug."""
+        return max(3, min(MAX_ERASE, self.dug // 8))
 
     # ---------------- what to draw ----------------
     def view(self, x, y):
@@ -262,6 +279,7 @@ class World:
         self.ash.discard(c)
         self.mended.discard(c)
         self._touched.add(chunk_of(*c))
+        self._changed.add(c)
         self.dug += 1
         return n
 
@@ -315,7 +333,7 @@ class World:
                 if 0 < d <= edge:
                     cells.append((d, x + dx, y + dy))
         cells.sort()                    # nearest first: the cap spares the far ones
-        erased = 0
+        erased, cap = 0, self.erase_cap()
         for d, cx, cy in cells:
             c = (cx, cy)
             if c in self.craters:
@@ -334,7 +352,7 @@ class World:
                 continue
             opened = c in self.revealed or c in self.flags
             if opened:
-                if erased >= MAX_ERASE:
+                if erased >= cap:
                     continue
                 erased += 1
             self.revealed.pop(c, None)
@@ -351,14 +369,24 @@ class World:
         self.mended.add(c)
 
     def _settled(self, c):
-        return (c in self.revealed or c in self.mended
-                or (c in self.flags and self.is_mine(*c)))
+        """Counts towards healing: an opened cell or a healed one. Flags never
+        count (they could be spammed to clear a crater)."""
+        return c in self.revealed or c in self.mended
 
     def _heal(self):
-        """One layer of healing: scorched cells with enough solved neighbours."""
-        if not self.scorch:
+        """One layer of healing, near the cells opened since the last heal:
+        scorched cells with enough opened neighbours."""
+        changed, self._changed = self._changed, set()
+        if not self.scorch or not changed:
             return 0
-        ready = [c for c in self.scorch
+        near = set()
+        for (x, y) in changed:
+            for dy in range(-HEAL_REACH, HEAL_REACH + 1):
+                for dx in range(-HEAL_REACH, HEAL_REACH + 1):
+                    c = (x + dx, y + dy)
+                    if c in self.scorch:
+                        near.add(c)
+        ready = [c for c in near
                  if sum(1 for nb in self._nbrs(c) if self._settled(nb)) >= HEAL_NEED]
         for c in ready:
             self._mend(c)

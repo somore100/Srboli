@@ -195,4 +195,10 @@ for prob in ("2x+3=7", "x^2-5x+6=0", "x^2-3x+1=0"):
     t = "".join(rng.choice(alpha) for _ in range(rng.randint(0, 12)))
     try: m.Session(prob).submit(t)
     except Exception as e: raise SystemExit(f"crashed on {prob!r} / {t!r}: {e!r}")
+import random
+for lv in m.LEVELS:
+    for i in range(100):
+        t = m.generate(lv, random.Random(i))
+        assert m.can_solve(m.parse_line(t)), (lv, t)
+P("x²-4"); P("½x+1"); P("2x²-8")
 print("math steps core OK")

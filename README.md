@@ -49,6 +49,7 @@ tool, with global shortcuts to jump between them.
 | **Minesweeper** | Classic Minesweeper: 3 difficulties, long-press to flag, tap a number to chord, timer and best times |
 | **Infinite Mines** | Raw demo of an endless minesweeper: pan and zoom a map that is generated as you explore. Stepping on a mine leaves a crater with a scorched zone that heals as you solve the cells around it; a ring around it opens for you so recovery needs no blind guess; solved 9x9 sectors earn points (flagged mines pay a bonus) that pay for instant repairs and hints; dots and flashes reward each move |
 | **Chess** | Full-rules chess (castling, en passant, promotion, check/mate/stalemate) vs. a built-in AI at 3 levels or two-player pass-and-play, with undo |
+| **Disk Space** | Where did the space go? Scan a folder or drive once, then drill into the biggest folders (tap to go inside), see the 100 largest files and a breakdown by kind (pictures, video, archives...). Shows free space, can be stopped, copies a text report. Read-only: it never deletes anything |
 | **File Inspector** | Look inside any file or folder: its real type from the contents (not the extension) with a warning when the name lies, MIME type, size, dates, permissions and owner, text or hex preview, and MD5/SHA-1/SHA-256/SHA-512 checksums with a "does it match the one I was given?" check. Read-only |
 | **Bulk Renamer** | Rename a folder's files with stacked rules (replace, regex, case, prefix/suffix, numbering, dates, patterns, extension), a live old-to-new preview that flags clashes and bad names, a confirm step, and Undo. Swaps and chains work, and a failure part-way puts everything back |
 | **Text Workbench** | One screen, five tabs, for the jobs people write small scripts for: sort, reverse, shuffle, dedupe, filter and number lines; pull emails, links, IPs, numbers or dates out of a text; test a regex with live matches and replace with it; compare two texts or files; count words and reading time. "Use result as input" chains the steps |
@@ -192,6 +193,7 @@ srboli/
 │   ├── infinite_mines_core.py   # Infinite Mines: seeded endless world, blasts, healing (no dependencies)
 │   ├── math_steps_core.py       # Math Steps: parser, step checker, hints, linear + quadratic solver (no dependencies)
 │   ├── learn_core.py            # Course engine for Learn
+│   ├── disk_usage_core.py       # One-pass folder scan: folder sizes, biggest files, kinds for Disk Space
 │   ├── file_inspect_core.py     # File type by contents, dates, permissions, checksums and previews for File Inspector
 │   ├── bulk_rename_core.py      # Rules, preview, safe two-phase rename and undo for Bulk Renamer
 │   ├── text_workbench_core.py   # Lines, extract, regex, diff and stats for Text Workbench

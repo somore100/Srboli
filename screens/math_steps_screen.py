@@ -9,6 +9,7 @@ from kivy.uix.button import Button
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.spinner import Spinner
 from kivy.uix.textinput import TextInput
 
 from core import math_steps_core as ms
@@ -39,6 +40,15 @@ class MathStepsScreen(ToolScreen):
         prow.add_widget(start)
         root.add_widget(prow)
 
+        prac = BoxLayout(size_hint_y=None, height=dp(40), spacing=theme.PAD["s"])
+        self.level = Spinner(text="Easy", values=list(ms.LEVELS), font_size=sp(12),
+                             size_hint_x=0.3)
+        new_ex = Button(text="Give me an example to solve", font_size=sp(12))
+        new_ex.bind(on_release=lambda *a: self.practice())
+        prac.add_widget(self.level)
+        prac.add_widget(new_ex)
+        root.add_widget(prac)
+
         keys = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(4))
         for k in KEYS:
             b = Button(text=k, font_size=sp(15 if len(k) == 1 else 12))
@@ -47,8 +57,9 @@ class MathStepsScreen(ToolScreen):
             keys.add_widget(b)
         root.add_widget(keys)
 
-        self.info = self._label("Type a problem and press Start. Then write "
-                                "each step of your solution on its own line.",
+        self.info = self._label("Type a problem and press Start, or press \"Give me an "
+                                "example\". Then write each step of your solution "
+                                "on its own line.",
                                 NOTE, dp(40))
         root.add_widget(self.info)
 
@@ -127,6 +138,11 @@ class MathStepsScreen(ToolScreen):
         self.feedback.text = f"[color={color}]{text}[/color]"
 
     # ── actions ───────────────────────────────────────────────────────────
+    def practice(self, *a):
+        """A made-up problem at the chosen level: you solve it line by line."""
+        self.problem_in.text = ms.generate(self.level.text)
+        self.start()
+
     def start(self, *a):
         text = self.problem_in.text.strip()
         try:
@@ -135,7 +151,8 @@ class MathStepsScreen(ToolScreen):
             self._say(str(e), BAD)
             return
         except ms.MathError as e:
-            self._say(str(e), BAD)
+            self._say(f"I can't read that as an equation or expression: {e} "
+                      "(You don't need * for multiplication: 2x and 3(x+1) are fine.)", BAD)
             return
         self._hint_level = 0
         self.log.clear_widgets()

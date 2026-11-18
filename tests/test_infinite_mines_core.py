@@ -87,9 +87,9 @@ assert o.erased == im.MAX_ERASE, o.erased                         # capped
 assert before - len(z.revealed) <= im.MAX_ERASE + 1               # +1: the mine's own cell
 assert len(z.scorch) > 0 and (0, 0) in z.craters
 
-# ---- healing: from the edge inwards, one layer per action, and never faster
+# ---- healing: from the edge inwards, one layer at a time, only near what you open
 import math as _m
-z = im.World(seed=5, density=0)
+z = im.World(seed=5, density=0); z.dug = 150                       # explored enough for a big blast
 bx = next(x for x in range(30, 400) if z.blast_shape(x, 0)[0] >= 3)
 r, fw = z.blast_shape(bx, 0)
 z._blast(bx, 0, im.Outcome("blast"))
@@ -99,14 +99,47 @@ for dx in range(-12, 13):                                         # solve everyt
     for dy in range(-12, 13):
         if _m.hypot(dx, dy) > r + 0.5 and (bx + dx, dy) not in z.revealed:
             z._reveal((bx + dx, dy))
-counts = [len(z.scorch)]
-for _ in range(10):
-    z.toggle_flag(900, 900); z.toggle_flag(900, 900)              # harmless actions, one layer each
+counts = []
+z.toggle_flag(900, 900); z.toggle_flag(900, 900)                  # the next action heals the outer layer once
+counts.append(len(z.scorch))
+assert 0 < counts[0] < n_scorch, counts                           # slow: one layer, not all at once
+before = len(z.scorch)
+for _ in range(5):
+    z.toggle_flag(900, 900); z.toggle_flag(900, 900)              # acting far away heals nothing more
+assert len(z.scorch) == before, "healing must be local to what was opened"
+for _ in range(20):                                               # dig the pale cells: each layer carries the next
+    if not z.scorch:
+        break
+    for c in sorted(z.ash):
+        z.dig(*c)
     counts.append(len(z.scorch))
 assert counts == sorted(counts, reverse=True), counts
-assert counts[0] == n_scorch and 0 < counts[1] < n_scorch, counts   # slow: one layer, not all at once
-assert counts[-1] == 0, counts                                    # and it does finish, edge inwards
-assert (bx, 0) in z.craters and not z.scorch
+assert counts[-1] == 0 and (bx, 0) in z.craters and not z.scorch, counts   # it finishes, edge inwards
+
+# ---- flags never heal (spamming flags around a crater must do nothing)
+z = im.World(seed=5, density=0); z.dug = 150
+z._blast(bx, 0, im.Outcome("blast")); z._heal()
+left = len(z.scorch)
+for dx in range(-9, 10):
+    for dy in range(-9, 10):
+        z.toggle_flag(bx + dx, dy)
+assert len(z.scorch) == left, "flags must not clear scorched cells"
+assert z.flags
+
+# ---- blasts scale with progress: small early, never most of what you dug
+w = im.World(seed=9); w.dug = 0
+assert all(w.blast_shape(x, 7)[0] == 1 for x in range(-200, 200))
+w.dug = 60; assert max(w.blast_shape(x, 7)[0] for x in range(-300, 300)) == 3
+w.dug = 400; assert max(w.blast_shape(x, 7)[0] for x in range(-300, 300)) == 5
+w.dug = 72; assert w.erase_cap() == 9                              # an eighth of the progress
+w.dug = 0; assert w.erase_cap() == 3
+w.dug = 10 ** 6; assert w.erase_cap() == im.MAX_ERASE
+z = im.World(seed=5, density=0)
+for x in range(-4, 5):
+    for y in range(-4, 5):
+        z._reveal((x, y))
+z.dug = 72; o = im.Outcome("blast"); z._blast(0, 0, o)
+assert o.erased <= 9 and len(z.revealed) >= 81 - 9 - 1, (o.erased, len(z.revealed))
 # a hidden mine next to the rim is solved only by a correct flag
 w = im.World(seed=21); w.start()
 mx, my = first_mine(w, lo=20); w.dig(mx, my)
@@ -186,8 +219,8 @@ print("infinite mines core OK")
 for seed in range(1, 40):
     w = im.World(seed=seed); w.start()
     mx, my = first_mine(w, lo=15)
+    r, fw = w.blast_shape(mx, my)             # the shape depends on progress: read it before the blast
     w.dig(mx, my)
-    r, fw = w.blast_shape(mx, my)
     for dy in range(-8, 9):
         for dx in range(-8, 9):
             d = math.hypot(dx, dy)

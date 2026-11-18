@@ -46,8 +46,9 @@ NUM_C = {1: (0.45, 0.70, 1.0, 1), 2: (0.40, 0.85, 0.50, 1), 3: (1.0, 0.45, 0.45,
 MIN_ZOOM, MAX_ZOOM = 0.45, 2.6
 LONG_PRESS = 0.38                       # the same hold as the normal Minesweeper
 GHOST_WINDOW = 0.6
-HELP = ("Tap to dig, hold to flag. Brown = scorched: solve the ring around it "
-        "to heal it. Flags on mines pay bonus points when their sector is "
+HELP = ("Tap to dig, hold to flag. Brown = scorched: dig next to it and it heals "
+        "one layer at a time; dig the pale cells to carry on inwards (flags "
+        "don't heal). Flags on mines pay bonus points when their sector is "
         f"solved. A hint costs {im.HINT_COST} pts.")
 
 
@@ -524,7 +525,7 @@ class InfiniteMinesScreen(ToolScreen):
         elif k == "poor_hint":
             parts.append(f"A hint costs {im.HINT_COST} points. Solve sectors to earn them.")
         elif k == im.SCORCH:
-            parts.append(f"Scorched: heal it by solving the cells around it, or Repair ({im.REPAIR_COST} pts).")
+            parts.append(f"Scorched: dig the cells next to it to heal it, or Repair ({im.REPAIR_COST} pts).")
         elif k == im.CRATER:
             parts.append("That is a crater: permanent.")
         elif k == "flagged":
