@@ -41,7 +41,7 @@ class DataLocation(BoxLayout):
             self._buttons.append(b)
         self.add_widget(row)
         ex = BoxLayout(size_hint_y=None, height=dp(34), spacing=dp(6))
-        for text, cb in (("Export logs (zip)", self._export_logs),
+        for text, cb in (("Export logs (all)", self._export_logs),
                          ("Export data (zip)", self._export_data),
                          ("Open logs folder", self._open_logs)):
             b = Button(text=text, font_size=sp(12))
@@ -153,16 +153,22 @@ class DataLocation(BoxLayout):
 
     # ── export ───────────────────────────────────────────────────────────
     def _export(self, folders, prefix):
-        from core import export_core
+        """Always answers with a popup (the status line can sit out of sight)."""
+        self._status.text = "Exporting..."
         try:
+            from core import export_core
             path, n = export_core.zip_folders(folders, export_core.export_dir(), prefix)
-        except OSError as e:
+        except Exception as e:
             self._status.color = (1, 0.5, 0.4, 1)
-            self._status.text = (f"Couldn't export: {e} (On a phone, allow "
-                                 "file access for Srboli in Android settings.)")
+            self._status.text = f"Couldn't export: {e}"
+            message_popup("Export failed",
+                          f"{e}\n\nOn a phone: Android settings > Apps > Srboli > "
+                          "Permissions > allow file access (all files), then try again.",
+                          size_hint=(0.9, 0.5))
             return
         self._status.color = (0.4, 1, 0.4, 1)
         self._status.text = f"Saved {n} files to {path}"
+        message_popup("Exported", f"{n} files saved to:\n{path}", size_hint=(0.9, 0.4))
 
     def _export_logs(self, *a):
         from core.logs import logs_dir

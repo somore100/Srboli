@@ -1,10 +1,11 @@
 name: Tests
 permissions:
   contents: read
+# Run locally while developing (see tests/run_all.sh); CI only checks releases.
 on:
   push:
-    branches: [main]
-  pull_request:
+    tags: ["v*"]
+  workflow_dispatch:
 
 jobs:
   core:
