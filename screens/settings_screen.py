@@ -7,6 +7,7 @@
 #     "order":      [route, route, ...],   # dashboard menu order
 #     "hidden":     [route, route, ...],   # routes hidden from the menu
 #     "lazy_load":  bool,                  # build screens on first visit (default True)
+#     "show_recent": bool,                 # show the Dashboard "Recent" row (default True)
 #     "recent":     [route, ...],          # last used tools (Dashboard "Recent" row)
 #     "collapsed":  [group key, ...]       # Dashboard sections folded shut
 #   }
@@ -87,6 +88,7 @@ def load_settings():
         data["preload_v2"] = True
     data["preload_bg"] = bool(data.get("preload_bg", False))
     data["advanced_logging"] = bool(data.get("advanced_logging", False))
+    data["show_recent"] = bool(data.get("show_recent", True))
     data["recent"], data["collapsed"] = dash.clean_state(
         data.get("recent"), data.get("collapsed"), known,
         [k for k, _t, _r in GROUPS] + [dash.OTHER_KEY])
@@ -285,6 +287,18 @@ class SettingsScreen(Screen):
         pre_row.add_widget(pre_lbl)
         content.add_widget(pre_row)
 
+        rec_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=8)
+        self._rec_cb = CheckBox(active=self._cfg.get("show_recent", True),
+                                size_hint=(None, None), size=(dp(24), dp(24)))
+        self._rec_cb.bind(active=self._toggle_recent)
+        rec_row.add_widget(self._rec_cb)
+        rec_lbl = Label(text="Show a \"Recent\" row on the Dashboard (the "
+                             "tools you opened last).",
+                        font_size=sp(11), halign="left", valign="middle")
+        rec_lbl.bind(size=rec_lbl.setter("text_size"))
+        rec_row.add_widget(rec_lbl)
+        content.add_widget(rec_row)
+
         adv_row = BoxLayout(size_hint_y=None, height=dp(72), spacing=8)
         self._adv_cb = CheckBox(active=self._cfg.get("advanced_logging", False),
                                 size_hint=(None, None), size=(dp(24), dp(24)))
@@ -455,6 +469,12 @@ class SettingsScreen(Screen):
         self._status.text = ("Lazy loading ON — restart Srboli to apply."
                              if active else
                              "Lazy loading OFF — restart Srboli to apply.")
+
+    def _toggle_recent(self, inst, active):
+        self._cfg["show_recent"] = active
+        save_settings(self._cfg)
+        self._status.text = ("The Recent row is shown on the Dashboard." if active
+                             else "The Recent row is hidden.")
 
     def _toggle_adv_log(self, inst, active):
         self._cfg["advanced_logging"] = active

@@ -41,7 +41,7 @@ d.manager = MagicMock()
 assert Window.width >= 700   # tests assume a desktop-sized window
 heads = [w.text for w in reversed(d._grid.children) if isinstance(w, Button) and w.text.startswith("[")]
 assert heads[0].startswith("[-]  Writing  (5)") and len(heads) == 6, heads
-L = [t for t in tool_labels(d) if not t[:2] in ("R:", "P:")]; assert len(L) == 35, len(L)
+L = [t for t in tool_labels(d) if not t[:2] in ("R:", "P:")]; assert len(L) == 36, len(L)
 
 
 # using a tool puts it in Recent after coming back
@@ -51,6 +51,15 @@ d.on_enter()
 labels = tool_labels(d)
 assert labels[:2] == ["R:Music Player", "R:Chess"], labels[:3]
 print("recent row OK")
+
+# the Settings switch hides the Recent row (and brings it back); history is kept
+cfg_ = st.load_settings(); assert cfg_["show_recent"] is True
+cfg_["show_recent"] = False; st.save_settings(cfg_)
+d.on_enter(); assert not [t for t in tool_labels(d) if t.startswith("R:")], tool_labels(d)[:3]
+assert st.load_settings()["recent"][:2] == ["music", "chess"]
+cfg_ = st.load_settings(); cfg_["show_recent"] = True; st.save_settings(cfg_)
+d.on_enter(); assert tool_labels(d)[:2] == ["R:Music Player", "R:Chess"]
+print("recent switch OK")
 
 # collapse a section: its tools disappear, header flips, state survives a new Dashboard
 d._toggle_section("fun")

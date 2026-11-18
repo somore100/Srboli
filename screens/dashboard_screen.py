@@ -179,7 +179,7 @@ class Dashboard(Screen):
         width = self._content_width()
         cols = dash.tile_columns(width, dp(1))
         pinned = dash.visible_recent(cfg["pinned"], menu, shown=dash.PINNED_KEPT)
-        recent = dash.visible_recent(
+        recent = [] if not cfg.get("show_recent", True) else dash.visible_recent(
             cfg["recent"], menu, shown=dash.recent_shown(width, dp(1)))
         sig = (tuple(menu), query, tuple(recent), tuple(pinned),
                tuple(cfg["collapsed"]), cols)

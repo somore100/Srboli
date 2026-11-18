@@ -46,6 +46,7 @@ SCREENS = [
     ("backup",         "screens.backup_screen",           "BackupScreen"),
     ("sync",           "screens.sync_screen",             "SyncScreen"),
     ("bulk_rename",    "screens.bulk_rename_screen",      "BulkRenameScreen"),
+    ("file_inspector", "screens.file_inspector_screen",   "FileInspectorScreen"),
 ]
 
 LABELS = {
@@ -80,6 +81,7 @@ LABELS = {
     "converter":      "File Converter",
     "text_workbench": "Text Workbench",
     "bulk_rename":    "Bulk Renamer",
+    "file_inspector": "File Inspector",
     "learn":          "Learn (AI courses)",
     "shortcut":       "Linux Shortcut Creator",
     "backup":         "Backup",
@@ -94,6 +96,7 @@ ALIASES = {
     "full_editor":    ["document", "word", "slides", "presentation", "table",
                        "outline", "docs"],
     "script_mode":    ["prompter", "teleprompter", "script"],
+    "file_inspector": ["inspect", "hash", "checksum", "sha256", "md5", "hex", "mime", "type", "permissions", "file info"],
     "bulk_rename":    ["rename", "batch", "files", "numbering", "regex", "undo"],
     "text_workbench": ["lines", "sort", "regex", "diff", "stats", "extract", "dedupe", "text"],
     "learn":          ["course", "quiz", "study", "ai"],
@@ -137,7 +140,7 @@ GROUPS = [
     ("writing", "Writing",
      ["text_editor", "full_editor", "script_mode", "text_workbench", "learn"]),
     ("files", "Files",
-     ["file_sorter", "bulk_rename", "fast_transfer", "backup", "sync", "converter", "gallery", "metadata",
+     ["file_sorter", "bulk_rename", "file_inspector", "fast_transfer", "backup", "sync", "converter", "gallery", "metadata",
       "image_text"]),
     ("media", "Media",
      ["music", "shape_gen"]),
