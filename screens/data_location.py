@@ -23,7 +23,7 @@ from screens.dialogs import confirm_popup, message_popup
 class DataLocation(BoxLayout):
     def __init__(self, **kw):
         super().__init__(orientation="vertical", size_hint_y=None,
-                         height=dp(190), spacing=dp(6), **kw)
+                         height=dp(228), spacing=dp(6), **kw)
         self._label = Label(font_size=sp(11), halign="left", valign="middle",
                             color=(0.5, 0.8, 1, 1), size_hint_y=None,
                             height=dp(40))
@@ -40,10 +40,14 @@ class DataLocation(BoxLayout):
             row.add_widget(b)
             self._buttons.append(b)
         self.add_widget(row)
-        logs = Button(text="Open logs folder", font_size=sp(12),
-                      size_hint_y=None, height=dp(34))
-        logs.bind(on_release=self._open_logs)
-        self.add_widget(logs)
+        ex = BoxLayout(size_hint_y=None, height=dp(34), spacing=dp(6))
+        for text, cb in (("Export logs (zip)", self._export_logs),
+                         ("Export data (zip)", self._export_data),
+                         ("Open logs folder", self._open_logs)):
+            b = Button(text=text, font_size=sp(12))
+            b.bind(on_release=cb)
+            ex.add_widget(b)
+        self.add_widget(ex)
         self._status = Label(font_size=sp(11), halign="left", valign="middle",
                              size_hint_y=None, height=dp(40),
                              color=(0.6, 1, 0.6, 1))
@@ -146,6 +150,26 @@ class DataLocation(BoxLayout):
             self._status.text = f"Opened {path}"
         else:
             self._status.text = f"Logs are in: {path}"
+
+    # ── export ───────────────────────────────────────────────────────────
+    def _export(self, folders, prefix):
+        from core import export_core
+        try:
+            path, n = export_core.zip_folders(folders, export_core.export_dir(), prefix)
+        except OSError as e:
+            self._status.color = (1, 0.5, 0.4, 1)
+            self._status.text = (f"Couldn't export: {e} (On a phone, allow "
+                                 "file access for Srboli in Android settings.)")
+            return
+        self._status.color = (0.4, 1, 0.4, 1)
+        self._status.text = f"Saved {n} files to {path}"
+
+    def _export_logs(self, *a):
+        from core.logs import logs_dir
+        self._export([logs_dir()], "Srboli_logs")
+
+    def _export_data(self, *a):
+        self._export([app_data.get_data_dir()], "Srboli_data")
 
     # ── clear ────────────────────────────────────────────────────────────
     def _clear_cache(self, *a):
