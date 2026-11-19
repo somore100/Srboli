@@ -23,7 +23,7 @@ from screens.dialogs import confirm_popup, message_popup
 class DataLocation(BoxLayout):
     def __init__(self, **kw):
         super().__init__(orientation="vertical", size_hint_y=None,
-                         height=dp(228), spacing=dp(6), **kw)
+                         height=dp(270), spacing=dp(6), **kw)
         self._label = Label(font_size=sp(11), halign="left", valign="middle",
                             color=(0.5, 0.8, 1, 1), size_hint_y=None,
                             height=dp(40))
@@ -48,6 +48,11 @@ class DataLocation(BoxLayout):
             b.bind(on_release=cb)
             ex.add_widget(b)
         self.add_widget(ex)
+        diag = Button(text="Save diagnostic report (send this if something is broken)",
+                      font_size=sp(12), size_hint_y=None, height=dp(36),
+                      background_color=(0.2, 0.45, 0.75, 1))
+        diag.bind(on_release=self._diagnostic)
+        self.add_widget(diag)
         self._status = Label(font_size=sp(11), halign="left", valign="middle",
                              size_hint_y=None, height=dp(40),
                              color=(0.6, 1, 0.6, 1))
@@ -169,6 +174,21 @@ class DataLocation(BoxLayout):
         self._status.color = (0.4, 1, 0.4, 1)
         self._status.text = f"Saved {n} files to {path}"
         message_popup("Exported", f"{n} files saved to:\n{path}", size_hint=(0.9, 0.4))
+
+    def _diagnostic(self, *a):
+        try:
+            from core import diag_core, export_core
+            path, n = diag_core.make_zip(export_core.export_dir())
+        except Exception as e:
+            message_popup("Report failed", f"{e}\n\nOn a phone, allow file access "
+                          "for Srboli in Android settings and try again.",
+                          size_hint=(0.9, 0.5))
+            return
+        self._status.color = (0.4, 1, 0.4, 1)
+        self._status.text = f"Saved {path}"
+        message_popup("Report saved", f"{path}\n\nSend this file when reporting a "
+                      "problem. It holds only logs and device/app info, no documents.",
+                      size_hint=(0.9, 0.45))
 
     def _export_logs(self, *a):
         from core.logs import logs_dir
