@@ -159,7 +159,7 @@ class TouchTestScreen(Screen):
     # ── duplicate-tap filter switch ───────────────────────────────────────
     def _refresh_filter_ui(self):
         cfg = td.load_cfg()
-        active_now = td._deduper is not None and not td._deduper.disabled
+        active_now = td.source_fix_active() or (td._deduper is not None and not td._deduper.disabled)
         self._filter_btn.text = ("Filter: ON (tap to turn off)"
                                  if cfg["enabled"] else
                                  "Filter: OFF (tap to turn on)")

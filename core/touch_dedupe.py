@@ -142,6 +142,8 @@ def load_cfg():
     try:
         with open(_cfg_path(), encoding="utf-8") as f:
             d = json.load(f)
+        if d.get("v") != 2:      # settings from the old filter: start fresh
+            return {"enabled": default_enabled(), "pending": False}
         return {"enabled": bool(d.get("enabled", default_enabled())),
                 "pending": bool(d.get("pending", False))}
     except Exception:
@@ -151,7 +153,7 @@ def load_cfg():
 def save_cfg(cfg):
     try:
         with open(_cfg_path(), "w", encoding="utf-8") as f:
-            json.dump(cfg, f)
+            json.dump(dict(cfg, v=2), f)
         return True
     except Exception:
         return False
@@ -162,6 +164,12 @@ def set_enabled(on):
     cfg["enabled"] = bool(on)
     cfg["pending"] = False
     return save_cfg(cfg)
+
+
+def source_fix_active():
+    """True when SDL was told not to turn finger touches into mouse events
+    (set in main.py before Kivy starts). That removes the ghost at its source."""
+    return os.environ.get("SDL_MOUSE_TOUCH_EVENTS") == "0"
 
 
 def mark_healthy():

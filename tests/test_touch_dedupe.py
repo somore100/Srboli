@@ -41,3 +41,13 @@ assert not d2.should_drop("begin", hover, now=5.0)
 assert not d2.should_drop("begin", finger2, now=5.001)
 assert d2.should_drop("begin", ME("mouse", .5, .5), now=5.004)      # the real ghost
 print("touch dedupe tests passed")
+
+# settings written by the old filter (no version) start fresh; new ones are kept
+import json, tempfile, core.touch_dedupe as td2
+_p = os.path.join(tempfile.mkdtemp(), "c.json")
+td2._cfg_path = lambda: _p
+json.dump({"enabled": not td2.default_enabled(), "pending": True}, open(_p, "w"))
+assert td2.load_cfg() == {"enabled": td2.default_enabled(), "pending": False}
+td2.save_cfg({"enabled": not td2.default_enabled(), "pending": False})
+assert td2.load_cfg()["enabled"] == (not td2.default_enabled())
+print("touch cfg versioning ok")

@@ -75,6 +75,17 @@ from kivy.config import Config
 _ON_ANDROID = "ANDROID_ARGUMENT" in os.environ or "ANDROID_STORAGE" in os.environ
 if _ON_ANDROID:
     Config.set("input", "mouse", "mouse,disable_multitouch,disable_on_activity")
+    # The real fix for the "every tap arrives twice" bug: tell SDL not to turn
+    # finger touches into mouse events at all (the 'sdl' finger touch is the
+    # only one then). Follows the Touch Test filter switch; if the last run
+    # never got a working tap (pending) the filter switches itself off.
+    try:
+        from core import touch_dedupe as _tdm
+        _c = _tdm.load_cfg()
+        if _c["enabled"] and not _c["pending"]:
+            os.environ["SDL_MOUSE_TOUCH_EVENTS"] = "0"
+    except Exception:
+        pass
 else:
     # Desktop: SDL already delivers real touchscreens, and has no ghost taps.
     # With disable_on_activity the mouse is ignored while ANY touch is

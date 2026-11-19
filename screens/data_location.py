@@ -152,12 +152,12 @@ class DataLocation(BoxLayout):
             self._status.text = f"Logs are in: {path}"
 
     # ── export ───────────────────────────────────────────────────────────
-    def _export(self, folders, prefix):
+    def _export(self, folders, prefix, extra=()):
         """Always answers with a popup (the status line can sit out of sight)."""
         self._status.text = "Exporting..."
         try:
             from core import export_core
-            path, n = export_core.zip_folders(folders, export_core.export_dir(), prefix)
+            path, n = export_core.zip_folders(folders, export_core.export_dir(), prefix, extra)
         except Exception as e:
             self._status.color = (1, 0.5, 0.4, 1)
             self._status.text = f"Couldn't export: {e}"
@@ -172,7 +172,9 @@ class DataLocation(BoxLayout):
 
     def _export_logs(self, *a):
         from core.logs import logs_dir
-        self._export([logs_dir()], "Srboli_logs")
+        import glob
+        extra = glob.glob(os.path.join(app_data.get_data_dir(), "Srboli_*.log"))
+        self._export([logs_dir()], "Srboli_logs", extra)
 
     def _export_data(self, *a):
         self._export([app_data.get_data_dir()], "Srboli_data")

@@ -18,7 +18,7 @@ def export_dir():
     return root
 
 
-def zip_folders(folders, dest_dir, prefix):
+def zip_folders(folders, dest_dir, prefix, extra_files=()):
     """Zip every file under `folders` (a list) into dest_dir/<prefix>_<time>.zip.
     Returns (zip_path, file_count). Raises OSError if nothing can be written or
     there is nothing to export."""
@@ -27,6 +27,9 @@ def zip_folders(folders, dest_dir, prefix):
         for base, _d, names in os.walk(f):
             for n in names:
                 files.append((os.path.join(base, n), f))
+    for path in extra_files:
+        if os.path.isfile(path):
+            files.append((path, os.path.dirname(path)))
     if not files:
         raise OSError("There is nothing to export yet.")
     os.makedirs(dest_dir, exist_ok=True)

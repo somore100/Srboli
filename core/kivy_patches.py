@@ -200,7 +200,8 @@ def apply_android(Window, _bl=None):
                                or _bl.flag("Srboli_safe_mode"))
         if not _forced_off and _td.decide_at_startup(
                 _bl.log if _bl else None):
-            _td.install(_td_log)
+            if not _td.source_fix_active():     # else SDL already sends no ghosts
+                _td.install(_td_log)
             # first button that really reacts proves taps work
             from kivy.uix.behaviors.button import ButtonBehavior as _BB2
             _orig_rel = _BB2._do_release
