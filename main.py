@@ -121,6 +121,12 @@ from kivy.core.window import Window
 # dismiss. See screens/script_mode_screen.py for the matching defocus fix.
 # (softinput_mode left at Kivy default - see global Spinner fix below)
 
+try:
+    from core import clean_env as _ce
+    _ce.install()           # programs we launch must not load our bundled libs
+except Exception as _e:
+    print(f"clean env skipped: {_e}")
+
 from kivy.utils import platform as _platform
 if _platform == "android":
     from core import kivy_patches as _kp
