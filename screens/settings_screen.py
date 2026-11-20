@@ -251,6 +251,13 @@ class SettingsScreen(Screen):
         from screens.data_location import DataLocation
         content.add_widget(DataLocation())
 
+        from core.android_storage import ON_ANDROID
+        self._perm_block = None
+        if ON_ANDROID:
+            from screens.permissions_block import PermissionsBlock
+            self._perm_block = PermissionsBlock()
+            content.add_widget(self._perm_block)
+
         from screens.feedback_popup import open_feedback
         fb_btn = Button(text="Leave Feedback", size_hint_y=None, height=dp(40),
                         font_size=sp(13))
@@ -499,6 +506,8 @@ class SettingsScreen(Screen):
     def on_enter(self, *a):
         self._cfg = load_settings()     # the Dashboard / first-run setup may have changed it
         self._refresh_list()
+        if getattr(self, "_perm_block", None) is not None:
+            self._perm_block.refresh()      # the user may have just allowed something
         Window.bind(on_key_down=self._on_key)
         self._refresh_daemon_status()
         if self._autostart_cb is not None:

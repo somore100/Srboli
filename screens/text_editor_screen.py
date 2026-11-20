@@ -601,6 +601,17 @@ class TextEditorScreen(Screen):
         self._dirty   = False
         self._status.text = "New file"
 
+    def open_path(self, p):
+        """Open a file given by another app ("Open with Srboli")."""
+        try:
+            with open(p, encoding="utf-8", errors="replace") as f:
+                self._ed.text = f.read()
+            self._file = None           # a cache copy: Save As, never overwrite it silently
+            self._dirty = False
+            self._status.text = os.path.basename(p) + " (opened from another app)"
+        except Exception as e:
+            self._popup("Error", str(e))
+
     def _open(self, *a):
         chooser = FileChooserIconView(path=_home(), multiselect=False)
         btn = Button(text="Open", size_hint_y=None, height=dp(44))

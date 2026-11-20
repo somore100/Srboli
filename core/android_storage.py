@@ -132,3 +132,20 @@ def removable_volumes():
     except Exception:
         pass
     return out
+
+
+def has_notification_permission():
+    """True/False on Android 13+, True elsewhere (older Android needs no popup)."""
+    if not ON_ANDROID:
+        return True
+    try:
+        from jnius import autoclass
+        VERSION = autoclass("android.os.Build$VERSION")
+        if VERSION.SDK_INT < 33:
+            return True
+        PythonActivity = autoclass("org.kivy.android.PythonActivity")
+        ctx = PythonActivity.mActivity
+        # PERMISSION_GRANTED == 0
+        return ctx.checkSelfPermission("android.permission.POST_NOTIFICATIONS") == 0
+    except Exception:
+        return False

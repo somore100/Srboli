@@ -236,6 +236,32 @@ class SrboliApp(App):
                     lambda r: ensure_screen_loaded(self.root, r),
                     after=self._ask_permission)
 
+    def _open_external(self, item):
+        """A file or text another app sent us ("Open with" / "Share")."""
+        from kivy.clock import Clock
+        from core import open_with_core
+
+        def go(dt):
+            try:
+                size = (os.path.getsize(item["path"])
+                        if item.get("kind") == "file" else None)
+                route, action = open_with_core.plan(item, size)
+                self._open_route(route)
+
+                def deliver(dt2):
+                    scr = self.root.get_screen(route)
+                    if action == "set_text":
+                        scr.set_text(item["text"])
+                    elif action == "open_path":
+                        scr.open_path(item["path"])
+                    else:
+                        scr.inspect(item["path"])
+                Clock.schedule_once(deliver, 0.4)
+            except Exception as e:
+                if _bl:
+                    _bl.log(f"open-with failed: {e}")
+        Clock.schedule_once(go, 0)
+
     def _ask_permission(self, route):
         try:
             from core import android_storage as _as
@@ -371,6 +397,14 @@ class SrboliApp(App):
         # inside the app (works while the app is open or still alive in the
         # background; not after Android kills the process).
         if _platform == "android":
+            try:
+                from kivy.clock import Clock
+                from core import android_intent
+                Clock.schedule_once(lambda dt: android_intent.install(
+                    self._open_external,
+                    on_error=lambda m: _bl and _bl.log(f"open-with: {m}")), 1.0)
+            except Exception as e:
+                print(f"Open-with not installed: {e}")
             try:
                 from kivy.clock import Clock
                 Clock.schedule_interval(self._android_reminder_tick, 20)

@@ -28,3 +28,20 @@ def needed(route, on_android, has_storage, has_notify, asked):
     if route in NOTIFY_ROUTES and not has_notify and "notify" not in asked:
         return "notify"
     return None
+
+
+# What Settings > Permissions shows. Nothing is required: without a permission
+# only the tools that need it ask again (or stay limited).
+TOOLS = {
+    "storage": "Gallery Sorter, Music, Backup, Sync, File Converter, Metadata, "
+               "Fast Transfer, Image Text, File Sorter",
+    "notify": "Reminders",
+}
+TITLES = {"storage": "Files on the phone (all files access)",
+          "notify": "Notifications"}
+
+
+def rows(has_storage, has_notify):
+    """[(kind, title, granted, used_by)] for the Settings block."""
+    return [("storage", TITLES["storage"], bool(has_storage), TOOLS["storage"]),
+            ("notify", TITLES["notify"], bool(has_notify), TOOLS["notify"])]

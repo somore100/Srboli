@@ -14,7 +14,7 @@ source.include_exts = py,png,jpg,jpeg,json,ttf,txt
 source.exclude_dirs = tests,docs,.git,.github,__pycache__,srboli_data,.venv,venv,build,dist,bin,.buildozer
 source.exclude_patterns = *.pyc,*.spec,.srboli_config.json,*.log,*.zip,*.7z,*.keystore,*.apk,*.egg-info,build.txt,license.txt,README.md,SrboliLight.spec,requirements-desktop.txt,requirements.txt
 
-version = 4.16
+version = 4.17
 
 # Core dependencies. Don't pin python3's own version here — p4a.branch
 # below is what actually controls which CPython gets built.
@@ -32,6 +32,8 @@ icon.filename = %(source.dir)s/logo.png
 
 # Android specifics
 android.permissions = INTERNET,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE,MANAGE_EXTERNAL_STORAGE,POST_NOTIFICATIONS
+
+android.manifest.intent_filters = intent_filters.xml
 
 android.api = 34
 android.minapi = 24

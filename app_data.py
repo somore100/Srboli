@@ -232,7 +232,7 @@ def is_configured() -> bool:
     return os.path.exists(_CONFIG_FILE) and bool(_load_config().get("data_dir"))
 
 
-CACHE_DIRS = ("gallery_cache", "metadata_cache")
+CACHE_DIRS = ("gallery_cache", "metadata_cache", os.path.join("cache", "open_with"))
 
 
 def clear_cache() -> int:

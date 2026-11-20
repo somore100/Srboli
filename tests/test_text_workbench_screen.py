@@ -31,4 +31,5 @@ s._load(p); assert s.input.text == "hello file"
 open(p, "wb").write(b"\x00\x01bin"); s.input.text = ""; s._load(p)
 assert s.input.text == "" and "binary" in s.status.text
 s.clear(); assert s.input.text == s.output.text == ""
+s.set_text("shared words"); assert s.input.text == "shared words" and "Shared" in s.status.text
 print("text workbench screen: all ok")

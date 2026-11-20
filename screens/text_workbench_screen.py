@@ -103,6 +103,11 @@ class TextWorkbenchScreen(ToolScreen):
         self.show_tab("lines")
 
     # ── helpers ─────────────────────────────────────────────────────────
+    def set_text(self, text):
+        """Text shared from another app ("Share to Srboli")."""
+        self.input.text = text
+        self.say("Shared text loaded.")
+
     def say(self, text):
         self.status.text = text
 

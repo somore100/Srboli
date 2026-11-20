@@ -58,7 +58,8 @@ tool, with global shortcuts to jump between them.
 | **Linux Shortcut Creator** | Fill in a form to make a `.desktop` launcher for the application menu (and Desktop); lists, edits and deletes the ones it made |
 | **Touch Test** | Shows what each tap looks like to the app (finger vs. mouse duplicates) and has the duplicate-tap filter switch |
 | **File Converter** | Batch-convert images (png/jpg/webp/bmp/gif/tiff/ico/pdf), documents (txt/md/html/docx/pdf/csv/tsv/json) and - on desktop with ffmpeg - audio/video |
-| **Settings** | Reorder (within a section) / hide dashboard screens, toggle lazy-loading, manage the background service and autostart, move or clear your data folder safely |
+| **Settings** | Reorder (within a section) / hide dashboard screens, toggle lazy-loading, manage the background service and autostart, move or clear your data folder safely, export logs/data as a zip, save a diagnostic report, see and grant Android permissions |
+| **Open with / Share to Srboli** (Android) | Pick Srboli in "Open with" or "Share" for text, images, audio, video, PDFs and zips: text files open in the Text Editor, shared text in the Text Workbench, everything else in the File Inspector. The original is never changed (a copy is used) |
 
 ## Requirements
 
@@ -122,7 +123,7 @@ pip install -r requirements-hotkeys.txt
 
 ```bash
 pip install -r requirements-dev.txt
-pytest -m "not display"          # Kivy-free core tests (what CI runs on every push)
+pytest -m "not display"          # Kivy-free core tests (CI runs the tests on release tags; run them yourself first with `xvfb-run -a bash tests/run_all.sh`)
 xvfb-run -a pytest               # everything, including the screen tests (Linux)
 ```
 

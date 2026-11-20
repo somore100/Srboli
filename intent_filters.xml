@@ -1,0 +1,24 @@
+<!-- Added to Srboli's main activity by buildozer (android.manifest.intent_filters).
+     "Open with" for text, images, audio, video, PDFs and zips; "Share" for text and files. -->
+<intent-filter>
+    <action android:name="android.intent.action.VIEW" />
+    <category android:name="android.intent.category.DEFAULT" />
+    <data android:scheme="content" />
+    <data android:scheme="file" />
+    <data android:mimeType="text/*" />
+    <data android:mimeType="image/*" />
+    <data android:mimeType="audio/*" />
+    <data android:mimeType="video/*" />
+    <data android:mimeType="application/pdf" />
+    <data android:mimeType="application/zip" />
+    <data android:mimeType="application/json" />
+</intent-filter>
+<intent-filter>
+    <action android:name="android.intent.action.SEND" />
+    <category android:name="android.intent.category.DEFAULT" />
+    <data android:mimeType="text/*" />
+    <data android:mimeType="image/*" />
+    <data android:mimeType="audio/*" />
+    <data android:mimeType="application/pdf" />
+    <data android:mimeType="application/zip" />
+</intent-filter>
