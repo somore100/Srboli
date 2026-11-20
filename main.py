@@ -83,7 +83,7 @@ if _ON_ANDROID:
         from core import touch_dedupe as _tdm
         _c = _tdm.load_cfg()
         if _c["enabled"] and not _c["pending"]:
-            os.environ["SDL_MOUSE_TOUCH_EVENTS"] = "0"
+            os.environ["SDL_TOUCH_MOUSE_EVENTS"] = "0"
     except Exception:
         pass
 else:

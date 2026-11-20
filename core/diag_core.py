@@ -24,7 +24,7 @@ def report(extra=None):
         lines.append(f"Kivy: {kivy.__version__}")
     except Exception:
         pass
-    for k in ("ANDROID_ARGUMENT", "ANDROID_ROOT", "SDL_MOUSE_TOUCH_EVENTS"):
+    for k in ("ANDROID_ARGUMENT", "ANDROID_ROOT", "SDL_TOUCH_MOUSE_EVENTS"):
         lines.append(f"env {k}: {os.environ.get(k, '(unset)')}")
     try:
         from core import touch_dedupe as td

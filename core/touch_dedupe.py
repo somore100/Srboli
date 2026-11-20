@@ -169,7 +169,7 @@ def set_enabled(on):
 def source_fix_active():
     """True when SDL was told not to turn finger touches into mouse events
     (set in main.py before Kivy starts). That removes the ghost at its source."""
-    return os.environ.get("SDL_MOUSE_TOUCH_EVENTS") == "0"
+    return os.environ.get("SDL_TOUCH_MOUSE_EVENTS") == "0"
 
 
 def mark_healthy():
