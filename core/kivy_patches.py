@@ -52,9 +52,76 @@ def check(log=None):
     return problems
 
 
+# Touch/key events that prove the app is on screen and being used.
+WAKE_ACTIONS = ("fingerdown", "fingerup", "fingermotion", "mousebuttondown",
+                "mousebuttonup", "keydown")
+
+
+def pause_mainloop(win, orig, on_wake=None):
+    """Replacement for WindowSDL.mainloop's pause loop.
+
+    Kivy enters the pause loop on SDL's "will enter background" and only leaves
+    it on "did enter foreground". On some phones that second event never comes
+    (a screen recorder bubble, the notification shade or a floating window
+    briefly took window focus): the window stays visible but Kivy sits in
+    wait_event() and the UI is dead - no tap, no scroll - until the app is
+    restarted. A touch can only reach a visible, running app, so the first
+    touch or key seen while "paused" ends the pause (the touch itself is
+    dropped; the next one works)."""
+    from kivy.base import EventLoop
+    while win._pause_loop:
+        win._win.wait_event()
+        if not win._pause_loop:
+            break
+        event = win._win.poll()
+        if event is None or event is False:
+            continue
+        action, args = event[0], event[1:]
+        if action.startswith("drop"):
+            win._dispatch_drop_event(action, args)
+        elif EventLoop.quit:
+            return
+        elif action in WAKE_ACTIONS:
+            win._pause_loop = False
+            if on_wake:
+                on_wake(action)
+    return orig(win)
+
+
+def install_pause_recovery(_bl=None):
+    """Android: stop a missed 'did enter foreground' from freezing the UI."""
+    from kivy.core.window.window_sdl2 import WindowSDL
+    if getattr(WindowSDL, "_srboli_pause_fix", False):
+        return
+    orig = WindowSDL.mainloop
+
+    def on_wake(action):
+        if _bl:
+            _bl.log(f"!! PAUSE RECOVERY: '{action}' arrived while Kivy thought "
+                    "the app was in the background - resumed")
+        try:
+            from kivy.app import App
+            app = App.get_running_app()
+            if app:
+                app.dispatch("on_resume")
+        except Exception:
+            pass
+
+    def mainloop(self):
+        return pause_mainloop(self, orig, on_wake)
+
+    WindowSDL.mainloop = mainloop
+    WindowSDL._srboli_pause_fix = True
+
+
 def apply_android(Window, _bl=None):
     """Install the Android-only patches (call once, before building the UI)."""
     check(_bl.log if _bl else None)
+    try:
+        install_pause_recovery(_bl)
+    except Exception as _e:
+        if _bl:
+            _bl.log(f"pause recovery NOT installed: {_e}")
     from kivy.uix.textinput import TextInput as _TextInput
 
     try:

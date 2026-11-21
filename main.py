@@ -291,6 +291,15 @@ class SrboliApp(App):
         except Exception as e:
             print(f"permission prompt skipped: {e}")
 
+    def on_pause(self):
+        if _bl:
+            _bl.log("on_pause (app went to the background)")
+        return True
+
+    def on_resume(self):
+        if _bl:
+            _bl.log("on_resume (app is back)")
+
     def on_stop(self):
         try:
             from core import window_state
