@@ -77,12 +77,13 @@ if _ON_ANDROID:
     Config.set("input", "mouse", "mouse,disable_multitouch,disable_on_activity")
     # The real fix for the "every tap arrives twice" bug: tell SDL not to turn
     # finger touches into mouse events at all (the 'sdl' finger touch is the
-    # only one then). Follows the Touch Test filter switch; if the last run
-    # never got a working tap (pending) the filter switches itself off.
+    # only one then). Follows the Touch Test filter switch only: no
+    # self-switch-off, it failed to save its state on some phones and then
+    # turned the fix off on the second launch.
     try:
         from core import touch_dedupe as _tdm
         _c = _tdm.load_cfg()
-        if _c["enabled"] and not _c["pending"]:
+        if _c["enabled"]:
             os.environ["SDL_TOUCH_MOUSE_EVENTS"] = "0"
     except Exception:
         pass

@@ -142,7 +142,7 @@ def load_cfg():
     try:
         with open(_cfg_path(), encoding="utf-8") as f:
             d = json.load(f)
-        if d.get("v") != 2:      # settings from the old filter: start fresh
+        if d.get("v") != 3:      # settings from older versions (incl. a self-switched-off filter): start fresh
             return {"enabled": default_enabled(), "pending": False}
         return {"enabled": bool(d.get("enabled", default_enabled())),
                 "pending": bool(d.get("pending", False))}
@@ -153,7 +153,7 @@ def load_cfg():
 def save_cfg(cfg):
     try:
         with open(_cfg_path(), "w", encoding="utf-8") as f:
-            json.dump(dict(cfg, v=2), f)
+            json.dump(dict(cfg, v=3), f)
         return True
     except Exception:
         return False

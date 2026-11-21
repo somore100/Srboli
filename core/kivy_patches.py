@@ -198,7 +198,10 @@ def apply_android(Window, _bl=None):
             pass
         _forced_off = _bl and (_bl.flag("Srboli_no_dedupe")
                                or _bl.flag("Srboli_safe_mode"))
-        if not _forced_off and _td.decide_at_startup(
+        if not _forced_off and _td.source_fix_active():
+            if _bl:
+                _bl.log("touch: SDL source fix active (no mouse events from fingers)")
+        elif not _forced_off and _td.decide_at_startup(
                 _bl.log if _bl else None):
             if not _td.source_fix_active():     # else SDL already sends no ghosts
                 _td.install(_td_log)
