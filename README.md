@@ -1,6 +1,6 @@
 # Srboli
 
-Pocket swiss-army-knife desktop app — **31 tools in one window**, built with
+Pocket swiss-army-knife desktop app — **39 tools in one window**, built with
 Python + Kivy. Even if you don't see a use for every feature at first, odds
 are at least one will be useful — and you might even end up using several.
 
@@ -20,14 +20,14 @@ tool, with global shortcuts to jump between them.
 | Screen | What it does |
 |---|---|
 | **Dashboard** | Quick-access tile hub: search (with aliases, Enter opens the first hit), pinned and Recent rows (long-press or right-click to pin), and collapsible sections (Writing, Files, Media, Math and data, System, Fun) |
-| **Loading / Timer** | Countdown timer with shutdown / suspend / notify actions |
+| **Loading / Timer** | Countdown timer with shutdown / suspend / notify actions. For "shut down when the upload is done" use Power Off When Done |
 | **Text Editor** | Plain-text editor with Raw ⇄ Styled Markdown view, colour wheel, autosave; exports .txt / .html / .md / checked-and-indented .json |
 | **Script / Teleprompter** | Paste full text, auto-copy chunks one at a time; auto-advance on paste |
 | **Full Editor** | Outline document (nested sections with Markdown bodies, colour swatches + wheel) + slides generated from the outline (per-slide colours / image / skip, full-screen presenter) + coloured tables (per-cell fill/text colours, add/remove rows and columns, SUM/AVG/formulas) that can be placed inside sections; exports everything to HTML |
 | **Math Steps** | Type an equation or expression and solve it line by line: every line is checked, the first wrong one is explained ("a sign looks wrong", "you moved 3 across `=` without flipping it"), three levels of hints, and a full solution on request. Covers linear and quadratic equations (factoring, square root, quadratic formula) and simplifying; other polynomials are checked but not solved |
 | **Basic Tools** | Clock, stopwatch, alarm, real calculator |
 | **System Stats** | CPU / RAM / Disk / GPU + live FPS & ping graphs, plus an always-on-top overlay window |
-| **Gallery Sorter** | Sort images and videos into folders, in-app video player |
+| **Gallery Sorter** | Sort images and videos into folders, in-app video player. Remembers your sources, destinations and the picture you were on; next visit asks "Continue where you left off?" |
 | **Music Player** | Playlist manager with pygame playback, tap-or-drag seek bar and volume control |
 | **Randomizer Tools** | Number / password / dice / list / coin picker |
 | **Image to Text** | Any file ⇄ Base64 (background-threaded for large files) |
@@ -51,6 +51,7 @@ tool, with global shortcuts to jump between them.
 | **Chess** | Full-rules chess (castling, en passant, promotion, check/mate/stalemate) vs. a built-in AI at 3 levels or two-player pass-and-play, with undo |
 | **Disk Space** | Where did the space go? Scan a folder or drive once, then drill into the biggest folders (tap to go inside), see the 100 largest files and a breakdown by kind (pictures, video, archives...). Shows free space, can be stopped, copies a text report. Read-only: it never deletes anything |
 | **Folder Colors** | Linux and Windows: give a folder a colour or one of your pictures as its icon, shown by the file manager (GNOME Files, Nemo, Dolphin, Thunar, Explorer). Optionally all subfolders too. "Reset to normal" removes exactly what it added; files inside are never touched |
+| **Power Off When Done** | Computer only. Shut down, sleep or just notify when a task ends. It watches a program you pick (it exited), network traffic (the cloud upload stopped), CPU or disk activity (a render or file copy finished) staying quiet for a few minutes. It only counts once it has seen the task working, then shows a 60 second countdown you can cancel |
 | **File Inspector** | Look inside any file or folder: its real type from the contents (not the extension) with a warning when the name lies, MIME type, size, dates, permissions and owner, text or hex preview, and MD5/SHA-1/SHA-256/SHA-512 checksums with a "does it match the one I was given?" check. Read-only |
 | **Bulk Renamer** | Rename a folder's files with stacked rules (replace, regex, case, prefix/suffix, numbering, dates, patterns, extension), a live old-to-new preview that flags clashes and bad names, a confirm step, and Undo. Swaps and chains work, and a failure part-way puts everything back |
 | **Text Workbench** | One screen, five tabs, for the jobs people write small scripts for: sort, reverse, shuffle, dedupe, filter and number lines; pull emails, links, IPs, numbers or dates out of a text; test a regex with live matches and replace with it; compare two texts or files; count words and reading time. "Use result as input" chains the steps |
@@ -197,6 +198,8 @@ srboli/
 │   ├── learn_core.py            # Course engine for Learn
 │   ├── disk_usage_core.py       # One-pass folder scan: folder sizes, biggest files, kinds for Disk Space
 │   ├── folder_icons_core.py     # Coloured / picture folder icons for Folder Colors (gio, .directory, desktop.ini)
+│   ├── when_done_core.py        # Power Off When Done: quiet-detection state machine, process/network/CPU/disk sampler, power commands
+│   ├── gallery_session.py       # Gallery Sorter: remembers the last session for "Continue where you left off?"
 │   ├── clean_env.py             # Launch system programs without the AppImage's bundled libraries
 │   ├── file_inspect_core.py     # File type by contents, dates, permissions, checksums and previews for File Inspector
 │   ├── bulk_rename_core.py      # Rules, preview, safe two-phase rename and undo for Bulk Renamer

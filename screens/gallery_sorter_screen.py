@@ -45,6 +45,7 @@ except ImportError:
 
 import app_data
 from core.jsonio import read_json, write_json_atomic
+from core import gallery_session as gsess
 from core.android_storage import shared_storage_root
 from kivy.utils import platform as _plat
 ANDROID = (_plat == "android")
@@ -610,9 +611,66 @@ class GallerySorterScreen(Screen):
     def on_enter(self, *a):
         Window.bind(on_key_down=self._key)
         if not self._sources:
-            Clock.schedule_once(lambda dt: self._maybe_dcim_hint(), 0.4)
+            Clock.schedule_once(lambda dt: self._offer_resume() or self._maybe_dcim_hint(), 0.4)
     def on_leave(self, *a):
         Window.unbind(on_key_down=self._key)
+        self._autosave_now()
+
+    # ── remember where you left off ───────────────────────────────────────
+    def _autosave(self):
+        """Debounced: many steps in a row write once."""
+        ev = getattr(self, "_save_ev", None)
+        if ev:
+            ev.cancel()
+        self._save_ev = Clock.schedule_once(lambda dt: self._autosave_now(), 1.5)
+
+    def _autosave_now(self, forget=False):
+        ev = getattr(self, "_save_ev", None)
+        if ev:
+            ev.cancel()
+            self._save_ev = None
+        if forget:
+            gsess.clear()
+            return
+        if not self._sources and not self._dest_tree:
+            return                      # a fresh screen must not wipe the saved one
+        cur = self._files[self._index] if self._files and self._index < len(self._files) else ""
+        gsess.save(self._sources, self._dest_tree, cur)
+
+    def _offer_resume(self):
+        """Ask 'Continue where you left off?' when there is a saved session.
+        Returns True if the question was shown."""
+        if self._sources or self.manager is None or self.manager.current != "gallery":
+            return False
+        sess = gsess.load()
+        if not sess:
+            return False
+        layout = BoxLayout(orientation="vertical", padding=dp(10), spacing=dp(8))
+        lbl = Label(text=("Continue where you left off?\n\n" + gsess.describe(sess) +
+                          ("\nBack to the picture you were on." if sess["current"] else "")),
+                    halign="center", valign="middle", font_size=sp(14))
+        lbl.bind(size=lambda i, sz: setattr(i, "text_size", (sz[0], None)))
+        layout.add_widget(lbl)
+        popup = Popup(title="Gallery Sorter", content=layout, size_hint=(0.9, 0.5),
+                      auto_dismiss=False)
+        b1 = Button(text="Continue", size_hint_y=None, height=dp(46))
+        b2 = Button(text="Start fresh", size_hint_y=None, height=dp(46))
+        b1.bind(on_release=lambda *a: (popup.dismiss(), self._resume(sess)))
+        b2.bind(on_release=lambda *a: (popup.dismiss(), self._autosave_now(forget=True),
+                                       self._maybe_dcim_hint()))
+        layout.add_widget(b1)
+        layout.add_widget(b2)
+        popup.open()
+        return True
+
+    def _resume(self, sess):
+        self._sources = list(sess["sources"])
+        self._dest_tree = list(sess["dest_tree"])
+        self._resume_keep = sess["current"] or None
+        self._refresh_dests()
+        if self._sources:
+            self._reload_files()
+        self._status.text = "Continued where you left off."
     def _key(self, win, key, *a):
         if not self.manager or self.manager.current != "gallery": return
         if key == 275:   self._step(1)
@@ -714,6 +772,7 @@ class GallerySorterScreen(Screen):
             self._refresh_dests()
         self._src_lbl.text = "0 src, 0 files"
         self._show_current()
+        self._autosave_now(forget=True)
         self._status.text = "Cleared (nothing was deleted)."
 
     # ── guards / cache helpers ────────────────────────────────────────────
@@ -782,6 +841,9 @@ class GallerySorterScreen(Screen):
         todo = [x for x in sources if x not in cache]
         keep = self._files[self._index] if self._files and \
             self._index < len(self._files) else None
+        if keep is None:
+            keep = getattr(self, "_resume_keep", None)
+            self._resume_keep = None
         self._src_lbl.text = "Scanning..." if todo else self._src_lbl.text
 
         def progress(n):
@@ -950,6 +1012,7 @@ class GallerySorterScreen(Screen):
         btn.bind(on_release=_do); popup.open()
 
     def _refresh_dests(self):
+        self._autosave()
         self._dest_grid.clear_widgets()
         for i, d in enumerate(self._dest_tree):
             row = BoxLayout(size_hint_y=None, height=dp(24), spacing=dp(3))
@@ -1111,6 +1174,7 @@ class GallerySorterScreen(Screen):
     # ── video / player ────────────────────────────────────────────────────
     def _open_player(self, *a):
         if not self._files or self._index >= len(self._files): return
+        self._autosave()
         path = self._files[self._index]
         if _is_video(path):
             if ANDROID:

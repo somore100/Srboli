@@ -49,6 +49,7 @@ SCREENS = [
     ("file_inspector", "screens.file_inspector_screen",   "FileInspectorScreen"),
     ("disk_space",     "screens.disk_space_screen",       "DiskSpaceScreen"),
     ("folder_colors",  "screens.folder_colors_screen",    "FolderColorsScreen"),
+    ("when_done",      "screens.when_done_screen",        "WhenDoneScreen"),
 ]
 
 LABELS = {
@@ -86,6 +87,7 @@ LABELS = {
     "file_inspector": "File Inspector",
     "disk_space":     "Disk Space",
     "folder_colors":  "Folder Colors",
+    "when_done":      "Power Off When Done",
     "learn":          "Learn (AI courses)",
     "shortcut":       "Linux Shortcut Creator",
     "backup":         "Backup",
@@ -101,6 +103,7 @@ ALIASES = {
                        "outline", "docs"],
     "script_mode":    ["prompter", "teleprompter", "script"],
     "disk_space":     ["disk", "space", "storage", "largest", "big files", "folder size", "treemap", "free space", "analyzer"],
+    "when_done":      ["shutdown", "shut down", "power off", "sleep", "finish", "done", "upload", "drive", "turn off", "task"],
     "folder_colors":  ["folder", "colour", "color", "icon", "picture", "paint", "folderico"],
     "file_inspector": ["inspect", "hash", "checksum", "sha256", "md5", "hex", "mime", "type", "permissions", "file info"],
     "bulk_rename":    ["rename", "batch", "files", "numbering", "regex", "undo"],
@@ -155,7 +158,7 @@ GROUPS = [
       "morse"]),
     ("system", "System",
      ["system_stats", "reminders", "loading_timer", "quickswitcher", "cover",
-      "shortcut", "touch_test"]),
+      "when_done", "shortcut", "touch_test"]),
     ("fun", "Fun",
      ["minesweeper", "infinite_mines", "chess", "spin", "backrooms", "unhelpful_calc"]),
 ]
