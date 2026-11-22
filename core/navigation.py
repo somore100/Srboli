@@ -6,10 +6,13 @@
 #   on the new screen).
 # * GuardedScreenManager ignores touches for a moment after every switch.
 # * install_keys: Ctrl+K = search, Esc / Android back = go back.
+import os
 import time
 
 from kivy.clock import Clock
 from kivy.metrics import sp
+from kivy.graphics import Color, Rectangle
+from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.uix.modalview import ModalView
 from kivy.uix.screenmanager import Screen, ScreenManager
@@ -33,6 +36,24 @@ class GuardedScreenManager(ScreenManager):
         return super().on_touch_down(touch)
 
 
+def _loading_screen():
+    """Logo with "Loading..." under it (the same picture as the start-up
+    splash), on white; plain text if the picture is missing."""
+    scr = Screen(name=LOADING)
+    path = os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), "presplash.png")
+    if os.path.isfile(path):
+        with scr.canvas.before:
+            Color(1, 1, 1, 1)
+            bg = Rectangle(pos=scr.pos, size=scr.size)
+        scr.bind(pos=lambda w, v: setattr(bg, "pos", v),
+                 size=lambda w, v: setattr(bg, "size", v))
+        scr.add_widget(Image(source=path, fit_mode="contain"))
+    else:
+        scr.add_widget(Label(text="Loading...", font_size=sp(18)))
+    return scr
+
+
 def open_screen(sm, route, ensure, after=None, delay=0.05):
     """Show `route`, building it first if needed. ensure(route) -> bool builds
     it; after(route) runs once it is on screen."""
@@ -42,9 +63,7 @@ def open_screen(sm, route, ensure, after=None, delay=0.05):
             after(route)
         return
     if not sm.has_screen(LOADING):
-        scr = Screen(name=LOADING)
-        scr.add_widget(Label(text="Loading...", font_size=sp(18)))
-        sm.add_widget(scr)
+        sm.add_widget(_loading_screen())
     back = sm.current
     sm.current = LOADING
 
