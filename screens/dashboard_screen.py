@@ -245,7 +245,9 @@ class Dashboard(Screen):
     def _signature(self):
         return (tuple(effective_menu_order()), app_data.get_data_dir())
 
-    def on_enter(self, *a):
+    def on_pre_enter(self, *a):
+        # (pre_enter: refresh BEFORE the first frame, otherwise Back shows the
+        # stale list for a frame and then flashes to the new one)
         # Rebuild only when something the dashboard shows has changed
         # (screen order/hidden list from Settings, or the data dir).
         # Rebuilding on every return tore down and recreated every button,
@@ -256,6 +258,8 @@ class Dashboard(Screen):
         else:
             self._search.text = ""      # leave search mode; Recent may have changed
             self._fill_list()
+
+    on_enter = on_pre_enter
 
     def on_touch_down(self, touch):
         # Only a tool tile reacts to the right mouse button (it pins); other

@@ -241,8 +241,18 @@ desktop-only tools (such as Cover) are unavailable. The app version lives in
 derives its versionCode from it, and a higher versionCode is what lets a new
 APK install over the old one. Bump both on every build.
 
-Pushing a `v*` tag also builds the Windows EXE, Linux AppImage and Android APK
-in GitHub Actions (`.github/workflows/build-srboli.yml`).
+Pushing a `v*` tag also builds the Windows EXE, Linux AppImage, macOS app and
+Android APK in GitHub Actions (`.github/workflows/build-srboli.yml`) and
+publishes them on the repository's **Releases** page
+(`Srboli-<tag>-Windows.zip`, `-x86_64.AppImage`, `.apk`, `-macOS.zip`), so
+finished builds can be downloaded without opening the workflow run.
+
+### Touch notes (Android)
+
+Finger taps arrive from SDL once; the app switches off SDL's synthesized mouse
+events so a tap is never doubled (Touch Test shows "Filter active"). Finger
+touches carry `button=None`, so code that treats "has a button" as "is a mouse"
+must check for a real button name (`"left"`, `"right"`).
 
 ## Advanced logging
 
