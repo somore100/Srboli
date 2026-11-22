@@ -28,10 +28,34 @@ def plan(item, size=None):
     -> File Inspector (type, checksums, preview works for every file)."""
     if item.get("kind") == "text":
         return "text_workbench", "set_text"
-    name, mime = item.get("name", ""), item.get("mime", "")
-    if is_texty(name, mime) and (size is None or size <= MAX_TEXT_BYTES):
-        return "text_editor", "open_path"
-    return "file_inspector", "inspect"
+    r, action, _label = choices(item, size)[0]
+    return r, action
+
+
+AUDIO_EXT = {"mp3", "wav", "ogg", "flac", "m4a", "aac", "opus", "oga"}
+
+ROUTE_LABELS = {
+    "music": ("play", "Play in Music Player"),
+    "text_editor": ("open_path", "Open in Text Editor"),
+    "text_workbench": ("set_text", "Open in Text Workbench"),
+    "file_inspector": ("inspect", "Inspect the file (type, size, checksums)"),
+}
+
+
+def choices(item, size=None):
+    """What Srboli can do with an incoming item, best first:
+    [(route, action, button text), ...]. The first is what plan() picks."""
+    if item.get("kind") == "text":
+        routes = ["text_workbench"]
+    else:
+        name, mime = item.get("name", ""), item.get("mime", "")
+        routes = []
+        if _ext(name) in AUDIO_EXT or (mime or "").startswith("audio/"):
+            routes.append("music")
+        if is_texty(name, mime) and (size is None or size <= MAX_TEXT_BYTES):
+            routes.append("text_editor")
+        routes.append("file_inspector")
+    return [(r,) + ROUTE_LABELS[r] for r in routes]
 
 
 def safe_name(name, default="shared_file"):

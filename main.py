@@ -244,26 +244,58 @@ class SrboliApp(App):
                     after=self._ask_permission)
 
     def _open_external(self, item):
-        """A file or text another app sent us ("Open with" / "Share")."""
+        """A file or text another app sent us ("Open with" / "Share"): a small
+        chooser first, so the user decides what Srboli does with it."""
         from kivy.clock import Clock
+        from kivy.metrics import dp, sp
+        from kivy.uix.boxlayout import BoxLayout
+        from kivy.uix.button import Button
+        from kivy.uix.label import Label
+        from kivy.uix.popup import Popup
         from core import open_with_core
 
-        def go(dt):
-            try:
-                size = (os.path.getsize(item["path"])
-                        if item.get("kind") == "file" else None)
-                route, action = open_with_core.plan(item, size)
-                self._open_route(route)
+        def deliver_to(route, action):
+            self._open_route(route)
 
-                def deliver(dt2):
+            def deliver(dt2):
+                try:
                     scr = self.root.get_screen(route)
                     if action == "set_text":
                         scr.set_text(item["text"])
                     elif action == "open_path":
                         scr.open_path(item["path"])
+                    elif action == "play":
+                        scr.play(item["path"])
                     else:
                         scr.inspect(item["path"])
-                Clock.schedule_once(deliver, 0.4)
+                except Exception as e:
+                    if _bl:
+                        _bl.log(f"open-with delivery failed: {e}")
+            Clock.schedule_once(deliver, 0.4)
+
+        def go(dt):
+            try:
+                size = (os.path.getsize(item["path"])
+                        if item.get("kind") == "file" else None)
+                opts = open_with_core.choices(item, size)
+                what = item.get("name") or "shared text"
+                lay = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(10))
+                lbl = Label(text=str(what), font_size=sp(13), shorten=True,
+                            shorten_from="right", size_hint_y=None, height=dp(30))
+                lay.add_widget(lbl)
+                pop = Popup(title="Open in Srboli", content=lay,
+                            size_hint=(0.9, None),
+                            height=dp(150 + 54 * len(opts)))
+                for route, action, text in opts:
+                    b = Button(text=text, font_size=sp(14))
+                    b.bind(on_release=lambda w, r=route, a=action:
+                           (pop.dismiss(), deliver_to(r, a)))
+                    lay.add_widget(b)
+                cancel = Button(text="Cancel", font_size=sp(14),
+                                size_hint_y=None, height=dp(44))
+                cancel.bind(on_release=lambda w: pop.dismiss())
+                lay.add_widget(cancel)
+                pop.open()
             except Exception as e:
                 if _bl:
                     _bl.log(f"open-with failed: {e}")

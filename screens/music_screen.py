@@ -380,6 +380,15 @@ class MusicScreen(Screen):
         btn.bind(on_release=_load)
         popup.open()
 
+    def play(self, path):
+        """Play one file handed over by 'Open with' (added to the playlist)."""
+        if not os.path.isfile(path):
+            return
+        if path not in self.playlist:
+            self.playlist.append(path)
+        self._refresh_track_ui()
+        self._select_and_play(self.playlist.index(path))
+
     def _clear_playlist(self, *a):
         self._stop()
         self.playlist = []
