@@ -59,7 +59,7 @@ class ToolButton(Button):
     def on_touch_down(self, touch):
         if self.collide_point(*touch.pos) and not getattr(
                 touch, "is_mouse_scrolling", False):
-            if getattr(touch, "button", "left") == "right":
+            if getattr(touch, "button", None) == "right":
                 self._on_pin(self.route)
                 return True
             self._lp = Clock.schedule_once(self._long, LONG_PRESS)
@@ -260,7 +260,8 @@ class Dashboard(Screen):
     def on_touch_down(self, touch):
         # Only a tool tile reacts to the right mouse button (it pins); other
         # buttons used to fire on any mouse button.
-        if hasattr(touch, "button"):
+        # a finger touch can carry button=None: only real mouse buttons count
+        if isinstance(getattr(touch, "button", None), str):
             if getattr(touch, "is_mouse_scrolling", False):
                 return super().on_touch_down(touch)
             if touch.button != "left":
