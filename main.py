@@ -452,6 +452,38 @@ class SrboliApp(App):
                     _bl.log(f"first touch reached the window "
                             f"(device={touch.device})")
             Window.bind(on_touch_down=_first_touch)
+
+            # Freeze probe: for the first touches say what they hit, so a log
+            # from a frozen run tells "no touch reached Kivy" from "touches
+            # arrived but no widget reacted" (and what was on top).
+            _probe = {"n": 0, "presses": 0, "rel": 0}
+            try:
+                from kivy.uix.behaviors.button import ButtonBehavior as _BBp
+                _orig_press = _BBp._do_press
+
+                def _do_press(self, *a):
+                    _probe["presses"] += 1
+                    return _orig_press(self, *a)
+                _BBp._do_press = _do_press
+            except Exception:
+                pass
+
+            def _probe_touch(kind):
+                def cb(win, touch, *a):
+                    if _probe["n"] >= 40:
+                        return
+                    _probe["n"] += 1
+                    try:
+                        top = [type(w).__name__ for w in Window.children][:4]
+                        _bl.log(f"touch {kind} dev={touch.device} "
+                                f"pos=({touch.x:.0f},{touch.y:.0f}) "
+                                f"window children={top} screen={sm.current} "
+                                f"button presses so far={_probe['presses']}")
+                    except Exception:
+                        pass
+                return cb
+            Window.bind(on_touch_down=_probe_touch("down"),
+                        on_touch_up=_probe_touch("up"))
         return sm
 
 
