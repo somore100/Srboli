@@ -7,6 +7,8 @@
 # Themes are presets of the colour tokens below. The chosen one (Settings ->
 # "theme") is applied once at startup by install(), before any screen is
 # built, so a change needs a restart.
+import os
+
 from kivy.lang import Builder
 from kivy.metrics import dp, sp
 
@@ -35,6 +37,33 @@ PRESETS = {
 }
 DEFAULT_THEME = "dark"
 current = DEFAULT_THEME
+
+# Rounded buttons: a white rounded-rectangle picture, tinted by each button's
+# background_color (so screens that pass their own colour stay rounded).
+ROUND_PNG = os.path.join(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))), "round.png")
+BTN_IMG = ""            # set by apply_shape()
+BTN_BORDER = (0, 0, 0, 0)
+BTN_RADIUS = 0
+rounded = True
+
+
+def apply_shape(on):
+    """Rounded (True) or flat square (False) buttons."""
+    global BTN_IMG, BTN_BORDER, BTN_RADIUS, rounded
+    rounded = bool(on) and os.path.isfile(ROUND_PNG)
+    BTN_IMG = ROUND_PNG if rounded else ""
+    BTN_BORDER = (18, 18, 18, 18) if rounded else (0, 0, 0, 0)
+    BTN_RADIUS = dp(10) if rounded else 0
+    return rounded
+
+
+def saved_rounded():
+    try:
+        from screens.settings_screen import _raw_settings
+        return bool(_raw_settings().get("rounded", True))
+    except Exception:
+        return True
 
 
 def apply(name):
@@ -68,17 +97,19 @@ KV = """
     color: T.TEXT
 
 <Button>:
-    background_normal: ''
-    background_down: ''
-    background_disabled_normal: ''
+    background_normal: T.BTN_IMG
+    background_down: T.BTN_IMG
+    background_disabled_normal: T.BTN_IMG
+    border: T.BTN_BORDER
     background_color: T.SURFACE2
     color: T.TEXT
     canvas.after:
         Color:
             rgba: (1, 1, 1, 0.10 if self.state == 'down' else 0)
-        Rectangle:
+        RoundedRectangle:
             pos: self.pos
             size: self.size
+            radius: [T.BTN_RADIUS]
 
 <TextInput>:
     background_normal: ''
@@ -102,6 +133,7 @@ def install():
     if _installed:
         return
     apply(saved_name())
+    apply_shape(saved_rounded())
     from kivy.core.window import Window
     Window.clearcolor = BG
     Builder.load_string(KV)

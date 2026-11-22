@@ -7,6 +7,7 @@
 #     "order":      [route, route, ...],   # dashboard menu order
 #     "hidden":     [route, route, ...],   # routes hidden from the menu
 #     "lazy_load":  bool,                  # build screens on first visit (default True)
+#     "rounded": bool,                     # rounded buttons (default True)
 #     "theme": "dark" | "blue" | "light",   # colour preset, applied at startup
 #     "show_recent": bool,                 # show the Dashboard "Recent" row (default True)
 #     "recent":     [route, ...],          # last used tools (Dashboard "Recent" row)
@@ -95,6 +96,7 @@ def load_settings():
         [k for k, _t, _r in GROUPS] + [dash.OTHER_KEY])
     data["pinned"] = dash.clean_routes(data.get("pinned"), known)
     data["onboarded"] = bool(data.get("onboarded", False))
+    data["rounded"] = bool(data.get("rounded", True))
     from core import theme as _theme
     data["theme"] = data.get("theme") if data.get("theme") in _theme.PRESETS \
         else _theme.DEFAULT_THEME
@@ -324,6 +326,17 @@ class SettingsScreen(Screen):
         content.add_widget(th_row)
         self._mark_theme()
 
+        rnd_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=8)
+        self._rnd_cb = CheckBox(active=self._cfg.get("rounded", True),
+                                size_hint=(None, None), size=(dp(24), dp(24)))
+        self._rnd_cb.bind(active=self._toggle_rounded)
+        rnd_row.add_widget(self._rnd_cb)
+        rnd_lbl = Label(text="Rounded buttons (applies after a restart).",
+                        font_size=sp(11), halign="left", valign="middle")
+        rnd_lbl.bind(size=rnd_lbl.setter("text_size"))
+        rnd_row.add_widget(rnd_lbl)
+        content.add_widget(rnd_row)
+
         adv_row = BoxLayout(size_hint_y=None, height=dp(72), spacing=8)
         self._adv_cb = CheckBox(active=self._cfg.get("advanced_logging", False),
                                 size_hint=(None, None), size=(dp(24), dp(24)))
@@ -506,6 +519,12 @@ class SettingsScreen(Screen):
         save_settings(self._cfg)
         self._mark_theme()
         self._status.text = "Theme saved - restart Srboli to apply."
+
+    def _toggle_rounded(self, inst, active):
+        self._cfg["rounded"] = active
+        save_settings(self._cfg)
+        self._status.text = "Rounded buttons " + ("on" if active else "off") \
+            + " - restart Srboli to apply."
 
     def _toggle_recent(self, inst, active):
         self._cfg["show_recent"] = active

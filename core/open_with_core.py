@@ -74,3 +74,11 @@ def unique_path(folder, name):
         path = os.path.join(folder, f"{base} ({n}){ext}")
         n += 1
     return path
+
+
+def is_audio(item):
+    """True for a file another app sent that is a sound (the mini player takes it)."""
+    if item.get("kind") != "file":
+        return False
+    return (_ext(item.get("name", "") or item.get("path", "")) in AUDIO_EXT
+            or (item.get("mime", "") or "").startswith("audio/"))

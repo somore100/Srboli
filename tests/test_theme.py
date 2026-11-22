@@ -18,3 +18,15 @@ d = ss.load_settings(); d["theme"] = "blue"; ss.save_settings(d)
 assert ss.load_settings()["theme"] == "blue" and theme.saved_name() == "blue"
 d["theme"] = "bogus"; ss.save_settings(d); assert ss.load_settings()["theme"] == "dark"
 print("theme OK")
+
+# rounded buttons + mini player helpers
+theme.apply_shape(True); assert theme.rounded and theme.BTN_RADIUS > 0 and theme.BTN_IMG.endswith("round.png")
+theme.apply_shape(False); assert not theme.rounded and theme.BTN_IMG == "" and theme.BTN_RADIUS == 0
+assert ss.load_settings()["rounded"] is True
+from core.mini_player import fmt_time, clamp
+assert fmt_time(11) == "00:11" and fmt_time(171) == "02:51" and fmt_time(None) == "00:00"
+assert clamp(2) == 1 and clamp(-1) == 0
+from core import open_with_core as owc
+assert owc.is_audio({"kind": "file", "name": "a.MP3"}) and owc.is_audio({"kind": "file", "name": "x", "mime": "audio/ogg"})
+assert not owc.is_audio({"kind": "file", "name": "a.txt"}) and not owc.is_audio({"kind": "text", "text": "x"})
+print("shape/mini OK")

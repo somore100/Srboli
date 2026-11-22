@@ -273,7 +273,7 @@ class SrboliApp(App):
                         _bl.log(f"open-with delivery failed: {e}")
             Clock.schedule_once(deliver, 0.4)
 
-        def go(dt):
+        def chooser():
             try:
                 size = (os.path.getsize(item["path"])
                         if item.get("kind") == "file" else None)
@@ -299,6 +299,20 @@ class SrboliApp(App):
             except Exception as e:
                 if _bl:
                     _bl.log(f"open-with failed: {e}")
+
+        def go(dt):
+            # a sound opens the small player first; "Open in Srboli" there
+            # leads to the full chooser
+            if open_with_core.is_audio(item):
+                try:
+                    from core.mini_player import MiniPlayer
+                    MiniPlayer(item["path"], item.get("name"),
+                               on_open_in_app=chooser).show()
+                    return
+                except Exception as e:
+                    if _bl:
+                        _bl.log(f"mini player failed: {e}")
+            chooser()
         Clock.schedule_once(go, 0)
 
     def _ask_permission(self, route):

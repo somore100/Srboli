@@ -19,7 +19,8 @@ tool, with global shortcuts to jump between them.
 
 | Screen | What it does |
 |---|---|
-| **Themes** | Settings -> Theme: Dark (default), Blue or Yellow & white; applied at the next start |
+| **Themes** | Settings -> Theme: Dark (default), Blue or Yellow & white, plus a Rounded buttons switch; applied at the next start |
+| **Mini player** | Opening a sound from another app ("Open with Srboli") shows a small player at the bottom: seek bar, play/pause, loop, volume, and "Open in Srboli" for the full tools |
 | **Dashboard** | Quick-access tile hub: search (with aliases, Enter opens the first hit), pinned and Recent rows (long-press or right-click to pin), and collapsible sections (Writing, Files, Media, Math and data, System, Fun) |
 | **Loading / Timer** | Countdown timer with shutdown / suspend / notify actions. For "shut down when the upload is done" use Power Off When Done |
 | **Text Editor** | Plain-text editor with Raw ⇄ Styled Markdown view, colour wheel, autosave; exports .txt / .html / .md / checked-and-indented .json |
