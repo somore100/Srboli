@@ -47,7 +47,7 @@ jobs:
           path: dist/
 
   linux:
-    name: Linux AppImage
+    name: Linux AppImage, deb, rpm
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -100,6 +100,26 @@ jobs:
         with:
           name: Srboli-Linux-AppImage
           path: Srboli.AppImage
+      - name: Build .deb and .rpm
+        run: |
+          sudo apt install -y ruby rpm
+          sudo gem install --no-document fpm
+          VER=$(python3 -c "import re;print(re.search(r'VERSION = \"(.+?)\"', open('core/version.py').read()).group(1))")
+          mkdir -p pkgroot/opt/srboli pkgroot/usr/bin pkgroot/usr/share/applications pkgroot/usr/share/pixmaps
+          cp -r dist/Srboli/* pkgroot/opt/srboli/
+          ln -s /opt/srboli/Srboli pkgroot/usr/bin/srboli
+          cp logo.png pkgroot/usr/share/pixmaps/srboli.png
+          printf '[Desktop Entry]\nName=Srboli\nExec=/opt/srboli/Srboli\nIcon=srboli\nType=Application\nCategories=Utility;\n' > pkgroot/usr/share/applications/srboli.desktop
+          mkdir -p pkgs
+          for T in deb rpm; do
+            fpm -s dir -t $T -n srboli -v "$VER" --description "Srboli: a pocket swiss-knife of small tools" \
+                --url https://github.com/somore100/Srboli -p pkgs/ -C pkgroot .
+          done
+          ls -l pkgs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Srboli-Linux-Packages
+          path: pkgs/
 
   macos:
     name: macOS App
@@ -294,6 +314,7 @@ jobs:
           [ -d Srboli-Windows ] && (cd Srboli-Windows && zip -qr "../../release/Srboli-${TAG}-Windows.zip" .)
           [ -d Srboli-macOS ] && (cd Srboli-macOS && zip -qr "../../release/Srboli-${TAG}-macOS.zip" .)
           [ -f Srboli-Linux-AppImage/Srboli.AppImage ] && cp Srboli-Linux-AppImage/Srboli.AppImage "../release/Srboli-${TAG}-x86_64.AppImage"
+          for f in Srboli-Linux-Packages/*.deb Srboli-Linux-Packages/*.rpm; do [ -f "$f" ] && cp "$f" "../release/Srboli-${TAG}-$(basename "$f" | sed 's/^srboli[-_]//')"; done
           for f in Srboli-Android-APK/*.apk; do [ -f "$f" ] && cp "$f" "../release/Srboli-${TAG}.apk"; done
           true
           cd ../release && ls -l
