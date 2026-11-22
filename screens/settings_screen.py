@@ -7,6 +7,7 @@
 #     "order":      [route, route, ...],   # dashboard menu order
 #     "hidden":     [route, route, ...],   # routes hidden from the menu
 #     "lazy_load":  bool,                  # build screens on first visit (default True)
+#     "theme": "dark" | "blue" | "light",   # colour preset, applied at startup
 #     "show_recent": bool,                 # show the Dashboard "Recent" row (default True)
 #     "recent":     [route, ...],          # last used tools (Dashboard "Recent" row)
 #     "collapsed":  [group key, ...]       # Dashboard sections folded shut
@@ -94,6 +95,9 @@ def load_settings():
         [k for k, _t, _r in GROUPS] + [dash.OTHER_KEY])
     data["pinned"] = dash.clean_routes(data.get("pinned"), known)
     data["onboarded"] = bool(data.get("onboarded", False))
+    from core import theme as _theme
+    data["theme"] = data.get("theme") if data.get("theme") in _theme.PRESETS \
+        else _theme.DEFAULT_THEME
     return data
 
 
@@ -306,6 +310,20 @@ class SettingsScreen(Screen):
         rec_row.add_widget(rec_lbl)
         content.add_widget(rec_row)
 
+        from core import theme as _theme
+        th_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=8)
+        th_row.add_widget(Label(text="Theme (applies after a restart):",
+                                font_size=sp(11), halign="left", valign="middle",
+                                size_hint_x=0.4))
+        self._theme_btns = {}
+        for key, preset in _theme.PRESETS.items():
+            b = Button(text=preset["label"], font_size=sp(11))
+            b.bind(on_release=lambda inst, k=key: self._set_theme(k))
+            self._theme_btns[key] = b
+            th_row.add_widget(b)
+        content.add_widget(th_row)
+        self._mark_theme()
+
         adv_row = BoxLayout(size_hint_y=None, height=dp(72), spacing=8)
         self._adv_cb = CheckBox(active=self._cfg.get("advanced_logging", False),
                                 size_hint=(None, None), size=(dp(24), dp(24)))
@@ -476,6 +494,18 @@ class SettingsScreen(Screen):
         self._status.text = ("Lazy loading ON — restart Srboli to apply."
                              if active else
                              "Lazy loading OFF — restart Srboli to apply.")
+
+    def _mark_theme(self):
+        from core import theme as _theme
+        for key, b in self._theme_btns.items():
+            b.text = ("* " if key == self._cfg.get("theme") else "") \
+                + _theme.PRESETS[key]["label"]
+
+    def _set_theme(self, key):
+        self._cfg["theme"] = key
+        save_settings(self._cfg)
+        self._mark_theme()
+        self._status.text = "Theme saved - restart Srboli to apply."
 
     def _toggle_recent(self, inst, active):
         self._cfg["show_recent"] = active
