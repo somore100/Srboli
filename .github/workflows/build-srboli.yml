@@ -301,6 +301,7 @@ jobs:
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}     # no checkout in this job, so gh needs the repo named
         run: |
           set -e
           TAG="${GITHUB_REF_NAME}"
