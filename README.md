@@ -61,7 +61,7 @@ tool, with global shortcuts to jump between them.
 | **Touch Test** | Shows what each tap looks like to the app (finger vs. mouse duplicates) and has the duplicate-tap filter switch |
 | **File Converter** | Batch-convert images (png/jpg/webp/bmp/gif/tiff/ico/pdf), documents (txt/md/html/docx/pdf/csv/tsv/json) and - on desktop with ffmpeg - audio/video |
 | **Settings** | Reorder (within a section) / hide dashboard screens, toggle lazy-loading, manage the background service and autostart, move or clear your data folder safely, export logs/data as a zip, save a diagnostic report, see and grant Android permissions |
-| **Open with / Share to Srboli** (Android) | Pick Srboli in "Open with" or "Share" for text, images, audio, video, PDFs and zips: text files open in the Text Editor, shared text in the Text Workbench, everything else in the File Inspector. The original is never changed (a copy is used) |
+| **Open with / Share to Srboli** (Android) | Pick Srboli in "Open with" or "Share" for text, images, audio, video, PDFs and zips: a small chooser asks what to do: audio can play in the Music Player, text files open in the Text Editor, shared text in the Text Workbench, anything can go to the File Inspector. The original is never changed (a copy is used) |
 
 ## Requirements
 
