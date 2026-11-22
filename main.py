@@ -516,6 +516,35 @@ class SrboliApp(App):
                 return cb
             Window.bind(on_touch_down=_probe_touch("down"),
                         on_touch_up=_probe_touch("up"))
+
+            # Same facts on stdout (adb logcat shows them live as "python"),
+            # plus a heartbeat every 4 s: frames drawn, window size, touches
+            # seen and buttons pressed. Frozen UI = which number stops moving.
+            _hb = {"down": 0, "up": 0}
+
+            def _count(kind):
+                def cb(win, touch, *a):
+                    _hb[kind] += 1
+                    if _hb[kind] <= 60:
+                        print(f"SRB touch {kind} dev={touch.device} "
+                              f"pos=({touch.x:.0f},{touch.y:.0f}) "
+                              f"screen={sm.current} presses={_probe['presses']}")
+                return cb
+            Window.bind(on_touch_down=_count("down"), on_touch_up=_count("up"))
+
+            def _heartbeat(dt):
+                from kivy.clock import Clock as _HC
+                try:
+                    paused = getattr(Window, "_pause_loop", None)
+                    print(f"SRB alive frames={_HC.frames} win={Window.size} "
+                          f"down={_hb['down']} up={_hb['up']} "
+                          f"presses={_probe['presses']} paused={paused} "
+                          f"screen={sm.current} "
+                          f"kids={[type(w).__name__ for w in Window.children][:4]}")
+                except Exception as e:
+                    print(f"SRB heartbeat error {e}")
+            from kivy.clock import Clock as _HBC
+            _HBC.schedule_interval(_heartbeat, 4.0)
         return sm
 
 
