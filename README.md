@@ -1,6 +1,6 @@
 # Srboli
 
-Pocket swiss-army-knife desktop app — **46 tools in one window**, built with
+Pocket swiss-army-knife desktop app — **47 tools in one window**, built with
 Python + Kivy. Even if you don't see a use for every feature at first, odds
 are at least one will be useful — and you might even end up using several.
 
@@ -60,6 +60,7 @@ tool, with global shortcuts to jump between them.
 | **Image Tools** | Two modes. *Each file*: shrink (longest side), compress (quality) and convert (JPG / PNG / WEBP) a whole batch and see before/after sizes. *Combine into one image*: stack, side by side or grid, with gap, size and order. Originals are never changed: results go to a `srboli_images` folder next to the first picture |
 | **Drawing** | A simple sketchpad: brush, eraser, line, box and oval (outline or filled), 10 colours plus any hex colour, size slider, four backgrounds, undo / redo (Clear can be undone too), and Save PNG |
 | **PDF Tools** | Merge several PDFs into one (set the order), or split one PDF: a file per page, N pages per file, or pick pages (`1-3, 5, 8-`) into a new file. Shows page counts, reports password-protected or damaged files clearly. Originals are never changed: results go to a `srboli_pdf` folder next to the first file. Needs the pypdf library (in the requirements files) |
+| **Pomodoro** | Focus timer: focus rounds with short breaks and a long break after every few rounds (all lengths adjustable), a notification when a phase ends, the screen stays on while it runs, and a count of today's finished rounds. Keeps running while you use other tools; a skipped focus round is not counted |
 | **File Inspector** | Look inside any file or folder: its real type from the contents (not the extension) with a warning when the name lies, MIME type, size, dates, permissions and owner, text or hex preview, and MD5/SHA-1/SHA-256/SHA-512 checksums with a "does it match the one I was given?" check. Read-only |
 | **Bulk Renamer** | Rename a folder's files with stacked rules (replace, regex, case, prefix/suffix, numbering, dates, patterns, extension), a live old-to-new preview that flags clashes and bad names, a confirm step, and Undo. Swaps and chains work, and a failure part-way puts everything back |
 | **Text Workbench** | One screen, five tabs, for the jobs people write small scripts for: sort, reverse, shuffle, dedupe, filter and number lines; pull emails, links, IPs, numbers or dates out of a text; test a regex with live matches and replace with it; compare two texts or files; count words and reading time. "Use result as input" chains the steps |
@@ -220,6 +221,7 @@ srboli/
 │   ├── image_tools_core.py      # Image Tools: batch shrink/compress/convert, combine into one image
 │   ├── drawing_core.py          # Drawing: strokes, undo/redo/clear history, Pillow rendering to PNG
 │   ├── pdf_tools_core.py        # PDF Tools: page-range parsing, merge, split, extract (pypdf, loaded on use)
+│   ├── pomodoro_core.py         # Pomodoro: phase state machine on an injected clock, settings, per-day totals
 │   ├── startup_core.py          # Startup Manager: list/switch login-start entries (Linux .desktop, Windows Run + StartupApproved)
 │   ├── when_done_core.py        # Power Off When Done: quiet-detection state machine, process/network/CPU/disk sampler, power commands
 │   ├── gallery_session.py       # Gallery Sorter: remembers the last session for "Continue where you left off?"

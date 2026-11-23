@@ -57,6 +57,7 @@ SCREENS = [
     ("image_tools",    "screens.image_tools_screen",      "ImageToolsScreen"),
     ("drawing",        "screens.drawing_screen",          "DrawingScreen"),
     ("pdf_tools",      "screens.pdf_tools_screen",        "PDFToolsScreen"),
+    ("pomodoro",       "screens.pomodoro_screen",         "PomodoroScreen"),
 ]
 
 LABELS = {
@@ -102,6 +103,7 @@ LABELS = {
     "image_tools":    "Image Tools",
     "drawing":        "Drawing",
     "pdf_tools":      "PDF Tools",
+    "pomodoro":       "Pomodoro",
     "learn":          "Learn (AI courses)",
     "shortcut":       "Linux Shortcut Creator",
     "backup":         "Backup",
@@ -117,6 +119,7 @@ ALIASES = {
                        "outline", "docs"],
     "script_mode":    ["prompter", "teleprompter", "script"],
     "disk_space":     ["disk", "space", "storage", "largest", "big files", "folder size", "treemap", "free space", "analyzer"],
+    "pomodoro":       ["focus", "timer", "break", "work", "study", "productivity", "tomato"],
     "pdf_tools":      ["pdf", "merge", "join", "combine", "split", "extract", "pages", "cut"],
     "drawing":        ["draw", "paint", "sketch", "doodle", "brush", "pencil", "canvas", "eraser"],
     "image_tools":    ["resize", "compress", "shrink", "convert", "jpg", "png", "webp", "combine", "collage", "stitch", "merge", "photos", "batch"],
@@ -178,7 +181,7 @@ GROUPS = [
      ["basic_tools", "math_steps", "plotter", "random_tools", "binary",
       "morse"]),
     ("system", "System",
-     ["system_stats", "reminders", "loading_timer", "quickswitcher", "cover",
+     ["system_stats", "reminders", "loading_timer", "pomodoro", "quickswitcher", "cover",
       "when_done", "startup", "clipboard", "shortcut", "touch_test"]),
     ("fun", "Fun",
      ["minesweeper", "infinite_mines", "chess", "spin", "backrooms", "unhelpful_calc"]),
