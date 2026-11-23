@@ -386,3 +386,81 @@ def plan_counts(st, plan):
                for li, _ in enumerate(u["lessons"])
                if lesson_done(st, plan["id"], ui, li))
     return done, total
+
+
+# ---- course path (the milestone view) ---------------------------------------
+XP_UNIT_BONUS = 50
+XP_COURSE_BONUS = 100
+ZIGZAG = (0, 1, 2, 1, 0, -1, -2, -1)        # sideways step of each node on the path
+
+
+def stars(score):
+    """0 = not done, 1-3 by best score: under 60% = 1, 60-89% = 2, 90%+ = 3."""
+    if score is None:
+        return 0
+    return 3 if score >= 90 else 2 if score >= 60 else 1
+
+
+def lesson_state(st, plan, ui, li):
+    """'done', 'current' (the next one to do), 'open' (free to try) or 'locked'.
+    Lessons are done in order unless the learner turned on "open all lessons"."""
+    pid = plan["id"]
+    if lesson_done(st, pid, ui, li):
+        return "done"
+    nxt = next_lesson(st, plan)
+    if nxt == (ui, li):
+        return "current"
+    return "open" if st.get("free_roam") else "locked"
+
+
+def unit_progress(st, plan, ui):
+    """(lessons done, lessons in the unit)."""
+    n = len(plan["units"][ui]["lessons"])
+    return sum(1 for li in range(n) if lesson_done(st, plan["id"], ui, li)), n
+
+
+def unit_complete(st, plan, ui):
+    done, n = unit_progress(st, plan, ui)
+    return n > 0 and done == n
+
+
+def path_nodes(st, plan):
+    """The course as a list of nodes for the path screen, in order:
+    {"kind": "unit", "ui", "title", "done", "total"}            a unit banner
+    {"kind": "lesson", "ui", "li", "title", "state", "stars", "col"}
+    {"kind": "milestone", "ui", "state": "done"|"locked", "col"}  end-of-unit trophy
+    `col` is the sideways step (-2..2) that makes the path wind."""
+    nodes, k = [], 0
+    for ui, u in enumerate(plan["units"]):
+        done, total = unit_progress(st, plan, ui)
+        nodes.append({"kind": "unit", "ui": ui, "title": u["title"], "done": done, "total": total})
+        for li, les in enumerate(u["lessons"]):
+            nodes.append({"kind": "lesson", "ui": ui, "li": li, "title": les["title"],
+                          "state": lesson_state(st, plan, ui, li),
+                          "stars": stars(best_score(st, plan["id"], ui, li)),
+                          "col": ZIGZAG[k % len(ZIGZAG)]})
+            k += 1
+        nodes.append({"kind": "milestone", "ui": ui,
+                      "state": "done" if done == total and total else "locked",
+                      "col": ZIGZAG[k % len(ZIGZAG)]})
+        k += 1
+    return nodes
+
+
+def award_milestones(st, plan, ui):
+    """After a lesson: bonus XP the first time unit `ui` (and then the whole course) is
+    complete. Returns (xp_gained, ["Unit complete!", ...]). Safe to call repeatedly."""
+    pid = plan["id"]
+    prog = st["plans"].setdefault(pid, {})
+    given = prog.setdefault("milestones", [])
+    gained, notes = 0, []
+    if unit_complete(st, plan, ui) and f"u{ui}" not in given:
+        given.append(f"u{ui}")
+        gained += XP_UNIT_BONUS
+        notes.append(f"Unit complete: {plan['units'][ui]['title']}")
+    if next_lesson(st, plan) is None and "course" not in given:
+        given.append("course")
+        gained += XP_COURSE_BONUS
+        notes.append("Course complete!")
+    st["xp"] += gained
+    return gained, notes

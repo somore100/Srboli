@@ -93,5 +93,31 @@ L.delete_plan(pid)
 check("delete clears plan+progress", (L.list_plans(), L.load_progress()["plans"]), ([], {}))
 check("prompt has topic", "teaches: rust" in L.build_prompt("rust", "advanced") and "advanced" in L.build_prompt("rust", "advanced"), True)
 
+# ---- path / milestones ----
+plan2 = {"id": "p2", "title": "T", "units": [
+    {"title": "U1", "lessons": [{"title": "A"}, {"title": "B"}]},
+    {"title": "U2", "lessons": [{"title": "C"}]}]}
+st2 = {"xp": 0, "streak": 0, "last_day": "", "plans": {}}
+check("stars", [L.stars(x) for x in (None, 0, 59, 60, 89, 90, 100)], [0, 1, 1, 2, 2, 3, 3])
+check("states fresh", [L.lesson_state(st2, plan2, u, l) for u, l in ((0, 0), (0, 1), (1, 0))], ["current", "locked", "locked"])
+st2["free_roam"] = True
+check("states free roam", [L.lesson_state(st2, plan2, u, l) for u, l in ((0, 0), (0, 1), (1, 0))], ["current", "open", "open"])
+st2["free_roam"] = False
+nodes = L.path_nodes(st2, plan2)
+check("node kinds", [n["kind"] for n in nodes], ["unit", "lesson", "lesson", "milestone", "unit", "lesson", "milestone"])
+check("path winds", [n["col"] for n in nodes if n["kind"] != "unit"], [0, 1, 2, 1, 0])
+L.record_lesson(st2, "p2", 0, 0, 2, 2, today="2026-01-01")
+check("no bonus yet", L.award_milestones(st2, plan2, 0), (0, []))
+L.record_lesson(st2, "p2", 0, 1, 1, 2, today="2026-01-01")
+xp = st2["xp"]
+g, notes = L.award_milestones(st2, plan2, 0)
+check("unit bonus", (g, len(notes), st2["xp"] - xp), (L.XP_UNIT_BONUS, 1, L.XP_UNIT_BONUS))
+check("unit bonus once", L.award_milestones(st2, plan2, 0), (0, []))
+check("milestone state", [n["state"] for n in L.path_nodes(st2, plan2) if n["kind"] == "milestone"], ["done", "locked"])
+L.record_lesson(st2, "p2", 1, 0, 1, 1, today="2026-01-01")
+g, notes = L.award_milestones(st2, plan2, 1)
+check("course bonus", (g, notes[-1]), (L.XP_UNIT_BONUS + L.XP_COURSE_BONUS, "Course complete!"))
+check("all done", L.unit_progress(st2, plan2, 0), (2, 2))
+
 print("FAILED" if fails else "ALL OK")
 sys.exit(1 if fails else 0)

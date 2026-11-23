@@ -1,7 +1,9 @@
 # screens/learn_screen.py - Learn: import an AI-written course (JSON) and
 # study it Duolingo-style. Engine lives in core/learn_core.py.
+from kivy.clock import Clock
 from kivy.core.clipboard import Clipboard
 from kivy.metrics import dp, sp
+from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
@@ -10,6 +12,7 @@ from kivy.uix.progressbar import ProgressBar
 from kivy.uix.screenmanager import Screen
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.textinput import TextInput
+from kivy.uix.widget import Widget
 
 from core import learn_core as L
 
@@ -18,6 +21,8 @@ GOOD = (0.25, 0.65, 0.35, 1)
 BAD = (0.80, 0.30, 0.30, 1)
 ACCENT = (0.25, 0.45, 0.80, 1)
 PICKED = (0.30, 0.40, 0.65, 1)
+GOLD = (0.85, 0.65, 0.15, 1)
+LOCKED = (0.20, 0.21, 0.24, 1)
 
 
 def _wrap_label(text, font_size=sp(15), **kw):
@@ -66,6 +71,7 @@ class LearnScreen(Screen):
         col.bind(minimum_height=col.setter("height"))
         sv.add_widget(col)
         self._root.add_widget(sv)
+        self._sv = sv
         return col
 
     def _back_row(self, text, cb):
@@ -264,22 +270,92 @@ class LearnScreen(Screen):
             self._root.add_widget(Label(
                 text="Course complete!", size_hint_y=None, height=dp(30),
                 color=(0.6, 1, 0.6, 1)))
+        self._root.add_widget(_btn(
+            "Open all lessons: " + ("on" if st.get("free_roam") else "off"),
+            self._toggle_free_roam, h=34, color=ACCENT if st.get("free_roam") else BG_BTN))
         col = self._scroll()
-        for ui, u in enumerate(plan["units"]):
-            col.add_widget(_wrap_label(f"[b]{ui + 1}. {u['title']}[/b]", 15,
-                                       markup=True, color=(0.9, 0.85, 0.6, 1)))
-            for li, les in enumerate(u["lessons"]):
-                sc = L.best_score(st, plan["id"], ui, li)
-                tag = "  [not started]" if sc is None else f"  [{sc}%]"
-                col.add_widget(_btn(
-                    f"{les['title']}{tag}",
-                    lambda ui=ui, li=li: self._start_lesson(ui, li),
-                    color=BG_BTN if sc is None else (0.15, 0.30, 0.20, 1)))
+        current_row = None
+        for n in L.path_nodes(st, plan):
+            if n["kind"] == "unit":
+                banner = _wrap_label(
+                    f"[b]Unit {n['ui'] + 1}: {n['title']}[/b]   {n['done']}/{n['total']}", 15,
+                    markup=True, color=(0.95, 0.9, 0.65, 1))
+                col.add_widget(banner)
+                continue
+            row = self._path_row(plan, n)
+            col.add_widget(row)
+            if n["kind"] == "lesson" and n["state"] == "current":
+                current_row = row
+        if current_row is not None:
+            Clock.schedule_once(lambda dt: self._sv.scroll_to(current_row, padding=dp(60),
+                                                              animate=False), 0.1)
         row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(8))
         row.add_widget(_btn("< Courses", self._show_home))
         row.add_widget(_btn("Delete course", lambda: self._confirm_delete(plan),
                             color=(0.35, 0.18, 0.18, 1)))
         self._root.add_widget(row)
+
+    def _toggle_free_roam(self):
+        st = L.load_progress()
+        st["free_roam"] = not st.get("free_roam")
+        L.save_progress(st)
+        self._show_plan(self._plan)
+
+    def _path_row(self, plan, n):
+        """One step of the winding path: a round node in one of five sideways slots."""
+        slots = [Widget() for _ in range(5)]
+        if n["kind"] == "milestone":
+            done = n["state"] == "done"
+            btn = _btn("UNIT\nDONE" if done else "UNIT", lambda: self._milestone_info(plan, n),
+                       h=64, color=GOLD if done else LOCKED, size_hint_x=None, width=dp(64))
+            title = "+%d XP" % L.XP_UNIT_BONUS if not done else "Milestone reached"
+        else:
+            state = n["state"]
+            if state == "done":
+                text, color = "*" * max(1, n["stars"]), GOOD
+            elif state == "current":
+                text, color = "START", ACCENT
+            elif state == "open":
+                text, color = str(n["li"] + 1), BG_BTN
+            else:
+                text, color = "locked", LOCKED
+            big = state == "current"
+            btn = _btn(text, lambda: self._node_tapped(n), h=76 if big else 64, color=color,
+                       size_hint_x=None, width=dp(76 if big else 64),
+                       font_size=sp(18 if state == "done" else 13))
+            if state == "done":
+                btn.color = (1, 0.88, 0.3, 1)
+            elif state == "locked":
+                btn.color = (0.55, 0.57, 0.62, 1)
+            title = n["title"]
+        cell = BoxLayout(orientation="vertical", spacing=dp(2))
+        anchor = AnchorLayout(anchor_x="center", anchor_y="center")
+        anchor.add_widget(btn)
+        cell.add_widget(anchor)
+        lbl = Label(text=title, font_size=sp(10), size_hint_y=None, height=dp(24),
+                    shorten=True, shorten_from="right", halign="center",
+                    color=(0.7, 0.72, 0.78, 1))
+        lbl.bind(size=lambda w, v: setattr(w, "text_size", v))
+        cell.add_widget(lbl)
+        row = BoxLayout(size_hint_y=None, height=dp(110))
+        slots[2 + n["col"]] = cell
+        for w in slots:
+            row.add_widget(w)
+        return row
+
+    def _node_tapped(self, n):
+        if n["state"] == "locked":
+            self._toast("Finish the earlier lessons first.\n\nYou can also turn on "
+                        "\"Open all lessons\" above to try any lesson.")
+            return
+        self._start_lesson(n["ui"], n["li"])
+
+    def _milestone_info(self, plan, n):
+        if n["state"] == "done":
+            self._toast("You finished every lesson in this unit.")
+        else:
+            self._toast("Finish every lesson in this unit to reach this milestone "
+                        f"(+{L.XP_UNIT_BONUS} XP).")
 
     def _confirm_delete(self, plan):
         box = BoxLayout(orientation="vertical", padding=dp(10), spacing=dp(8))
@@ -423,13 +499,16 @@ class LearnScreen(Screen):
         st = L.load_progress()
         gained = L.record_lesson(st, self._plan["id"], s["ui"], s["li"],
                                  s["correct"], s["total"])
+        bonus, notes = L.award_milestones(st, self._plan, s["ui"])
+        gained += bonus
         L.save_progress(st)
         self._clear()
         pct = int(round(100 * s["correct"] / s["total"])) if s["total"] else 100
         self._root.add_widget(Label(
             text=("[b]Lesson complete![/b]\n\n"
                   f"{s['correct']}/{s['total']} right first try ({pct}%)\n"
-                  f"+{gained} XP    Streak {L.current_streak(st)} day(s)"),
+                  f"+{gained} XP    Streak {L.current_streak(st)} day(s)"
+                  + "".join(f"\n\n[color=ffd24d][b]{m}[/b][/color]" for m in notes)),
             markup=True, halign="center", font_size=sp(18)))
         nxt = L.next_lesson(st, self._plan)
         if nxt:
