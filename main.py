@@ -218,6 +218,11 @@ def ensure_screen_loaded(sm, route):
     Returns True if the screen is present after this call."""
     if sm.has_screen(route):
         return True
+    try:
+        if route in load_settings().get("removed", []):
+            return False                      # removed for good (Settings)
+    except Exception:
+        pass
     for r, mod, cls_name in SCREENS:
         if r == route:
             import time as _t
@@ -387,6 +392,8 @@ class SrboliApp(App):
                                 version=_APP_VERSION, name="dashboard"))
         sm.add_widget(try_import(SETTINGS_ROUTE[1], SETTINGS_ROUTE[2])(
             name=SETTINGS_ROUTE[0]))
+        sm.add_widget(try_import("screens.manage_tools_screen",
+                                 "ManageToolsScreen")(name="manage_tools"))
 
         settings_cfg = load_settings()
         lazy = settings_cfg.get("lazy_load", True)
@@ -400,6 +407,8 @@ class SrboliApp(App):
             ensure_screen_loaded(sm, "quickswitcher")
         else:
             for route, mod, cls_name in SCREENS:
+                if route in settings_cfg.get("removed", []):
+                    continue
                 sm.add_widget(try_import(mod, cls_name)(name=route))
         sm.current = "dashboard"
 
@@ -418,7 +427,8 @@ class SrboliApp(App):
             _bl.log("safe mode: background preload skipped")
         elif lazy and settings_cfg.get("preload_bg", False):
             from kivy.clock import Clock as _PClock
-            _pending = [r for r, _m, _c in SCREENS]
+            _pending = [r for r, _m, _c in SCREENS
+                        if r not in settings_cfg.get("removed", [])]
             _last_input = [_PClock.get_time()]
 
             def _note_input(*a):

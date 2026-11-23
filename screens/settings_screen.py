@@ -6,6 +6,7 @@
 #   {
 #     "order":      [route, route, ...],   # dashboard menu order
 #     "hidden":     [route, route, ...],   # routes hidden from the menu
+#     "removed":    [route, ...],          # routes removed for good (Manage tools screen)
 #     "lazy_load":  bool,                  # build screens on first visit (default True)
 #     "rounded": bool,                     # rounded buttons (default True)
 #     "theme": "dark" | "blue" | "light",   # colour preset, applied at startup
@@ -42,12 +43,13 @@ import app_data
 from core.jsonio import read_json, write_json_atomic
 from screens.registry import SCREENS, LABELS, GROUPS, default_route_order
 from core import dashboard_core as dash
+from core import tool_removal
 from core.daemon_ipc import send_command, daemon_launch_cmd, spawn_detached
 import core.autostart as autostart
 
 CONFIG_FILE_NAME = "app_settings.json"
 # written only by the Dashboard / onboarding; save_settings keeps them as on disk
-DASHBOARD_KEYS = ("recent", "collapsed", "pinned", "onboarded")
+DASHBOARD_KEYS = ("recent", "collapsed", "pinned", "onboarded", "removed")
 
 
 def _config_path():
@@ -95,6 +97,7 @@ def load_settings():
         data.get("recent"), data.get("collapsed"), known,
         [k for k, _t, _r in GROUPS] + [dash.OTHER_KEY])
     data["pinned"] = dash.clean_routes(data.get("pinned"), known)
+    data["removed"] = tool_removal.clean(data.get("removed"), known)
     data["onboarded"] = bool(data.get("onboarded", False))
     data["rounded"] = bool(data.get("rounded", True))
     from core import theme as _theme
@@ -123,12 +126,13 @@ def save_settings(data):
 
 
 def update_dashboard_state(recent=None, collapsed=None, pinned=None,
-                           onboarded=None):
+                           onboarded=None, removed=None):
     """Save the Dashboard's own state: recent tools, folded sections, pinned
     tools, first-run done (None = unchanged)."""
     data = load_settings()
     for key, value in (("recent", recent), ("collapsed", collapsed),
-                       ("pinned", pinned), ("onboarded", onboarded)):
+                       ("pinned", pinned), ("onboarded", onboarded),
+                       ("removed", removed)):
         if value is not None:
             data[key] = value
     _write(data)
@@ -138,7 +142,7 @@ def effective_menu_order():
     """Ordered list of (route, label) for routes NOT hidden — what the
     Dashboard should render as buttons."""
     cfg = load_settings()
-    hidden = set(cfg["hidden"])
+    hidden = set(cfg["hidden"]) | set(cfg["removed"])
     return [(r, LABELS.get(r, r)) for r in cfg["order"] if r not in hidden]
 
 
@@ -420,6 +424,12 @@ class SettingsScreen(Screen):
             feat_btn.text = "Background service: desktop only (not on Android yet)"
         content.add_widget(feat_btn)
 
+        rm_btn = Button(text="Remove or restore tools permanently...",
+                        size_hint_y=None, height=dp(40), font_size=sp(12))
+        rm_btn.bind(on_release=lambda *a: setattr(self.manager, "current",
+                                                  "manage_tools"))
+        content.add_widget(rm_btn)
+
         tt_btn = Button(text="Touch Test (are my taps arriving twice?)",
                         size_hint_y=None, height=dp(40), font_size=sp(12))
         tt_btn.bind(on_release=self._open_touch_test)
@@ -441,7 +451,8 @@ class SettingsScreen(Screen):
         self._grid.clear_widgets()
         self._rows = {}
         hidden = set(self._cfg["hidden"])
-        menu = [(r, LABELS.get(r, r)) for r in self._cfg["order"]]
+        gone = set(self._cfg.get("removed", []))
+        menu = [(r, LABELS.get(r, r)) for r in self._cfg["order"] if r not in gone]
         for _key, title, members in dash.group_menu(menu, GROUPS):
             head = Label(text=f"[b]{title}[/b]", markup=True, font_size=sp(12),
                          halign="left", size_hint_y=None, height=dp(26),
