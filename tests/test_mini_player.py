@@ -1,4 +1,5 @@
 # The mini player builds, plays, pauses, loops, seeks and closes (fake sound).
+# needs kivy and a display (CI skips it: tests/test_scripts.py looks for the word "kivy")
 import os, sys, tempfile
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import app_data
