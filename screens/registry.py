@@ -58,6 +58,7 @@ SCREENS = [
     ("drawing",        "screens.drawing_screen",          "DrawingScreen"),
     ("pdf_tools",      "screens.pdf_tools_screen",        "PDFToolsScreen"),
     ("pomodoro",       "screens.pomodoro_screen",         "PomodoroScreen"),
+    ("regex_json",     "screens.regex_json_screen",       "RegexJsonScreen"),
 ]
 
 LABELS = {
@@ -104,6 +105,7 @@ LABELS = {
     "drawing":        "Drawing",
     "pdf_tools":      "PDF Tools",
     "pomodoro":       "Pomodoro",
+    "regex_json":     "Regex & JSON",
     "learn":          "Learn (AI courses)",
     "shortcut":       "Linux Shortcut Creator",
     "backup":         "Backup",
@@ -119,6 +121,7 @@ ALIASES = {
                        "outline", "docs"],
     "script_mode":    ["prompter", "teleprompter", "script"],
     "disk_space":     ["disk", "space", "storage", "largest", "big files", "folder size", "treemap", "free space", "analyzer"],
+    "regex_json":     ["regex", "regexp", "pattern", "match", "json", "format", "validate", "minify", "tree", "path", "pretty"],
     "pomodoro":       ["focus", "timer", "break", "work", "study", "productivity", "tomato"],
     "pdf_tools":      ["pdf", "merge", "join", "combine", "split", "extract", "pages", "cut"],
     "drawing":        ["draw", "paint", "sketch", "doodle", "brush", "pencil", "canvas", "eraser"],
@@ -178,7 +181,7 @@ GROUPS = [
     ("media", "Media",
      ["music", "shape_gen", "drawing", "color_picker"]),
     ("math", "Math and data",
-     ["basic_tools", "math_steps", "plotter", "random_tools", "binary",
+     ["basic_tools", "math_steps", "plotter", "random_tools", "regex_json", "binary",
       "morse"]),
     ("system", "System",
      ["system_stats", "reminders", "loading_timer", "pomodoro", "quickswitcher", "cover",

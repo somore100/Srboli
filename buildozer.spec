@@ -14,7 +14,7 @@ source.include_exts = py,png,jpg,jpeg,json,ttf,txt
 source.exclude_dirs = tests,docs,.git,.github,__pycache__,srboli_data,.venv,venv,build,dist,bin,.buildozer
 source.exclude_patterns = *.pyc,*.spec,.srboli_config.json,*.log,*.zip,*.7z,*.keystore,*.apk,*.egg-info,build.txt,license.txt,README.md,SrboliLight.spec,requirements-desktop.txt,requirements.txt
 
-version = 5.24
+version = 5.25
 
 # Core dependencies. Don't pin python3's own version here — p4a.branch
 # below is what actually controls which CPython gets built.
@@ -26,7 +26,10 @@ version = 5.24
 # crashing the build or the app.
 requirements = python3,kivy==2.3.1,pillow,filetype,pypdf
 
-orientation = portrait
+# Follow the phone's own rotation: turn with the phone when auto-rotate is on, stay put when
+# the rotation lock is on (fullUser = "as the user set it", all four directions).
+orientation = portrait, landscape, portrait-reverse, landscape-reverse
+android.manifest.orientation = fullUser
 fullscreen = 0
 icon.filename = %(source.dir)s/logo.png
 
