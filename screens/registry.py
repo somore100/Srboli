@@ -59,6 +59,7 @@ SCREENS = [
     ("pdf_tools",      "screens.pdf_tools_screen",        "PDFToolsScreen"),
     ("pomodoro",       "screens.pomodoro_screen",         "PomodoroScreen"),
     ("regex_json",     "screens.regex_json_screen",       "RegexJsonScreen"),
+    ("cleanup",        "screens.cleanup_screen",          "CleanupScreen"),
 ]
 
 LABELS = {
@@ -106,6 +107,7 @@ LABELS = {
     "pdf_tools":      "PDF Tools",
     "pomodoro":       "Pomodoro",
     "regex_json":     "Regex & JSON",
+    "cleanup":        "Cleanup",
     "learn":          "Learn (AI courses)",
     "shortcut":       "Linux Shortcut Creator",
     "backup":         "Backup",
@@ -121,6 +123,7 @@ ALIASES = {
                        "outline", "docs"],
     "script_mode":    ["prompter", "teleprompter", "script"],
     "disk_space":     ["disk", "space", "storage", "largest", "big files", "folder size", "treemap", "free space", "analyzer"],
+    "cleanup":        ["clean", "junk", "cache", "temp", "trash", "free space", "ram", "memory", "processes", "tidy"],
     "regex_json":     ["regex", "regexp", "pattern", "match", "json", "format", "validate", "minify", "tree", "path", "pretty"],
     "pomodoro":       ["focus", "timer", "break", "work", "study", "productivity", "tomato"],
     "pdf_tools":      ["pdf", "merge", "join", "combine", "split", "extract", "pages", "cut"],
@@ -176,7 +179,7 @@ GROUPS = [
     ("writing", "Writing",
      ["text_editor", "full_editor", "script_mode", "text_workbench", "learn"]),
     ("files", "Files",
-     ["file_sorter", "bulk_rename", "file_inspector", "disk_space", "folder_colors", "fast_transfer", "backup", "sync", "converter", "gallery", "metadata",
+     ["file_sorter", "bulk_rename", "file_inspector", "disk_space", "cleanup", "folder_colors", "fast_transfer", "backup", "sync", "converter", "gallery", "metadata",
       "image_text", "image_tools", "pdf_tools", "qr"]),
     ("media", "Media",
      ["music", "shape_gen", "drawing", "color_picker"]),
