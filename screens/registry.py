@@ -54,6 +54,7 @@ SCREENS = [
     ("clipboard",      "screens.clipboard_history_screen", "ClipboardHistoryScreen"),
     ("qr",             "screens.qr_screen",               "QRScreen"),
     ("color_picker",   "screens.color_picker_screen",     "ColorPickerScreen"),
+    ("image_tools",    "screens.image_tools_screen",      "ImageToolsScreen"),
 ]
 
 LABELS = {
@@ -96,6 +97,7 @@ LABELS = {
     "clipboard":      "Clipboard History",
     "qr":             "QR Code",
     "color_picker":   "Colour Picker",
+    "image_tools":    "Image Tools",
     "learn":          "Learn (AI courses)",
     "shortcut":       "Linux Shortcut Creator",
     "backup":         "Backup",
@@ -111,6 +113,7 @@ ALIASES = {
                        "outline", "docs"],
     "script_mode":    ["prompter", "teleprompter", "script"],
     "disk_space":     ["disk", "space", "storage", "largest", "big files", "folder size", "treemap", "free space", "analyzer"],
+    "image_tools":    ["resize", "compress", "shrink", "convert", "jpg", "png", "webp", "combine", "collage", "stitch", "merge", "photos", "batch"],
     "color_picker":   ["color", "colour", "eyedropper", "pipette", "hex", "rgb", "hsl", "palette", "pixel"],
     "qr":             ["barcode", "scan", "wifi", "link", "code", "generator", "reader"],
     "clipboard":      ["copy", "paste", "history", "pinned", "snippets"],
@@ -162,7 +165,7 @@ GROUPS = [
      ["text_editor", "full_editor", "script_mode", "text_workbench", "learn"]),
     ("files", "Files",
      ["file_sorter", "bulk_rename", "file_inspector", "disk_space", "folder_colors", "fast_transfer", "backup", "sync", "converter", "gallery", "metadata",
-      "image_text", "qr"]),
+      "image_text", "image_tools", "qr"]),
     ("media", "Media",
      ["music", "shape_gen", "color_picker"]),
     ("math", "Math and data",
