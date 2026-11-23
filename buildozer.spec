@@ -14,7 +14,7 @@ source.include_exts = py,png,jpg,jpeg,json,ttf,txt
 source.exclude_dirs = tests,docs,.git,.github,__pycache__,srboli_data,.venv,venv,build,dist,bin,.buildozer
 source.exclude_patterns = *.pyc,*.spec,.srboli_config.json,*.log,*.zip,*.7z,*.keystore,*.apk,*.egg-info,build.txt,license.txt,README.md,SrboliLight.spec,requirements-desktop.txt,requirements.txt
 
-version = 5.15
+version = 5.16
 
 # Core dependencies. Don't pin python3's own version here — p4a.branch
 # below is what actually controls which CPython gets built.
@@ -35,9 +35,10 @@ presplash.filename = %(source.dir)s/presplash.png
 android.presplash_color = #14171c
 
 # Android specifics
-android.permissions = INTERNET,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE,MANAGE_EXTERNAL_STORAGE,POST_NOTIFICATIONS
+android.permissions = INTERNET,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE,MANAGE_EXTERNAL_STORAGE,POST_NOTIFICATIONS,FOREGROUND_SERVICE,FOREGROUND_SERVICE_MEDIA_PLAYBACK,WAKE_LOCK
 
 android.manifest.intent_filters = intent_filters.xml
+android.add_src = java
 
 android.api = 34
 android.minapi = 24

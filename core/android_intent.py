@@ -65,7 +65,12 @@ def read_intent(intent, activity):
         if uri.getScheme() == "file":
             path = uri.getPath()
             return {"kind": "file", "path": path, "name": os.path.basename(path), "mime": mime}
-        return _copy_uri(activity, uri, mime)
+        item = _copy_uri(activity, uri, mime)
+        try:   # set by the overlay player's "Open in Srboli"
+            item["from_overlay"] = bool(intent.getBooleanExtra("srboli_from_overlay", False))
+        except Exception:
+            pass
+        return item
     if action == "android.intent.action.SEND":
         stream = intent.getParcelableExtra("android.intent.extra.STREAM")
         if stream is not None:

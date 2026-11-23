@@ -302,7 +302,7 @@ class SrboliApp(App):
         def go(dt):
             # a sound opens the small player first; "Open in Srboli" there
             # leads to the full chooser
-            if open_with_core.is_audio(item):
+            if open_with_core.is_audio(item) and not item.get("from_overlay"):
                 try:
                     from core.mini_player import MiniPlayer
                     MiniPlayer(item["path"], item.get("name"),
