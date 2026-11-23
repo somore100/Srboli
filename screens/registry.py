@@ -50,6 +50,7 @@ SCREENS = [
     ("disk_space",     "screens.disk_space_screen",       "DiskSpaceScreen"),
     ("folder_colors",  "screens.folder_colors_screen",    "FolderColorsScreen"),
     ("when_done",      "screens.when_done_screen",        "WhenDoneScreen"),
+    ("startup",        "screens.startup_screen",          "StartupScreen"),
 ]
 
 LABELS = {
@@ -88,6 +89,7 @@ LABELS = {
     "disk_space":     "Disk Space",
     "folder_colors":  "Folder Colors",
     "when_done":      "Power Off When Done",
+    "startup":        "Startup Manager",
     "learn":          "Learn (AI courses)",
     "shortcut":       "Linux Shortcut Creator",
     "backup":         "Backup",
@@ -103,6 +105,7 @@ ALIASES = {
                        "outline", "docs"],
     "script_mode":    ["prompter", "teleprompter", "script"],
     "disk_space":     ["disk", "space", "storage", "largest", "big files", "folder size", "treemap", "free space", "analyzer"],
+    "startup":        ["autostart", "boot", "login", "launch", "programs", "disable", "slow start"],
     "when_done":      ["shutdown", "shut down", "power off", "sleep", "finish", "done", "upload", "drive", "turn off", "task"],
     "folder_colors":  ["folder", "colour", "color", "icon", "picture", "paint", "folderico"],
     "file_inspector": ["inspect", "hash", "checksum", "sha256", "md5", "hex", "mime", "type", "permissions", "file info"],
@@ -158,7 +161,7 @@ GROUPS = [
       "morse"]),
     ("system", "System",
      ["system_stats", "reminders", "loading_timer", "quickswitcher", "cover",
-      "when_done", "shortcut", "touch_test"]),
+      "when_done", "startup", "shortcut", "touch_test"]),
     ("fun", "Fun",
      ["minesweeper", "infinite_mines", "chess", "spin", "backrooms", "unhelpful_calc"]),
 ]
