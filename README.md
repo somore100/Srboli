@@ -1,6 +1,6 @@
 # Srboli
 
-Pocket swiss-army-knife desktop app — **41 tools in one window**, built with
+Pocket swiss-army-knife desktop app — **42 tools in one window**, built with
 Python + Kivy. Even if you don't see a use for every feature at first, odds
 are at least one will be useful — and you might even end up using several.
 
@@ -55,6 +55,7 @@ tool, with global shortcuts to jump between them.
 | **Power Off When Done** | Computer only. Shut down, sleep or just notify when a task ends. It watches a program you pick (it exited), network traffic (the cloud upload stopped), CPU or disk activity (a render or file copy finished) staying quiet for a few minutes. It only counts once it has seen the task working, then shows a 60 second countdown you can cancel |
 | **Startup Manager** | Computer only. Lists the apps that start when you log in (Linux autostart files, Windows Run keys and Startup folder) and lets you switch each one off or back on. Nothing is deleted. Android does not allow this, so the screen explains that |
 | **Clipboard History** | What you copied lately: tap an entry to copy it again, pin the ones to keep, search, delete. Watches the clipboard while Srboli is open (can be paused). Kept in memory only unless you turn on "Keep after closing", because a clipboard often holds passwords |
+| **QR Code** | Make a QR code from text, a link or a Wi-Fi login (live preview, two repair levels, up to 271 bytes), save it as a PNG, or read one from a picture (computer builds). Uses its own small encoder, no extra library |
 | **File Inspector** | Look inside any file or folder: its real type from the contents (not the extension) with a warning when the name lies, MIME type, size, dates, permissions and owner, text or hex preview, and MD5/SHA-1/SHA-256/SHA-512 checksums with a "does it match the one I was given?" check. Read-only |
 | **Bulk Renamer** | Rename a folder's files with stacked rules (replace, regex, case, prefix/suffix, numbering, dates, patterns, extension), a live old-to-new preview that flags clashes and bad names, a confirm step, and Undo. Swaps and chains work, and a failure part-way puts everything back |
 | **Text Workbench** | One screen, five tabs, for the jobs people write small scripts for: sort, reverse, shuffle, dedupe, filter and number lines; pull emails, links, IPs, numbers or dates out of a text; test a regex with live matches and replace with it; compare two texts or files; count words and reading time. "Use result as input" chains the steps |
@@ -210,6 +211,7 @@ srboli/
 │   ├── disk_usage_core.py       # One-pass folder scan: folder sizes, biggest files, kinds for Disk Space
 │   ├── folder_icons_core.py     # Coloured / picture folder icons for Folder Colors (gio, .directory, desktop.ini)
 │   ├── clipboard_history_core.py # Clipboard History: newest-first list, dedupe, pins, search, optional save
+│   ├── qr_core.py               # QR Code: own encoder (versions 1-10, L/M), PNG export, OpenCV image scan, Wi-Fi text
 │   ├── startup_core.py          # Startup Manager: list/switch login-start entries (Linux .desktop, Windows Run + StartupApproved)
 │   ├── when_done_core.py        # Power Off When Done: quiet-detection state machine, process/network/CPU/disk sampler, power commands
 │   ├── gallery_session.py       # Gallery Sorter: remembers the last session for "Continue where you left off?"

@@ -1,4 +1,4 @@
-# tests/test_startup_core.py - python3 tests/test_startup_core.py (no kivy needed)
+# tests/test_startup_core.py - python3 tests/test_startup_core.py
 import os, sys, tempfile
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core import startup_core as s

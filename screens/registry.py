@@ -52,6 +52,7 @@ SCREENS = [
     ("when_done",      "screens.when_done_screen",        "WhenDoneScreen"),
     ("startup",        "screens.startup_screen",          "StartupScreen"),
     ("clipboard",      "screens.clipboard_history_screen", "ClipboardHistoryScreen"),
+    ("qr",             "screens.qr_screen",               "QRScreen"),
 ]
 
 LABELS = {
@@ -92,6 +93,7 @@ LABELS = {
     "when_done":      "Power Off When Done",
     "startup":        "Startup Manager",
     "clipboard":      "Clipboard History",
+    "qr":             "QR Code",
     "learn":          "Learn (AI courses)",
     "shortcut":       "Linux Shortcut Creator",
     "backup":         "Backup",
@@ -107,6 +109,7 @@ ALIASES = {
                        "outline", "docs"],
     "script_mode":    ["prompter", "teleprompter", "script"],
     "disk_space":     ["disk", "space", "storage", "largest", "big files", "folder size", "treemap", "free space", "analyzer"],
+    "qr":             ["barcode", "scan", "wifi", "link", "code", "generator", "reader"],
     "clipboard":      ["copy", "paste", "history", "pinned", "snippets"],
     "startup":        ["autostart", "boot", "login", "launch", "programs", "disable", "slow start"],
     "when_done":      ["shutdown", "shut down", "power off", "sleep", "finish", "done", "upload", "drive", "turn off", "task"],
@@ -156,7 +159,7 @@ GROUPS = [
      ["text_editor", "full_editor", "script_mode", "text_workbench", "learn"]),
     ("files", "Files",
      ["file_sorter", "bulk_rename", "file_inspector", "disk_space", "folder_colors", "fast_transfer", "backup", "sync", "converter", "gallery", "metadata",
-      "image_text"]),
+      "image_text", "qr"]),
     ("media", "Media",
      ["music", "shape_gen"]),
     ("math", "Math and data",
