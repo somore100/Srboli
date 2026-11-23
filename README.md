@@ -6,10 +6,7 @@ are at least one will be useful — and you might even end up using several.
 
 ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS%20%7C%20Android-lightgrey)
 
-<p align="center">
-  <img width="49%" alt="Srboli main screen" src="https://github.com/user-attachments/assets/943e84d4-d894-47bc-b1f9-ec6149f3d7bf" />
-  <img width="49%" alt="Srboli tool screen" src="https://github.com/user-attachments/assets/22bde96b-28af-4b57-97bf-23872f33dfc3" />
-</p>
+<img width="1920" height="1008" alt="Screenshot From 2026-11-23 15-24-34" src="https://github.com/user-attachments/assets/dcc789af-2a73-4c54-bddf-74f7aef60e0a" />
 
 From countdown timer to metadata inspector, Srboli bundles small utilities
 you'd otherwise hunt down as separate apps into one lightweight desktop
