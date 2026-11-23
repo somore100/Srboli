@@ -160,9 +160,13 @@ class TouchTestScreen(Screen):
     def _refresh_filter_ui(self):
         cfg = td.load_cfg()
         active_now = td.source_fix_active() or (td._deduper is not None and not td._deduper.disabled)
-        self._filter_btn.text = ("Filter: ON (tap to turn off)"
-                                 if cfg["enabled"] else
-                                 "Filter: OFF (tap to turn on)")
+        if td.source_fix_active():
+            self._filter_btn.text = "Filter: always on (Android)"
+            self._filter_btn.disabled = True
+        else:
+            self._filter_btn.text = ("Filter: ON (tap to turn off)"
+                                     if cfg["enabled"] else
+                                     "Filter: OFF (tap to turn on)")
         self._filter_lbl.text = (
             f"Filter active this session: {'yes' if active_now else 'no'}"
             f"   ghost taps removed: {td.stats()}\n"

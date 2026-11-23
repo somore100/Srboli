@@ -9,7 +9,7 @@
 #     "removed":    [route, ...],          # routes removed for good (Manage tools screen)
 #     "lazy_load":  bool,                  # build screens on first visit (default True)
 #     "transition": "fade" | "none",       # screen change effect (default fade)
-#     "loading_style": "logo" | "text" | "none",  # what shows while a tool builds
+#     "loading_style": "text" | "logo" | "none",  # what shows while a tool builds
 #     "rounded": bool,                     # rounded buttons (default True)
 #     "theme": "dark" | "blue" | "light",   # colour preset, applied at startup
 #     "show_recent": bool,                 # show the Dashboard "Recent" row (default True)
@@ -106,7 +106,7 @@ def load_settings():
     data["onboarded"] = bool(data.get("onboarded", False))
     data["rounded"] = bool(data.get("rounded", True))
     data["transition"] = data.get("transition") if data.get("transition") in TRANSITIONS else "fade"
-    data["loading_style"] = data.get("loading_style") if data.get("loading_style") in LOADING_STYLES else "logo"
+    data["loading_style"] = data.get("loading_style") if data.get("loading_style") in LOADING_STYLES else "text"
     from core import theme as _theme
     data["theme"] = data.get("theme") if data.get("theme") in _theme.PRESETS \
         else _theme.DEFAULT_THEME

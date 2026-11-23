@@ -77,16 +77,10 @@ if _ON_ANDROID:
     Config.set("input", "mouse", "mouse,disable_multitouch,disable_on_activity")
     # The real fix for the "every tap arrives twice" bug: tell SDL not to turn
     # finger touches into mouse events at all (the 'sdl' finger touch is the
-    # only one then). Follows the Touch Test filter switch only: no
-    # self-switch-off, it failed to save its state on some phones and then
-    # turned the fix off on the second launch.
-    try:
-        from core import touch_dedupe as _tdm
-        _c = _tdm.load_cfg()
-        if _c["enabled"]:
-            os.environ["SDL_TOUCH_MOUSE_EVENTS"] = "0"
-    except Exception:
-        pass
+    # only one then). Always on: with the ghost mouse touch present the
+    # Dashboard list would not scroll at all (a second touch on the same
+    # ScrollView), so there is no longer a switch to turn it off.
+    os.environ["SDL_TOUCH_MOUSE_EVENTS"] = "0"
 else:
     # Desktop: SDL already delivers real touchscreens, and has no ghost taps.
     # With disable_on_activity the mouse is ignored while ANY touch is
@@ -389,7 +383,7 @@ class SrboliApp(App):
         self.title = "Srboli"
         _cfg0 = load_settings()
         import core.navigation as _nav
-        _nav.LOADING_STYLE = _cfg0.get("loading_style", "logo")
+        _nav.LOADING_STYLE = _cfg0.get("loading_style", "text")
         if _cfg0.get("transition", "fade") == "fade":
             from kivy.uix.screenmanager import FadeTransition
             _trans = FadeTransition(duration=0.12)

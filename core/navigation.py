@@ -37,7 +37,7 @@ class GuardedScreenManager(ScreenManager):
         return super().on_touch_down(touch)
 
 
-LOADING_STYLE = "logo"     # "logo" | "text" | "none"  (Settings; set by main.py)
+LOADING_STYLE = "text"     # "logo" | "text" | "none"  (Settings; set by main.py)
 
 
 def _loading_screen(style="logo"):
