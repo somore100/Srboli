@@ -53,6 +53,7 @@ SCREENS = [
     ("startup",        "screens.startup_screen",          "StartupScreen"),
     ("clipboard",      "screens.clipboard_history_screen", "ClipboardHistoryScreen"),
     ("qr",             "screens.qr_screen",               "QRScreen"),
+    ("color_picker",   "screens.color_picker_screen",     "ColorPickerScreen"),
 ]
 
 LABELS = {
@@ -94,6 +95,7 @@ LABELS = {
     "startup":        "Startup Manager",
     "clipboard":      "Clipboard History",
     "qr":             "QR Code",
+    "color_picker":   "Colour Picker",
     "learn":          "Learn (AI courses)",
     "shortcut":       "Linux Shortcut Creator",
     "backup":         "Backup",
@@ -109,6 +111,7 @@ ALIASES = {
                        "outline", "docs"],
     "script_mode":    ["prompter", "teleprompter", "script"],
     "disk_space":     ["disk", "space", "storage", "largest", "big files", "folder size", "treemap", "free space", "analyzer"],
+    "color_picker":   ["color", "colour", "eyedropper", "pipette", "hex", "rgb", "hsl", "palette", "pixel"],
     "qr":             ["barcode", "scan", "wifi", "link", "code", "generator", "reader"],
     "clipboard":      ["copy", "paste", "history", "pinned", "snippets"],
     "startup":        ["autostart", "boot", "login", "launch", "programs", "disable", "slow start"],
@@ -161,7 +164,7 @@ GROUPS = [
      ["file_sorter", "bulk_rename", "file_inspector", "disk_space", "folder_colors", "fast_transfer", "backup", "sync", "converter", "gallery", "metadata",
       "image_text", "qr"]),
     ("media", "Media",
-     ["music", "shape_gen"]),
+     ["music", "shape_gen", "color_picker"]),
     ("math", "Math and data",
      ["basic_tools", "math_steps", "plotter", "random_tools", "binary",
       "morse"]),
