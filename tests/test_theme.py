@@ -31,3 +31,15 @@ from core import open_with_core as owc
 assert owc.is_audio({"kind": "file", "name": "a.MP3"}) and owc.is_audio({"kind": "file", "name": "x", "mime": "audio/ogg"})
 assert not owc.is_audio({"kind": "file", "name": "a.txt"}) and not owc.is_audio({"kind": "text", "text": "x"})
 print("shape/mini OK")
+
+# the reorganised Settings screen builds and its controls still work
+scr = ss.SettingsScreen(name="settings")
+assert set(scr._theme_btns) == {"dark", "blue", "light"}
+assert set(scr._pick_btns) == {("transition", "fade"), ("transition", "none"),
+                               ("loading_style", "text"), ("loading_style", "logo"),
+                               ("loading_style", "none")}
+scr._set_theme("blue"); assert ss.load_settings()["theme"] == "blue"
+scr._set_pick("loading_style", "logo"); assert ss.load_settings()["loading_style"] == "logo"
+scr._toggle_rounded(None, False); assert ss.load_settings()["rounded"] is False
+scr._reset_all(); assert ss.load_settings()["theme"] == "dark" and ss.load_settings()["rounded"] is True
+print("settings screen OK")

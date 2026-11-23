@@ -51,9 +51,9 @@ import core.autostart as autostart
 
 CONFIG_FILE_NAME = "app_settings.json"
 # written only by the Dashboard / onboarding; save_settings keeps them as on disk
-TRANSITIONS = {"fade": "Fade (smooth)", "none": "None (instant)"}
-LOADING_STYLES = {"logo": "Logo + Loading...", "text": "Text only",
-                  "none": "None (stay on the screen)"}
+TRANSITIONS = {"fade": "Fade", "none": "Instant"}
+LOADING_STYLES = {"text": "Plain text", "logo": "Logo",
+                  "none": "Stay on screen"}
 DASHBOARD_KEYS = ("recent", "collapsed", "pinned", "onboarded", "removed")
 
 
@@ -228,46 +228,124 @@ class SettingsScreen(Screen):
         scroll.add_widget(content)
         root.add_widget(scroll)
 
-        content.add_widget(Label(
-            text="Reorder or hide screens on the Dashboard. Screens are listed "
-                 "in their Dashboard sections: click a row to select it, then "
-                 "use the arrows (or Up/Down keys) to move it within its "
-                 "section. Hidden screens stay reachable via Quick Switcher.",
-            font_size=sp(11), halign="left", valign="top", size_hint_y=None,
-            height=dp(64), color=(0.7, 0.7, 0.7, 1)))
-        blurb = content.children[0]
-        blurb.bind(size=blurb.setter("text_size"))
+        from core import theme as _theme
+        from kivy.utils import platform as _p_
 
-        # ── reorder controls ────────────────────────────────────────────
-        move_row = BoxLayout(size_hint_y=None, height=dp(38), spacing=6)
-        up_btn = Button(text="Move Up", font_size=sp(12))
-        down_btn = Button(text="Move Down", font_size=sp(12))
+        # ── small builders: text that wraps, rows that grow with it ───────
+        def head(text, note=""):
+            box = BoxLayout(orientation="vertical", size_hint_y=None,
+                            height=dp(54 if note else 40), padding=(0, dp(14), 0, 0))
+            h = Label(text=f"[b]{text}[/b]", markup=True, font_size=sp(16),
+                      halign="left", valign="middle", color=_theme.ACCENT,
+                      size_hint_y=None, height=dp(24))
+            h.bind(size=lambda w, v: setattr(w, "text_size", v))
+            box.add_widget(h)
+            if note:
+                n = Label(text=note, font_size=sp(11), halign="left",
+                          valign="top", color=_theme.MUTED,
+                          size_hint_y=None, height=dp(16))
+                n.bind(size=lambda w, v: setattr(w, "text_size", v))
+                box.add_widget(n)
+            content.add_widget(box)
+
+        def wrapped(text, size=12, color=None):
+            lbl = Label(text=text, font_size=sp(size), halign="left",
+                        valign="middle", size_hint_y=None,
+                        color=color or _theme.TEXT)
+            lbl.bind(width=lambda w, v: setattr(w, "text_size", (v, None)),
+                     texture_size=lambda w, v: setattr(w, "height", v[1] + dp(6)))
+            return lbl
+
+        def check(text, active, handler):
+            row = BoxLayout(size_hint_y=None, spacing=dp(10))
+            cb = CheckBox(active=active, size_hint=(None, None),
+                          size=(dp(28), dp(28)), pos_hint={"center_y": 0.5})
+            cb.bind(active=handler)
+            lbl = wrapped(text)
+            row.add_widget(cb)
+            row.add_widget(lbl)
+            lbl.bind(height=lambda w, v: setattr(row, "height", max(dp(44), v + dp(8))))
+            row.height = dp(44)
+            content.add_widget(row)
+            return cb
+
+        def choice(title, options, handler, store, key):
+            content.add_widget(wrapped(title, 13))
+            row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
+            for okey, olabel in options:
+                b = Button(text=olabel, font_size=sp(12))
+                b.bind(on_release=lambda inst, v=okey: handler(v))
+                store[okey if key is None else key + (okey,)] = b
+                row.add_widget(b)
+            content.add_widget(row)
+
+        def action(text, handler, height=42, **kw):
+            b = Button(text=text, size_hint_y=None, height=dp(height),
+                       font_size=sp(13), **kw)
+            b.bind(on_release=handler)
+            content.add_widget(b)
+            return b
+
+        # ══ Appearance ═══════════════════════════════════════════════════
+        head("Appearance", "Changes here apply after you restart Srboli.")
+        self._theme_btns = {}
+        choice("Theme", [(k, p["label"]) for k, p in _theme.PRESETS.items()],
+               self._set_theme, self._theme_btns, None)
+        self._rnd_cb = check("Rounded buttons", self._cfg.get("rounded", True),
+                             self._toggle_rounded)
+        self._pick_btns = {}
+        choice("Moving between screens", list(TRANSITIONS.items()),
+               lambda v: self._set_pick("transition", v), self._pick_btns,
+               ("transition",))
+        choice("While a tool is loading", list(LOADING_STYLES.items()),
+               lambda v: self._set_pick("loading_style", v), self._pick_btns,
+               ("loading_style",))
+        self._mark_theme()
+        self._mark_picks()
+
+        # ══ Dashboard ════════════════════════════════════════════════════
+        head("Dashboard", "Order, hide or remove the tools on the home screen.")
+        self._rec_cb = check("Show a \"Recent\" row (the tools you opened last)",
+                             self._cfg.get("show_recent", True),
+                             self._toggle_recent)
+        content.add_widget(wrapped(
+            "Tap a tool to select it, then move it up or down inside its "
+            "section. Hidden tools stay reachable through Quick Switcher.",
+            11, _theme.MUTED))
+        move_row = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(6))
+        up_btn = Button(text="Move up", font_size=sp(12))
+        down_btn = Button(text="Move down", font_size=sp(12))
         up_btn.bind(on_release=lambda *a: self._move_selected(-1))
         down_btn.bind(on_release=lambda *a: self._move_selected(1))
         move_row.add_widget(up_btn)
         move_row.add_widget(down_btn)
         content.add_widget(move_row)
-
-        # ── screen list ──────────────────────────────────────────────────
         sv = ScrollView(size_hint_y=None, height=dp(300))
         self._grid = GridLayout(cols=1, spacing=2, size_hint_y=None, padding=(0, 4))
         self._grid.bind(minimum_height=self._grid.setter("height"))
         sv.add_widget(self._grid)
         content.add_widget(sv)
+        action("Reset screen list to defaults", self._reset_defaults, 38,
+               background_color=(0.45, 0.3, 0.1, 1))
+        action("Remove or restore tools permanently...",
+               lambda *a: setattr(self.manager, "current", "manage_tools"), 40)
 
-        reset_btn = Button(text="Reset screen list to defaults",
-                           size_hint_y=None, height=dp(38), font_size=sp(12),
-                           background_color=(0.45, 0.3, 0.1, 1))
-        reset_btn.bind(on_release=self._reset_defaults)
-        content.add_widget(reset_btn)
+        # ══ Speed and start-up ═══════════════════════════════════════════
+        head("Speed and start-up", "Both apply after you restart Srboli.")
+        self._lazy_cb = check(
+            "Open tools on demand (faster start). Turn off to build every "
+            "tool at start-up: slower start, faster opening.",
+            self._cfg.get("lazy_load", True), self._toggle_lazy)
+        self._pre_cb = check(
+            "Prepare tools in the background after start-up, only while you "
+            "are not touching the app. May stutter on slow phones. Needs "
+            "\"on demand\" on.",
+            self._cfg.get("preload_bg", False), self._toggle_preload)
 
-        # ── other settings ──────────────────────────────────────────────
-        content.add_widget(Label(text="[b]Other settings[/b]", markup=True,
-                              font_size=sp(15), size_hint_y=None, height=dp(26)))
-
+        # ══ Data, permissions and notifications ══════════════════════════
+        head("Your data and permissions")
         from screens.data_location import DataLocation
         content.add_widget(DataLocation())
-
         from core.android_storage import ON_ANDROID
         self._perm_block = None
         if ON_ANDROID:
@@ -275,130 +353,19 @@ class SettingsScreen(Screen):
             self._perm_block = PermissionsBlock()
             content.add_widget(self._perm_block)
 
-        from screens.feedback_popup import open_feedback
-        fb_btn = Button(text="Leave Feedback", size_hint_y=None, height=dp(40),
-                        font_size=sp(13))
-        fb_btn.bind(on_release=open_feedback)
-        content.add_widget(fb_btn)
-
-        lazy_row = BoxLayout(size_hint_y=None, height=dp(60), spacing=8)
-        self._lazy_cb = CheckBox(active=self._cfg.get("lazy_load", True),
-                                 size_hint=(None, None), size=(dp(24), dp(24)))
-        self._lazy_cb.bind(active=self._toggle_lazy)
-        lazy_row.add_widget(self._lazy_cb)
-        lazy_lbl = Label(
-            text="Lazy-load screens (build each screen only when you first "
-                 "open it, instead of all at startup) - on by default now, "
-                 "for a faster launch. Takes effect after restarting Srboli.",
-            font_size=sp(11), halign="left", valign="middle")
-        lazy_lbl.bind(size=lazy_lbl.setter("text_size"))
-        lazy_row.add_widget(lazy_lbl)
-        content.add_widget(lazy_row)
-
-        pre_row = BoxLayout(size_hint_y=None, height=dp(80), spacing=8)
-        self._pre_cb = CheckBox(active=self._cfg.get("preload_bg", False),
-                                size_hint=(None, None), size=(dp(24), dp(24)))
-        self._pre_cb.bind(active=self._toggle_preload)
-        pre_row.add_widget(self._pre_cb)
-        pre_lbl = Label(
-            text="Preload screens in the background (show the dashboard "
-                 "first, then build the other screens one by one while "
-                 "idle, and only while you are not touching the app). May stutter "
-                 "on slow devices. Needs lazy-loading on. Applies after a "
-                 "restart.",
-            font_size=sp(11), halign="left", valign="middle")
-        pre_lbl.bind(size=pre_lbl.setter("text_size"))
-        pre_row.add_widget(pre_lbl)
-        content.add_widget(pre_row)
-
-        rec_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=8)
-        self._rec_cb = CheckBox(active=self._cfg.get("show_recent", True),
-                                size_hint=(None, None), size=(dp(24), dp(24)))
-        self._rec_cb.bind(active=self._toggle_recent)
-        rec_row.add_widget(self._rec_cb)
-        rec_lbl = Label(text="Show a \"Recent\" row on the Dashboard (the "
-                             "tools you opened last).",
-                        font_size=sp(11), halign="left", valign="middle")
-        rec_lbl.bind(size=rec_lbl.setter("text_size"))
-        rec_row.add_widget(rec_lbl)
-        content.add_widget(rec_row)
-
-        from core import theme as _theme
-        th_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=8)
-        th_row.add_widget(Label(text="Theme (applies after a restart):",
-                                font_size=sp(11), halign="left", valign="middle",
-                                size_hint_x=0.4))
-        self._theme_btns = {}
-        for key, preset in _theme.PRESETS.items():
-            b = Button(text=preset["label"], font_size=sp(11))
-            b.bind(on_release=lambda inst, k=key: self._set_theme(k))
-            self._theme_btns[key] = b
-            th_row.add_widget(b)
-        content.add_widget(th_row)
-        self._mark_theme()
-
-        self._pick_btns = {}
-        for key, title, options in (
-                ("transition", "Screen change (after a restart):", TRANSITIONS),
-                ("loading_style", "While a tool loads (after a restart):", LOADING_STYLES)):
-            prow = BoxLayout(size_hint_y=None, height=dp(44), spacing=8)
-            prow.add_widget(Label(text=title, font_size=sp(11), halign="left",
-                                  valign="middle", size_hint_x=0.4))
-            for okey, olabel in options.items():
-                b = Button(text=olabel, font_size=sp(11))
-                b.bind(on_release=lambda inst, k=key, v=okey: self._set_pick(k, v))
-                self._pick_btns[(key, okey)] = b
-                prow.add_widget(b)
-            content.add_widget(prow)
-        self._mark_picks()
-
-        rnd_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=8)
-        self._rnd_cb = CheckBox(active=self._cfg.get("rounded", True),
-                                size_hint=(None, None), size=(dp(24), dp(24)))
-        self._rnd_cb.bind(active=self._toggle_rounded)
-        rnd_row.add_widget(self._rnd_cb)
-        rnd_lbl = Label(text="Rounded buttons (applies after a restart).",
-                        font_size=sp(11), halign="left", valign="middle")
-        rnd_lbl.bind(size=rnd_lbl.setter("text_size"))
-        rnd_row.add_widget(rnd_lbl)
-        content.add_widget(rnd_row)
-
-        adv_row = BoxLayout(size_hint_y=None, height=dp(72), spacing=8)
-        self._adv_cb = CheckBox(active=self._cfg.get("advanced_logging", False),
-                                size_hint=(None, None), size=(dp(24), dp(24)))
-        self._adv_cb.bind(active=self._toggle_adv_log)
-        adv_row.add_widget(self._adv_cb)
-        adv_lbl = Label(
-            text="Advanced logging (diagnostics): write what the app "
-                 "receives (touches, clicks, keys; typed letters are not "
-                 "recorded) and what it does (screens, builds, stalls) to "
-                 "a log file. Applies immediately.",
-            font_size=sp(11), halign="left", valign="middle")
-        adv_lbl.bind(size=adv_lbl.setter("text_size"))
-        adv_row.add_widget(adv_lbl)
-        content.add_widget(adv_row)
-
-        # ── AI ──────────────────────────────────────────────────────────
-        content.add_widget(Label(text="[b]AI (optional, off by default)[/b]",
-                                 markup=True, font_size=sp(15),
-                                 size_hint_y=None, height=dp(26)))
+        # ══ AI ═══════════════════════════════════════════════════════════
+        head("AI (optional)", "Off by default. Nothing is sent anywhere until you turn it on.")
         from screens.ai_settings import AISettings
         self._ai_settings = AISettings()
         content.add_widget(self._ai_settings)
 
-        # ── background service ──────────────────────────────────────────
-        content.add_widget(Label(text="[b]Background service[/b]", markup=True,
-                              font_size=sp(15), size_hint_y=None, height=dp(26)))
-        svc_desc = Label(
-            text="A small process that can run reminders, watch folders, "
-                 "and answer hotkeys even when Srboli's window is closed. "
-                 "Off by default — nothing runs in the background unless "
-                 "you start it here.",
-            font_size=sp(11), halign="left", valign="top",
-            size_hint_y=None, height=dp(46), color=(0.7, 0.7, 0.7, 1))
-        svc_desc.bind(size=svc_desc.setter("text_size"))
-        content.add_widget(svc_desc)
-
+        # ══ Background service ═══════════════════════════════════════════
+        head("Background service")
+        content.add_widget(wrapped(
+            "A small process that can run reminders, watch folders, and "
+            "answer hotkeys even when Srboli's window is closed. Off by "
+            "default: nothing runs in the background unless you start it here.",
+            11, _theme.MUTED))
         svc_row = BoxLayout(size_hint_y=None, height=dp(40), spacing=6)
         self._daemon_status_lbl = Label(text="Checking...", font_size=sp(12),
                                         halign="left", valign="middle")
@@ -421,41 +388,33 @@ class SettingsScreen(Screen):
         svc_row.add_widget(self._daemon_start_btn)
         svc_row.add_widget(self._daemon_stop_btn)
         content.add_widget(svc_row)
-
         if autostart.is_supported():
-            auto_row = BoxLayout(size_hint_y=None, height=dp(40), spacing=6)
-            self._autostart_cb = CheckBox(size_hint=(None, None),
-                                          size=(dp(26), dp(26)))
-            self._autostart_cb.bind(active=self._toggle_autostart)
-            auto_row.add_widget(self._autostart_cb)
-            auto_lbl = Label(
-                text="Start the background service automatically when I log in",
-                font_size=sp(12), halign="left", valign="middle")
-            auto_lbl.bind(size=auto_lbl.setter("text_size"))
-            auto_row.add_widget(auto_lbl)
-            content.add_widget(auto_row)
+            self._autostart_cb = check(
+                "Start the background service automatically when I log in",
+                False, self._toggle_autostart)
         else:
             self._autostart_cb = None
-
-        feat_btn = Button(text="Choose what the service may run...",
-                          size_hint_y=None, height=dp(40), font_size=sp(12))
-        feat_btn.bind(on_release=self._open_service_features)
-        from kivy.utils import platform as _p_
+        feat_btn = action("Choose what the service may run...",
+                          self._open_service_features, 40)
         if _p_ == "android":
             feat_btn.disabled = True
             feat_btn.text = "Background service: desktop only (not on Android yet)"
-        content.add_widget(feat_btn)
 
-        rm_btn = Button(text="Remove or restore tools permanently...",
-                        size_hint_y=None, height=dp(40), font_size=sp(12))
-        rm_btn.bind(on_release=lambda *a: setattr(self.manager, "current",
-                                                  "manage_tools"))
-        content.add_widget(rm_btn)
-
-        tt_btn = Button(text="Touch Test (are my taps arriving twice?)",
-                        size_hint_y=None, height=dp(40), font_size=sp(12))
-        tt_btn.bind(on_release=self._open_touch_test)
-        content.add_widget(tt_btn)
+        # ══ Help and diagnostics ═════════════════════════════════════════
+        head("Help and diagnostics")
+        from screens.feedback_popup import open_feedback
+        action("Leave feedback", open_feedback, 42)
+        action("Touch Test (are my taps arriving twice?)",
+               self._open_touch_test, 42)
+        self._adv_cb = check(
+            "Advanced logging: write what the app receives (touches, clicks, "
+            "keys; typed letters are not recorded) and what it does to a log "
+            "file. Applies immediately.",
+            self._cfg.get("advanced_logging", False), self._toggle_adv_log)
+        action("Reset all settings to defaults...", self._ask_reset_all, 40,
+               background_color=(0.45, 0.3, 0.1, 1))
+        from core.version import VERSION as _V
+        content.add_widget(wrapped(f"Srboli v{_V}", 11, _theme.MUTED))
 
         self._status = Label(text="", size_hint_y=None, height=dp(22),
                              font_size=sp(11), color=(0.4, 1, 0.4, 1))
@@ -544,8 +503,9 @@ class SettingsScreen(Screen):
     def _mark_theme(self):
         from core import theme as _theme
         for key, b in self._theme_btns.items():
-            b.text = ("* " if key == self._cfg.get("theme") else "") \
-                + _theme.PRESETS[key]["label"]
+            b.text = _theme.PRESETS[key]["label"]
+            b.background_color = (_theme.ACCENT if key == self._cfg.get("theme")
+                                  else _theme.SURFACE2)
 
     def _set_theme(self, key):
         self._cfg["theme"] = key
@@ -553,10 +513,34 @@ class SettingsScreen(Screen):
         self._mark_theme()
         self._status.text = "Theme saved - restart Srboli to apply."
 
+    def _ask_reset_all(self, *a):
+        lay = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(10))
+        lay.add_widget(Label(text="Reset every setting to its default?\n"
+                                  "Your files and data are not touched.",
+                             font_size=sp(13)))
+        row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(8))
+        pop = Popup(title="Reset settings", content=lay, size_hint=(0.85, None),
+                    height=dp(200))
+        no = Button(text="Cancel")
+        no.bind(on_release=lambda *x: pop.dismiss())
+        yes = Button(text="Reset")
+        yes.bind(on_release=lambda *x: (pop.dismiss(), self._reset_all()))
+        row.add_widget(no)
+        row.add_widget(yes)
+        lay.add_widget(row)
+        pop.open()
+
+    def _reset_all(self):
+        _write({})
+        self._status.text = "All settings reset - restart Srboli."
+
     def _mark_picks(self):
         names = {"transition": TRANSITIONS, "loading_style": LOADING_STYLES}
+        from core import theme as _theme
         for (key, okey), b in self._pick_btns.items():
-            b.text = ("* " if self._cfg.get(key) == okey else "") + names[key][okey]
+            b.text = names[key][okey]
+            b.background_color = (_theme.ACCENT if self._cfg.get(key) == okey
+                                  else _theme.SURFACE2)
 
     def _set_pick(self, key, value):
         self._cfg[key] = value
