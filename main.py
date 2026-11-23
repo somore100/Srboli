@@ -5,7 +5,7 @@ import sys, os
 # on flags it doesn't know. The boot log imports Kivy indirectly, so it only
 # runs for a normal app start.
 _HELPER_MODE = len(sys.argv) > 1 and sys.argv[1] in (
-    "--cover", "--cover-cmd", "--daemon", "--overlay", "--selftest")
+    "--cover", "--cover-cmd", "--daemon", "--overlay", "--cursor", "--selftest")
 try:
     if _HELPER_MODE:
         raise ImportError("helper mode: no boot log")
@@ -56,6 +56,12 @@ if len(sys.argv) > 1 and sys.argv[1] == "--cover":
 if len(sys.argv) > 1 and sys.argv[1] == "--cover-cmd":
     import core.cover_app
     sys.exit(core.cover_app.run_cmd(sys.argv[2:]))
+
+# ── cursor overlay dispatch ──────────────────────────────────────────────────
+# `--cursor` is the pointer-highlight process (tkinter, Windows). Never imports Kivy.
+if len(sys.argv) > 1 and sys.argv[1] == "--cursor":
+    import core.cursor_app
+    sys.exit(core.cursor_app.run())
 
 # ── daemon dispatch ──────────────────────────────────────────────────────────
 # Unlike --overlay above, this path never touches Kivy at all — core/daemon.py

@@ -60,6 +60,7 @@ SCREENS = [
     ("pomodoro",       "screens.pomodoro_screen",         "PomodoroScreen"),
     ("regex_json",     "screens.regex_json_screen",       "RegexJsonScreen"),
     ("cleanup",        "screens.cleanup_screen",          "CleanupScreen"),
+    ("cursor_overlay", "screens.cursor_overlay_screen",   "CursorOverlayScreen"),
 ]
 
 LABELS = {
@@ -108,6 +109,7 @@ LABELS = {
     "pomodoro":       "Pomodoro",
     "regex_json":     "Regex & JSON",
     "cleanup":        "Cleanup",
+    "cursor_overlay": "Cursor Overlay",
     "learn":          "Learn (AI courses)",
     "shortcut":       "Linux Shortcut Creator",
     "backup":         "Backup",
@@ -123,6 +125,7 @@ ALIASES = {
                        "outline", "docs"],
     "script_mode":    ["prompter", "teleprompter", "script"],
     "disk_space":     ["disk", "space", "storage", "largest", "big files", "folder size", "treemap", "free space", "analyzer"],
+    "cursor_overlay": ["cursor", "mouse", "pointer", "highlight", "presentation", "recording", "ring", "crosshair"],
     "cleanup":        ["clean", "junk", "cache", "temp", "trash", "free space", "ram", "memory", "processes", "tidy"],
     "regex_json":     ["regex", "regexp", "pattern", "match", "json", "format", "validate", "minify", "tree", "path", "pretty"],
     "pomodoro":       ["focus", "timer", "break", "work", "study", "productivity", "tomato"],
@@ -188,7 +191,7 @@ GROUPS = [
       "morse"]),
     ("system", "System",
      ["system_stats", "reminders", "loading_timer", "pomodoro", "quickswitcher", "cover",
-      "when_done", "startup", "clipboard", "shortcut", "touch_test"]),
+      "when_done", "startup", "clipboard", "cursor_overlay", "shortcut", "touch_test"]),
     ("fun", "Fun",
      ["minesweeper", "infinite_mines", "chess", "spin", "backrooms", "unhelpful_calc"]),
 ]
