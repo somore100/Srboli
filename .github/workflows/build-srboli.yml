@@ -298,6 +298,24 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout (for the list of changes)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Write the release notes
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          PREV=$(git tag --sort=-v:refname | grep -v -x "$TAG" | head -n 1 || true)
+          {
+            echo "## What changed"
+            if [ -n "$PREV" ]; then RANGE="$PREV..$TAG"; else RANGE="$TAG"; fi
+            git log "$RANGE" --no-merges --pretty='- %s' | grep -v -i -e '^- Tests:' -e '^- README' || true
+            echo
+            echo "Downloads: Windows (zip - extract it first), Linux (AppImage, deb, rpm), Android (apk), macOS (zip)."
+          } > notes.md
+          cat notes.md
+
       - name: Download the build artifacts
         uses: actions/download-artifact@v4
         with:
@@ -329,6 +347,7 @@ jobs:
           if ! ls release/* >/dev/null 2>&1; then echo "::error::nothing was built"; exit 1; fi
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" release/* --clobber
+            gh release edit "$TAG" --notes-file notes.md
           else
-            gh release create "$TAG" release/* --title "Srboli $TAG" --generate-notes
+            gh release create "$TAG" release/* --title "Srboli $TAG" --notes-file notes.md
           fi

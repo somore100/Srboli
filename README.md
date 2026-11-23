@@ -22,7 +22,7 @@ tool, with global shortcuts to jump between them.
 | **Loading and screen changes** | Settings: screen change (fade or instant) and what shows while a tool builds (plain text by default, the logo, or stay on the current screen) |
 | **Manage tools** | Settings -> "Remove or restore tools permanently...": a removed tool disappears from the Dashboard, search and shortcuts and is not loaded at start-up (hiding in Settings only drops it from the list). Always restorable |
 | **Themes** | Settings -> Theme: Dark (default), Blue or Yellow & white, plus a Rounded buttons switch; applied at the next start |
-| **Mini player** | Opening a sound from another app ("Open with Srboli") shows a small player at the bottom: seek bar, play/pause, loop, volume, and "Open in Srboli" for the full tools |
+| **Mini player** | Opening a sound from another app ("Open with Srboli") shows a small player at the bottom: seek bar, play/pause, loop, volume (shared with the Music Player), an optional "play the next track" when the folder has more sounds, a minimise arrow, and "Open in Srboli" for the full tools |
 | **Dashboard** | Quick-access tile hub: search (with aliases, Enter opens the first hit), pinned and Recent rows (long-press or right-click to pin), and collapsible sections (Writing, Files, Media, Math and data, System, Fun) |
 | **Loading / Timer** | Countdown timer with shutdown / suspend / notify actions. For "shut down when the upload is done" use Power Off When Done |
 | **Text Editor** | Plain-text editor with Raw ⇄ Styled Markdown view, colour wheel, autosave; exports .txt / .html / .md / checked-and-indented .json |

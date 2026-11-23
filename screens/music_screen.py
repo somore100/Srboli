@@ -172,10 +172,11 @@ class MusicScreen(Screen):
         vol_row.add_widget(Label(text="Volume", size_hint_x=None,
                                  width=dp(56), font_size=sp(12)))
         self.vol_slider = SeekBar(height=dp(36), show_ticks=False)
-        self.vol_slider.value = 0.8
+        from core import music_prefs
+        self.vol_slider.value = music_prefs.load_volume()
         self.vol_slider.bind(on_scrub=self._set_volume, on_seek=self._set_volume)
         vol_row.add_widget(self.vol_slider)
-        self.vol_label = Label(text="80%", size_hint_x=None, width=dp(44),
+        self.vol_label = Label(text=f"{int(round(self.vol_slider.value * 100))}%", size_hint_x=None, width=dp(44),
                                font_size=sp(12))
         vol_row.add_widget(self.vol_label)
         layout.add_widget(vol_row)
@@ -502,6 +503,8 @@ class MusicScreen(Screen):
 
     def _set_volume(self, slider, val):
         self.vol_label.text = f"{int(round(val * 100))}%"
+        from core import music_prefs
+        music_prefs.save_volume(val)
         if HAS_PYGAME:
             try:
                 pygame.mixer.music.set_volume(val)
