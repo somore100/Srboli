@@ -19,6 +19,7 @@ tool, with global shortcuts to jump between them.
 
 | Screen | What it does |
 |---|---|
+| **Loading and screen changes** | Settings: screen change (fade or instant) and what shows while a tool builds (logo, text only, or stay on the current screen) |
 | **Manage tools** | Settings -> "Remove or restore tools permanently...": a removed tool disappears from the Dashboard, search and shortcuts and is not loaded at start-up (hiding in Settings only drops it from the list). Always restorable |
 | **Themes** | Settings -> Theme: Dark (default), Blue or Yellow & white, plus a Rounded buttons switch; applied at the next start |
 | **Mini player** | Opening a sound from another app ("Open with Srboli") shows a small player at the bottom: seek bar, play/pause, loop, volume, and "Open in Srboli" for the full tools |

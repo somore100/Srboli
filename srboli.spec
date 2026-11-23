@@ -17,6 +17,7 @@ datas = [
     ('app_data.py', '.'),
     ('feedback.json', '.'),
     ('presplash.png', '.'),
+    ('loading.png', '.'),
     ('round.png', '.'),
     ('backrooms_data.json', '.'),
     ('backrooms_data.json', 'screens'),

@@ -8,6 +8,8 @@
 #     "hidden":     [route, route, ...],   # routes hidden from the menu
 #     "removed":    [route, ...],          # routes removed for good (Manage tools screen)
 #     "lazy_load":  bool,                  # build screens on first visit (default True)
+#     "transition": "fade" | "none",       # screen change effect (default fade)
+#     "loading_style": "logo" | "text" | "none",  # what shows while a tool builds
 #     "rounded": bool,                     # rounded buttons (default True)
 #     "theme": "dark" | "blue" | "light",   # colour preset, applied at startup
 #     "show_recent": bool,                 # show the Dashboard "Recent" row (default True)
@@ -49,6 +51,9 @@ import core.autostart as autostart
 
 CONFIG_FILE_NAME = "app_settings.json"
 # written only by the Dashboard / onboarding; save_settings keeps them as on disk
+TRANSITIONS = {"fade": "Fade (smooth)", "none": "None (instant)"}
+LOADING_STYLES = {"logo": "Logo + Loading...", "text": "Text only",
+                  "none": "None (stay on the screen)"}
 DASHBOARD_KEYS = ("recent", "collapsed", "pinned", "onboarded", "removed")
 
 
@@ -100,6 +105,8 @@ def load_settings():
     data["removed"] = tool_removal.clean(data.get("removed"), known)
     data["onboarded"] = bool(data.get("onboarded", False))
     data["rounded"] = bool(data.get("rounded", True))
+    data["transition"] = data.get("transition") if data.get("transition") in TRANSITIONS else "fade"
+    data["loading_style"] = data.get("loading_style") if data.get("loading_style") in LOADING_STYLES else "logo"
     from core import theme as _theme
     data["theme"] = data.get("theme") if data.get("theme") in _theme.PRESETS \
         else _theme.DEFAULT_THEME
@@ -330,6 +337,21 @@ class SettingsScreen(Screen):
         content.add_widget(th_row)
         self._mark_theme()
 
+        self._pick_btns = {}
+        for key, title, options in (
+                ("transition", "Screen change (after a restart):", TRANSITIONS),
+                ("loading_style", "While a tool loads (after a restart):", LOADING_STYLES)):
+            prow = BoxLayout(size_hint_y=None, height=dp(44), spacing=8)
+            prow.add_widget(Label(text=title, font_size=sp(11), halign="left",
+                                  valign="middle", size_hint_x=0.4))
+            for okey, olabel in options.items():
+                b = Button(text=olabel, font_size=sp(11))
+                b.bind(on_release=lambda inst, k=key, v=okey: self._set_pick(k, v))
+                self._pick_btns[(key, okey)] = b
+                prow.add_widget(b)
+            content.add_widget(prow)
+        self._mark_picks()
+
         rnd_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=8)
         self._rnd_cb = CheckBox(active=self._cfg.get("rounded", True),
                                 size_hint=(None, None), size=(dp(24), dp(24)))
@@ -530,6 +552,17 @@ class SettingsScreen(Screen):
         save_settings(self._cfg)
         self._mark_theme()
         self._status.text = "Theme saved - restart Srboli to apply."
+
+    def _mark_picks(self):
+        names = {"transition": TRANSITIONS, "loading_style": LOADING_STYLES}
+        for (key, okey), b in self._pick_btns.items():
+            b.text = ("* " if self._cfg.get(key) == okey else "") + names[key][okey]
+
+    def _set_pick(self, key, value):
+        self._cfg[key] = value
+        save_settings(self._cfg)
+        self._mark_picks()
+        self._status.text = "Saved - restart Srboli to apply."
 
     def _toggle_rounded(self, inst, active):
         self._cfg["rounded"] = active

@@ -387,7 +387,15 @@ class SrboliApp(App):
             _bl.log("App.build start")
             _bl.start_watchdog()
         self.title = "Srboli"
-        sm = GuardedScreenManager(transition=NoTransition())
+        _cfg0 = load_settings()
+        import core.navigation as _nav
+        _nav.LOADING_STYLE = _cfg0.get("loading_style", "logo")
+        if _cfg0.get("transition", "fade") == "fade":
+            from kivy.uix.screenmanager import FadeTransition
+            _trans = FadeTransition(duration=0.12)
+        else:
+            _trans = NoTransition()
+        sm = GuardedScreenManager(transition=_trans)
         sm.add_widget(Dashboard(open_route=self._open_route,
                                 version=_APP_VERSION, name="dashboard"))
         sm.add_widget(try_import(SETTINGS_ROUTE[1], SETTINGS_ROUTE[2])(

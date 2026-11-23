@@ -12,6 +12,7 @@ import time
 from kivy.clock import Clock
 from kivy.metrics import sp
 from kivy.graphics import Color, Rectangle
+from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.uix.modalview import ModalView
@@ -36,21 +37,31 @@ class GuardedScreenManager(ScreenManager):
         return super().on_touch_down(touch)
 
 
-def _loading_screen():
-    """Logo with "Loading..." under it (the same picture as the start-up
-    splash), on white; plain text if the picture is missing."""
+LOADING_STYLE = "logo"     # "logo" | "text" | "none"  (Settings; set by main.py)
+
+
+def _loading_screen(style="logo"):
+    """What shows while a tool is built: the logo and "Loading..." on the
+    theme's own background (a white or bright screen flashed against the dark
+    app), or just text."""
+    from core import theme
     scr = Screen(name=LOADING)
+    with scr.canvas.before:
+        Color(*theme.BG)
+        bg = Rectangle(pos=scr.pos, size=scr.size)
+    scr.bind(pos=lambda w, v: setattr(bg, "pos", v),
+             size=lambda w, v: setattr(bg, "size", v))
     path = os.path.join(os.path.dirname(os.path.dirname(
-        os.path.abspath(__file__))), "presplash.png")
-    if os.path.isfile(path):
-        with scr.canvas.before:
-            Color(1, 1, 1, 1)
-            bg = Rectangle(pos=scr.pos, size=scr.size)
-        scr.bind(pos=lambda w, v: setattr(bg, "pos", v),
-                 size=lambda w, v: setattr(bg, "size", v))
-        scr.add_widget(Image(source=path, fit_mode="contain"))
+        os.path.abspath(__file__))), "loading.png")
+    box = BoxLayout(orientation="vertical", padding=sp(40), spacing=sp(12))
+    if style == "logo" and os.path.isfile(path):
+        box.add_widget(Image(source=path, fit_mode="contain"))
+        box.add_widget(Label(text="Loading...", font_size=sp(18),
+                             color=theme.MUTED, size_hint_y=None, height=sp(30)))
     else:
-        scr.add_widget(Label(text="Loading...", font_size=sp(18)))
+        box.add_widget(Label(text="Loading...", font_size=sp(18),
+                             color=theme.MUTED))
+    scr.add_widget(box)
     return scr
 
 
@@ -62,10 +73,11 @@ def open_screen(sm, route, ensure, after=None, delay=0.05):
         if after:
             after(route)
         return
-    if not sm.has_screen(LOADING):
-        sm.add_widget(_loading_screen())
     back = sm.current
-    sm.current = LOADING
+    if LOADING_STYLE != "none":              # "none": stay put until it is built
+        if not sm.has_screen(LOADING):
+            sm.add_widget(_loading_screen(LOADING_STYLE))
+        sm.current = LOADING
 
     def finish(dt):
         try:
