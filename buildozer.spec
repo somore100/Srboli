@@ -14,7 +14,7 @@ source.include_exts = py,png,jpg,jpeg,json,ttf,txt
 source.exclude_dirs = tests,docs,.git,.github,__pycache__,srboli_data,.venv,venv,build,dist,bin,.buildozer
 source.exclude_patterns = *.pyc,*.spec,.srboli_config.json,*.log,*.zip,*.7z,*.keystore,*.apk,*.egg-info,build.txt,license.txt,README.md,SrboliLight.spec,requirements-desktop.txt,requirements.txt
 
-version = 5.22
+version = 5.23
 
 # Core dependencies. Don't pin python3's own version here — p4a.branch
 # below is what actually controls which CPython gets built.
@@ -24,7 +24,7 @@ version = 5.22
 # backs System Stats and the desktop overlay app — both gracefully show
 # "not available" via main.py's try_import()+Placeholder instead of
 # crashing the build or the app.
-requirements = python3,kivy==2.3.1,pillow,filetype
+requirements = python3,kivy==2.3.1,pillow,filetype,pypdf
 
 orientation = portrait
 fullscreen = 0

@@ -56,6 +56,7 @@ SCREENS = [
     ("color_picker",   "screens.color_picker_screen",     "ColorPickerScreen"),
     ("image_tools",    "screens.image_tools_screen",      "ImageToolsScreen"),
     ("drawing",        "screens.drawing_screen",          "DrawingScreen"),
+    ("pdf_tools",      "screens.pdf_tools_screen",        "PDFToolsScreen"),
 ]
 
 LABELS = {
@@ -100,6 +101,7 @@ LABELS = {
     "color_picker":   "Colour Picker",
     "image_tools":    "Image Tools",
     "drawing":        "Drawing",
+    "pdf_tools":      "PDF Tools",
     "learn":          "Learn (AI courses)",
     "shortcut":       "Linux Shortcut Creator",
     "backup":         "Backup",
@@ -115,6 +117,7 @@ ALIASES = {
                        "outline", "docs"],
     "script_mode":    ["prompter", "teleprompter", "script"],
     "disk_space":     ["disk", "space", "storage", "largest", "big files", "folder size", "treemap", "free space", "analyzer"],
+    "pdf_tools":      ["pdf", "merge", "join", "combine", "split", "extract", "pages", "cut"],
     "drawing":        ["draw", "paint", "sketch", "doodle", "brush", "pencil", "canvas", "eraser"],
     "image_tools":    ["resize", "compress", "shrink", "convert", "jpg", "png", "webp", "combine", "collage", "stitch", "merge", "photos", "batch"],
     "color_picker":   ["color", "colour", "eyedropper", "pipette", "hex", "rgb", "hsl", "palette", "pixel"],
@@ -168,7 +171,7 @@ GROUPS = [
      ["text_editor", "full_editor", "script_mode", "text_workbench", "learn"]),
     ("files", "Files",
      ["file_sorter", "bulk_rename", "file_inspector", "disk_space", "folder_colors", "fast_transfer", "backup", "sync", "converter", "gallery", "metadata",
-      "image_text", "image_tools", "qr"]),
+      "image_text", "image_tools", "pdf_tools", "qr"]),
     ("media", "Media",
      ["music", "shape_gen", "drawing", "color_picker"]),
     ("math", "Math and data",
