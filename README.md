@@ -82,6 +82,14 @@ Optional, per feature — install only what you need:
 - `ping3` — ping without shelling out to the system `ping`
 - `send2trash` — File Sorter's delete action uses the recycle bin when available
 
+## Download
+
+Builds are on the repository's **Releases** page. On Windows, **extract the whole
+zip first** (right-click -> Extract All) and run `Srboli.exe` from the extracted
+`Srboli` folder. Starting it from inside the zip window fails with "Failed to
+load Python DLL", because Windows only unpacks that one file and leaves the
+`_internal` folder behind.
+
 ## Setup
 
 Clone:
