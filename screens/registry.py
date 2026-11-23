@@ -51,6 +51,7 @@ SCREENS = [
     ("folder_colors",  "screens.folder_colors_screen",    "FolderColorsScreen"),
     ("when_done",      "screens.when_done_screen",        "WhenDoneScreen"),
     ("startup",        "screens.startup_screen",          "StartupScreen"),
+    ("clipboard",      "screens.clipboard_history_screen", "ClipboardHistoryScreen"),
 ]
 
 LABELS = {
@@ -90,6 +91,7 @@ LABELS = {
     "folder_colors":  "Folder Colors",
     "when_done":      "Power Off When Done",
     "startup":        "Startup Manager",
+    "clipboard":      "Clipboard History",
     "learn":          "Learn (AI courses)",
     "shortcut":       "Linux Shortcut Creator",
     "backup":         "Backup",
@@ -105,6 +107,7 @@ ALIASES = {
                        "outline", "docs"],
     "script_mode":    ["prompter", "teleprompter", "script"],
     "disk_space":     ["disk", "space", "storage", "largest", "big files", "folder size", "treemap", "free space", "analyzer"],
+    "clipboard":      ["copy", "paste", "history", "pinned", "snippets"],
     "startup":        ["autostart", "boot", "login", "launch", "programs", "disable", "slow start"],
     "when_done":      ["shutdown", "shut down", "power off", "sleep", "finish", "done", "upload", "drive", "turn off", "task"],
     "folder_colors":  ["folder", "colour", "color", "icon", "picture", "paint", "folderico"],
@@ -161,7 +164,7 @@ GROUPS = [
       "morse"]),
     ("system", "System",
      ["system_stats", "reminders", "loading_timer", "quickswitcher", "cover",
-      "when_done", "startup", "shortcut", "touch_test"]),
+      "when_done", "startup", "clipboard", "shortcut", "touch_test"]),
     ("fun", "Fun",
      ["minesweeper", "infinite_mines", "chess", "spin", "backrooms", "unhelpful_calc"]),
 ]
