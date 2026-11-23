@@ -306,7 +306,7 @@ jobs:
       - name: Write the release notes
         run: |
           TAG="${GITHUB_REF_NAME}"
-          PREV=$(git tag --sort=-v:refname | grep -v -x "$TAG" | head -n 1 || true)
+          PREV=$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -v -x "$TAG" | head -n 1 || true)
           {
             echo "## What changed"
             if [ -n "$PREV" ]; then RANGE="$PREV..$TAG"; else RANGE="$TAG"; fi

@@ -2,5 +2,5 @@
 # Bump it every build: it is shown on the dashboard footer and must match
 # `version =` in buildozer.spec (Android derives its versionCode from that,
 # and a higher versionCode is what lets a new APK install over the old one).
-VERSION = "5.13"
+VERSION = "5.14"
 APP_NAME = "Srboli"

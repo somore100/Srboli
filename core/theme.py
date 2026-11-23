@@ -89,7 +89,7 @@ def saved_name():
 
 PAD   = {"xs": dp(4), "s": dp(8), "m": dp(12), "l": dp(16), "xl": dp(24)}
 FONT  = {"small": sp(12), "body": sp(14), "title": sp(18), "h1": sp(26)}
-MAX_CONTENT_W = dp(900)
+MAX_CONTENT_W = dp(1500)     # wide windows get more tile columns, not empty margins
 
 KV = """
 #:import T core.theme
