@@ -55,6 +55,7 @@ SCREENS = [
     ("qr",             "screens.qr_screen",               "QRScreen"),
     ("color_picker",   "screens.color_picker_screen",     "ColorPickerScreen"),
     ("image_tools",    "screens.image_tools_screen",      "ImageToolsScreen"),
+    ("drawing",        "screens.drawing_screen",          "DrawingScreen"),
 ]
 
 LABELS = {
@@ -98,6 +99,7 @@ LABELS = {
     "qr":             "QR Code",
     "color_picker":   "Colour Picker",
     "image_tools":    "Image Tools",
+    "drawing":        "Drawing",
     "learn":          "Learn (AI courses)",
     "shortcut":       "Linux Shortcut Creator",
     "backup":         "Backup",
@@ -113,6 +115,7 @@ ALIASES = {
                        "outline", "docs"],
     "script_mode":    ["prompter", "teleprompter", "script"],
     "disk_space":     ["disk", "space", "storage", "largest", "big files", "folder size", "treemap", "free space", "analyzer"],
+    "drawing":        ["draw", "paint", "sketch", "doodle", "brush", "pencil", "canvas", "eraser"],
     "image_tools":    ["resize", "compress", "shrink", "convert", "jpg", "png", "webp", "combine", "collage", "stitch", "merge", "photos", "batch"],
     "color_picker":   ["color", "colour", "eyedropper", "pipette", "hex", "rgb", "hsl", "palette", "pixel"],
     "qr":             ["barcode", "scan", "wifi", "link", "code", "generator", "reader"],
@@ -167,7 +170,7 @@ GROUPS = [
      ["file_sorter", "bulk_rename", "file_inspector", "disk_space", "folder_colors", "fast_transfer", "backup", "sync", "converter", "gallery", "metadata",
       "image_text", "image_tools", "qr"]),
     ("media", "Media",
-     ["music", "shape_gen", "color_picker"]),
+     ["music", "shape_gen", "drawing", "color_picker"]),
     ("math", "Math and data",
      ["basic_tools", "math_steps", "plotter", "random_tools", "binary",
       "morse"]),
