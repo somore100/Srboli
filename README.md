@@ -34,7 +34,7 @@ tool, with global shortcuts to jump between them.
 | **Image to Text** | Any file ⇄ Base64 (background-threaded for large files) |
 | **Morse Converter** | Text ⇄ Morse code, with a tap-to-type keypad |
 | **Binary / Hex Converter** | Text ⇄ Binary / Hex / Decimal |
-| **Function Plotter** | y=f(x), parametric, polar; pencil-to-spline; fill + integral; PNG export |
+| **Function Plotter** | GeoGebra-style: one input bar (`f(x)=sin(x)`, `a=2`, `A=(1,2)`, `Tangent(x^2,1)`), sliders you can use in any expression (an unknown letter makes its slider, Play animates it), draggable points (free or glued to a curve), tangents with slope, special points (roots, maxima/minima, y-intercepts, intersections) with an Analyze list, a visibility dot per row, and an algebra-left / graph-right layout on wide windows. Also y=f(x), parametric, polar; pencil-to-spline; fill + integral; PNG export |
 | **Backrooms** | JSON-driven Backrooms level guide |
 | **Wheel of Names** | Weighted spinner with numbers mode |
 | **Unhelpful Calc** | A calculator that never gives you the right answer |
@@ -224,6 +224,7 @@ srboli/
 │   ├── color_core.py            # Colour Picker: parse/convert HEX-RGB-HSL, contrast, screen/picture sampling, palette
 │   ├── image_tools_core.py      # Image Tools: batch shrink/compress/convert, combine into one image
 │   ├── precision_canvas_core.py # Precision Canvas: objects, safe calculator, snapping, view maths, history, .srbd files, SVG/PNG export
+│   ├── plot_analysis.py         # Function Plotter: roots, extrema, intersections, tangents, input-bar parser
 │   ├── drawing_core.py          # Drawing: strokes, undo/redo/clear history, Pillow rendering to PNG
 │   ├── pdf_tools_core.py        # PDF Tools: page-range parsing, merge, split, extract (pypdf, loaded on use)
 │   ├── pomodoro_core.py         # Pomodoro: phase state machine on an injected clock, settings, per-day totals

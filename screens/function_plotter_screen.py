@@ -14,6 +14,10 @@ Features
 * Content undo/redo (Ctrl+Z/Y) with a labelled history panel.
 * View undo/redo (Ctrl+Alt+Z/Y) for pan/zoom only.
 * PNG export of the current view.
+* GeoGebra-style layer: sliders (named parameters used in any expression),
+  points (free, or glued to a curve; draggable), tangents, special points
+  (roots, extrema, y-intercept, intersections), one input bar, per-row
+  visibility dots and a side-by-side algebra / graphics layout on wide windows.
 """
 
 import ast
@@ -26,7 +30,7 @@ import re
 from kivy.clock import Clock
 from kivy.core.text import Label as CoreLabel
 from kivy.core.window import Window
-from kivy.graphics import (Color, Line, Mesh, Rectangle, ScissorPop,
+from kivy.graphics import (Color, Ellipse, Line, Mesh, Rectangle, ScissorPop,
                            ScissorPush)
 from kivy.metrics import dp, sp
 from kivy.uix.boxlayout import BoxLayout
@@ -34,6 +38,7 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import Screen
+from kivy.uix.slider import Slider
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.spinner import Spinner
 from kivy.uix.textinput import TextInput
@@ -41,6 +46,7 @@ from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.widget import Widget
 
 import app_data
+from core import plot_analysis as PA
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -67,6 +73,8 @@ _FUNCS = {
     "atan2": math.atan2, "hypot": math.hypot,
 }
 _CONSTS = {"pi": math.pi, "e": math.e, "tau": math.tau}
+# slider values and point coordinates (A_x, A_y), filled by the rows on every sync
+PARAMS = {}
 
 
 class _DarkInput(TextInput):
@@ -108,6 +116,8 @@ def _eval_node(node, x, var="x"):
     if isinstance(node, ast.Name):
         if node.id == var:
             return x
+        if node.id in PARAMS:
+            return PARAMS[node.id]
         if node.id in _CONSTS:
             return _CONSTS[node.id]
         raise ExprError(f"unknown name: {node.id}")
@@ -541,6 +551,10 @@ class GraphCanvas(Widget):
         self.points = []
         self.fit = None
         self.fill = None
+        self.special = []          # [(x, y, kind)] roots / extrema / intercepts / intersections
+        self._grab_pt = None       # (touch uid, entry index) of a point being dragged
+        self.on_point_drag = None
+        self.on_point_drag_end = None
         self.mode = "pan"
         self._drag = None
         self._step_x = 1.0
@@ -643,6 +657,8 @@ class GraphCanvas(Widget):
                 elif mode == "polar" and f.get("fn"):
                     self._draw_polar(f["fn"], f["t_lo"], f["t_hi"],
                                      f["color"], 1.5)
+                elif mode == "tangent" and f.get("tfn"):
+                    self._draw_tangent(f)
                 elif mode == "path" and f.get("dense"):
                     flat = []
                     for wx, wy in f["dense"]:
@@ -654,6 +670,8 @@ class GraphCanvas(Widget):
             if self.fit:
                 self._draw_curve(self.fit["fn"], self.fit["color"], 1.6)
 
+            self._draw_special()
+            self._draw_objects()
             self._draw_points()
 
             if self._stroke_px:
@@ -808,6 +826,71 @@ class GraphCanvas(Widget):
             px += 2
         if len(seg) >= 4:
             Line(points=seg, width=dp(width))
+
+    SPECIAL_COLORS = {"root": (0.96, 0.45, 0.35, 1), "max": (0.97, 0.80, 0.30, 1),
+                      "min": (0.45, 0.86, 0.50, 1), "yint": (0.60, 0.72, 1.0, 1),
+                      "cross": (0.86, 0.55, 0.96, 1)}
+
+    def _draw_special(self):
+        if not self.special:
+            return
+        label = len(self.special) <= 24
+        for x, y, kind in self.special:
+            px, py = self._w2s(x, y)
+            if not (self.x - 20 <= px <= self.right + 20 and self.y - 20 <= py <= self.top + 20):
+                continue
+            col = self.SPECIAL_COLORS.get(kind, (1, 1, 1, 1))
+            Color(*col)
+            Line(circle=(px, py, dp(5)), width=dp(1.6))
+            Color(col[0], col[1], col[2], 0.35)
+            Ellipse(pos=(px - dp(5), py - dp(5)), size=(dp(10), dp(10)))
+            if label:
+                self._text(f"({self._fmt(x)}, {self._fmt(y)})", px + dp(7), py + dp(4), col, 10)
+
+    def _draw_tangent(self, f):
+        t = PA.tangent_at(f["tfn"], f["x0"])
+        if t is None:
+            return
+        m, y0 = t
+        x0 = f["x0"]
+        xspan = self.x_max - self.x_min
+        yspan = self.y_max - self.y_min
+        dx = xspan * 2
+        if abs(m) * dx > yspan * 1e4:
+            dx = yspan * 1e4 / abs(m)
+        ax, ay = self._w2s(x0 - dx, y0 - m * dx)
+        bx, by = self._w2s(x0 + dx, y0 + m * dx)
+        Color(*f["color"][:3], 0.95)
+        Line(points=[ax, ay, bx, by], width=dp(1.4))
+        px, py = self._w2s(x0, y0)
+        Color(*f["color"])
+        Ellipse(pos=(px - dp(4), py - dp(4)), size=(dp(8), dp(8)))
+        self._text(f"slope {PA.fmt_num(m, 4)}", px + dp(8), py - dp(16), f["color"], 10)
+
+    def _draw_objects(self):
+        for f in self.functions:
+            if f.get("mode") != "point" or not f.get("visible"):
+                continue
+            px, py = self._w2s(f["x"], f["y"])
+            grabbed = self._grab_pt is not None and self.functions[self._grab_pt[1]] is f
+            r = dp(7 if grabbed else 5)
+            Color(1, 1, 1, 0.9)
+            Ellipse(pos=(px - r - dp(1.5), py - r - dp(1.5)), size=(2 * r + dp(3), 2 * r + dp(3)))
+            Color(*f["color"])
+            Ellipse(pos=(px - r, py - r), size=(2 * r, 2 * r))
+            self._text(f"{f['name']} ({self._fmt(f['x'])}, {self._fmt(f['y'])})",
+                       px + dp(9), py + dp(5), f["color"], 11)
+
+    def _hit_point_obj(self, pos):
+        best, best_d = None, dp(24)
+        for i, f in enumerate(self.functions):
+            if f.get("mode") != "point" or not f.get("visible"):
+                continue
+            px, py = self._w2s(f["x"], f["y"])
+            d = math.hypot(px - pos[0], py - pos[1])
+            if d < best_d:
+                best, best_d = i, d
+        return best
 
     def _draw_parametric(self, fn_x, fn_y, t_lo, t_hi, color, width=1.5):
         if self.width < 4:
@@ -1128,6 +1211,14 @@ class GraphCanvas(Widget):
             self._redraw()
             return True
 
+        # pan mode: a point object under the finger is dragged instead of the canvas
+        if self.mode == "pan":
+            gi = self._hit_point_obj(touch.pos)
+            if gi is not None and self.on_point_drag:
+                self._grab_pt = (touch.uid, gi)
+                self._redraw()
+                return True
+
         # pan mode: try warp before falling through to pan
         # (drag mode never warps: it only moves the canvas)
         hit_i = (None if self.mode == "drag"
@@ -1146,6 +1237,11 @@ class GraphCanvas(Widget):
         return True
 
     def on_touch_move(self, touch):
+        if self._grab_pt is not None and touch.uid == self._grab_pt[0]:
+            wx, wy = self._s2w(*touch.pos)
+            if self.on_point_drag:
+                self.on_point_drag(self._grab_pt[1], wx, wy)
+            return True
         # warp takes priority
         if self._warp_active and touch.uid in self._warp_touches:
             self._warp_touches[touch.uid] = touch.pos
@@ -1232,6 +1328,12 @@ class GraphCanvas(Widget):
         return True
 
     def on_touch_up(self, touch):
+        if self._grab_pt is not None and touch.uid == self._grab_pt[0]:
+            self._grab_pt = None
+            if self.on_point_drag_end:
+                self.on_point_drag_end()
+            self._redraw()
+            return True
         if self._warp_active and touch.uid in self._warp_touches:
             del self._warp_touches[touch.uid]
             self._pinch_last_dist = self._pinch_dist()
@@ -1300,16 +1402,43 @@ class GraphCanvas(Widget):
 # ══════════════════════════════════════════════════════════════════════════
 
 class ColorDot(Widget):
+    """The row's colour swatch. Tap it to show / hide that object (like GeoGebra's dot)."""
+
     def __init__(self, color, **kw):
-        super().__init__(size_hint_x=None, width=dp(22), **kw)
+        super().__init__(size_hint_x=None, width=dp(26), **kw)
+        self.on_toggle = None
+        self.hidden = False
         with self.canvas:
-            Color(*color)
-            self._rect = Rectangle(pos=self.pos, size=self.size)
+            self._c = Color(*color)
+            self._rect = Ellipse(pos=self.pos, size=self.size)
+        self._base = tuple(color)
         self.bind(pos=self._upd, size=self._upd)
 
     def _upd(self, *a):
-        self._rect.pos = self.pos
-        self._rect.size = self.size
+        d = min(self.width, self.height, dp(22))
+        self._rect.size = (d, d)
+        self._rect.pos = (self.x + (self.width - d) / 2, self.y + (self.height - d) / 2)
+
+    def set_hidden(self, hidden):
+        self.hidden = bool(hidden)
+        c = self._base
+        self._c.rgba = (c[0], c[1], c[2], 0.18 if self.hidden else (c[3] if len(c) > 3 else 1))
+
+    def on_touch_down(self, touch):
+        if self.on_toggle and self.collide_point(*touch.pos):
+            self.on_toggle()
+            return True
+        return super().on_touch_down(touch)
+
+
+class RowsBox(BoxLayout):
+    """The algebra list: tells the screen whenever a row is added (to wire its dot)."""
+    on_add = None
+
+    def add_widget(self, widget, *a, **kw):
+        super().add_widget(widget, *a, **kw)
+        if self.on_add:
+            self.on_add(widget)
 
 
 class FunctionRow(BoxLayout):
@@ -1395,6 +1524,9 @@ class FunctionRow(BoxLayout):
             self.body.add_widget(Label(text="=", size_hint_x=None, width=dp(10)))
             self.body.add_widget(self.rhs)
             self.body.add_widget(self.range_in)
+
+    def expr_texts(self):
+        return [t.text for t in (self.rhs, self.rhs2) if t is not None]
 
     def get_entry(self):
         if self.mode == "y":
@@ -1599,6 +1731,300 @@ class PiecewiseRow(BoxLayout):
 # Screen
 # ══════════════════════════════════════════════════════════════════════════
 
+
+def _const_value(text):
+    """Evaluate a number typed in a slider / point / tangent field (may use sliders and points)."""
+    return float(compile_expr(text, var="\0")(0.0))
+
+
+class CommitSlider(Slider):
+    """A Slider that also tells us when the finger lets go (one undo step per drag)."""
+    on_release = None
+
+    def on_touch_up(self, touch):
+        was = touch.grab_current is self
+        r = super().on_touch_up(touch)
+        if was and self.on_release:
+            self.on_release()
+        return r
+
+
+class SliderRow(BoxLayout):
+    """A named number (a, b, k ...) with a slider. Use the name in any expression."""
+    kind = "slider"
+
+    def __init__(self, name, value, on_live, on_commit, on_delete,
+                 vmin=-5.0, vmax=5.0, step=0.1, **kw):
+        super().__init__(orientation="horizontal", size_hint_y=None, height=dp(72),
+                         spacing=dp(4), **kw)
+        self.name, self.value = name, float(value)
+        self.vmin, self.vmax, self.step = float(vmin), float(vmax), float(step)
+        self.on_live, self.on_commit = on_live, on_commit
+        self._muted = False
+        self._anim = None
+        self._dir = 1.0
+        col = BoxLayout(orientation="vertical", spacing=dp(2))
+        top = BoxLayout(spacing=dp(4))
+        self.name_in = _DarkInput(text=name, multiline=False, font_size=sp(13),
+                                  size_hint_x=None, width=dp(54))
+        self.val_in = _DarkInput(text=PA.fmt_num(self.value, 4), multiline=False,
+                                 font_size=sp(13), size_hint_x=None, width=dp(78))
+        self.play = Button(text="Play", font_size=sp(11), size_hint_x=None, width=dp(52))
+        self.play.bind(on_release=lambda *a: self.toggle_play())
+        top.add_widget(Label(text="slider", font_size=sp(10), color=(0.6, 0.7, 0.85, 1),
+                             size_hint_x=None, width=dp(40)))
+        top.add_widget(self.name_in)
+        top.add_widget(Label(text="=", size_hint_x=None, width=dp(10)))
+        top.add_widget(self.val_in)
+        top.add_widget(Widget())
+        top.add_widget(self.play)
+        col.add_widget(top)
+        bot = BoxLayout(spacing=dp(4))
+        self.min_in = _DarkInput(text=PA.fmt_num(self.vmin, 4), multiline=False, font_size=sp(11),
+                                 size_hint_x=None, width=dp(52))
+        self.max_in = _DarkInput(text=PA.fmt_num(self.vmax, 4), multiline=False, font_size=sp(11),
+                                 size_hint_x=None, width=dp(52))
+        self.slider = CommitSlider(min=self.vmin, max=self.vmax, value=self.value, step=0,
+                                   cursor_size=(dp(22), dp(22)))
+        self.slider.bind(value=self._slid)
+        self.slider.on_release = lambda: self.on_commit(self)
+        bot.add_widget(self.min_in)
+        bot.add_widget(self.slider)
+        bot.add_widget(self.max_in)
+        col.add_widget(bot)
+        self.add_widget(col)
+        x = Button(text="X", size_hint_x=None, width=dp(30), font_size=sp(13),
+                   background_color=(0.55, 0.12, 0.12, 1))
+        x.bind(on_release=lambda *a: on_delete(self))
+        self.add_widget(x)
+        self.name_in.bind(text=lambda *a: self.on_commit(self))
+        for w in (self.val_in, self.min_in, self.max_in):
+            w.bind(on_text_validate=lambda *a: self._typed())
+            w.bind(focus=lambda w_, f: (not f) and self._typed())
+
+    def expr_texts(self):
+        return []
+
+    def _snap(self, v):
+        if self.step > 0:
+            v = round(v / self.step) * self.step
+        return round(v, 10)
+
+    def _slid(self, w, v):
+        if self._muted:
+            return
+        self.value = self._snap(v)
+        self.val_in.text = PA.fmt_num(self.value, 4)
+        self.on_live(self)
+
+    def set_value(self, v, live=True):
+        self.value = float(v)
+        self._muted = True
+        try:
+            self.slider.value = min(max(self.value, self.vmin), self.vmax)
+            self.val_in.text = PA.fmt_num(self.value, 4)
+        finally:
+            self._muted = False
+        if live:
+            self.on_live(self)
+
+    def _typed(self):
+        try:
+            lo, hi = _const_value(self.min_in.text), _const_value(self.max_in.text)
+            v = _const_value(self.val_in.text)
+        except Exception:
+            return
+        if hi > lo:
+            self.vmin, self.vmax = lo, hi
+            self.slider.min, self.slider.max = lo, hi
+        if v < self.vmin:
+            self.vmin = v
+            self.slider.min = v
+            self.min_in.text = PA.fmt_num(v, 4)
+        if v > self.vmax:
+            self.vmax = v
+            self.slider.max = v
+            self.max_in.text = PA.fmt_num(v, 4)
+        self.set_value(v)
+        self.on_commit(self)
+
+    def toggle_play(self):
+        if self._anim:
+            self.stop()
+            return
+        self.play.text = "Stop"
+        self._anim = Clock.schedule_interval(self._tick, 1 / 30)
+
+    def stop(self):
+        if self._anim:
+            self._anim.cancel()
+            self._anim = None
+        self.play.text = "Play"
+
+    def _tick(self, dt):
+        span = self.vmax - self.vmin
+        v = self.value + self._dir * span * dt / 4.0
+        if v >= self.vmax:
+            v, self._dir = self.vmax, -1.0
+        elif v <= self.vmin:
+            v, self._dir = self.vmin, 1.0
+        self.set_value(v)
+
+    def get_entry(self):
+        name = self.name_in.text.strip()
+        ok = PA.valid_name(name)
+        self.name_in.foreground_color = (1, 1, 1, 1) if ok else (1, 0.4, 0.4, 1)
+        if ok:
+            PARAMS[name] = self.value
+        return {"kind": "slider", "mode": "slider", "name": name, "value": self.value,
+                "color": (1, 1, 1, 1), "visible": False, "error": None if ok else "bad name"}
+
+
+class PointRow(BoxLayout):
+    """A point A = (x, y). Coordinates may use sliders. Fill "on curve" to glue it to y = f(x).
+    A_x and A_y can be used in other expressions. Drag it on the graph."""
+    kind = "point"
+
+    def __init__(self, color, name, x, y, on, on_change, on_delete, **kw):
+        super().__init__(orientation="vertical", size_hint_y=None, height=dp(76),
+                         spacing=dp(2), **kw)
+        self.color = color
+        self.on_change = on_change
+        self._muted = False
+        top = BoxLayout(spacing=dp(3))
+        self.name_in = _DarkInput(text=name, multiline=False, font_size=sp(13),
+                                  size_hint_x=None, width=dp(46))
+        self.x_in = _DarkInput(text=str(x), multiline=False, font_size=sp(12), hint_text="x")
+        self.y_in = _DarkInput(text=str(y), multiline=False, font_size=sp(12), hint_text="y")
+        top.add_widget(Label(text="point", font_size=sp(10), color=(0.6, 0.7, 0.85, 1),
+                             size_hint_x=None, width=dp(34)))
+        top.add_widget(self.name_in)
+        top.add_widget(Label(text="(", size_hint_x=None, width=dp(8)))
+        top.add_widget(self.x_in)
+        top.add_widget(Label(text=",", size_hint_x=None, width=dp(8)))
+        top.add_widget(self.y_in)
+        top.add_widget(Label(text=")", size_hint_x=None, width=dp(8)))
+        top.add_widget(ColorDot(color))
+        d = Button(text="X", size_hint_x=None, width=dp(30), font_size=sp(13),
+                   background_color=(0.55, 0.12, 0.12, 1))
+        d.bind(on_release=lambda *a: on_delete(self))
+        top.add_widget(d)
+        self.add_widget(top)
+        bot = BoxLayout(spacing=dp(3))
+        bot.add_widget(Label(text="on curve y =", font_size=sp(10), color=(0.7, 0.72, 0.78, 1),
+                             size_hint_x=None, width=dp(78)))
+        self.on_in = _DarkInput(text=on, multiline=False, font_size=sp(12),
+                                hint_text="optional, e.g. x^2")
+        bot.add_widget(self.on_in)
+        self.add_widget(bot)
+        for w in (self.name_in, self.x_in, self.y_in, self.on_in):
+            w.bind(text=self._changed)
+
+    def _changed(self, *a):
+        if not self._muted:
+            self.on_change(self)
+
+    def expr_texts(self):
+        return [self.x_in.text, self.y_in.text, self.on_in.text]
+
+    def set_xy(self, x, y):
+        """Called while dragging: put new coordinates in the boxes without a sync per keystroke."""
+        self._muted = True
+        try:
+            self.x_in.text = PA.fmt_num(x, 6)
+            if not self.on_in.text.strip():
+                self.y_in.text = PA.fmt_num(y, 6)
+        finally:
+            self._muted = False
+
+    def get_entry(self):
+        name = self.name_in.text.strip()
+        err, x, y = None, None, None
+        try:
+            if not PA.valid_name(name):
+                raise ExprError("bad name")
+            x = _const_value(self.x_in.text)
+            if self.on_in.text.strip():
+                y = float(compile_expr(self.on_in.text, var="x")(x))
+                if not math.isfinite(y):
+                    raise ExprError("undefined here")
+                self._muted = True
+                self.y_in.text = PA.fmt_num(y, 6)
+                self._muted = False
+            else:
+                y = _const_value(self.y_in.text)
+            if not (math.isfinite(x) and math.isfinite(y)):
+                raise ExprError("not finite")
+        except (ExprError, ValueError, ZeroDivisionError, OverflowError, TypeError) as e:
+            err = str(e) or "error"
+            x = y = None
+        self.name_in.foreground_color = (1, 1, 1, 1) if err is None else (1, 0.4, 0.4, 1)
+        if err is None:
+            PARAMS[name + "_x"], PARAMS[name + "_y"] = x, y
+        return {"kind": "point", "mode": "point", "name": name, "x": x, "y": y,
+                "on_curve": bool(self.on_in.text.strip()), "color": self.color,
+                "visible": err is None, "error": err}
+
+
+class TangentRow(BoxLayout):
+    """The tangent line of y = f(x) at x0, with its slope."""
+    kind = "tangent"
+
+    def __init__(self, color, expr, x0, on_change, on_delete, **kw):
+        super().__init__(orientation="horizontal", size_hint_y=None, height=dp(62),
+                         spacing=dp(3), **kw)
+        self.color = color
+        self.on_change = on_change
+        col = BoxLayout(orientation="vertical", spacing=dp(2))
+        top = BoxLayout(spacing=dp(3))
+        top.add_widget(Label(text="tangent of", font_size=sp(10), color=(0.6, 0.7, 0.85, 1),
+                             size_hint_x=None, width=dp(62)))
+        self.expr_in = _DarkInput(text=expr, multiline=False, font_size=sp(12), hint_text="f(x), e.g. x^2")
+        top.add_widget(self.expr_in)
+        col.add_widget(top)
+        bot = BoxLayout(spacing=dp(3))
+        bot.add_widget(Label(text="at x =", font_size=sp(10), color=(0.7, 0.72, 0.78, 1),
+                             size_hint_x=None, width=dp(44)))
+        self.x0_in = _DarkInput(text=str(x0), multiline=False, font_size=sp(12),
+                                size_hint_x=None, width=dp(80))
+        self.info = Label(text="", font_size=sp(11), color=(0.6, 1, 0.7, 1), halign="left",
+                          valign="middle")
+        self.info.bind(size=lambda w, v: setattr(w, "text_size", v))
+        bot.add_widget(self.x0_in)
+        bot.add_widget(self.info)
+        col.add_widget(bot)
+        self.add_widget(col)
+        self.add_widget(ColorDot(color))
+        d = Button(text="X", size_hint_x=None, width=dp(30), font_size=sp(13),
+                   background_color=(0.55, 0.12, 0.12, 1))
+        d.bind(on_release=lambda *a: on_delete(self))
+        self.add_widget(d)
+        self.expr_in.bind(text=lambda *a: self.on_change(self))
+        self.x0_in.bind(text=lambda *a: self.on_change(self))
+
+    def expr_texts(self):
+        return [self.expr_in.text, self.x0_in.text]
+
+    def get_entry(self):
+        err, fn, x0 = None, None, None
+        try:
+            fn = compile_expr(self.expr_in.text, var="x")
+            x0 = _const_value(self.x0_in.text)
+        except (ExprError, ValueError, ZeroDivisionError, OverflowError, TypeError) as e:
+            err = str(e) or "error"
+        slope = None
+        if err is None:
+            t = PA.tangent_at(fn, x0)
+            if t is None:
+                err = "no tangent here"
+            else:
+                slope = t[0]
+        self.info.text = (f"slope {PA.fmt_num(slope, 5)}" if err is None else err)
+        self.info.color = (0.6, 1, 0.7, 1) if err is None else (1, 0.5, 0.45, 1)
+        return {"kind": "tangent", "mode": "tangent", "name": "tangent", "tfn": fn, "x0": x0,
+                "slope": slope, "color": self.color, "visible": err is None, "error": err}
+
+
 class FunctionPlotterScreen(Screen):
     title = "Function Plotter"
     MAX_UNDO = 50
@@ -1619,6 +2045,10 @@ class FunctionPlotterScreen(Screen):
         self._view_undo = []
         self._view_redo = []
         self._view_last = None
+        self._special_ev = None
+        self._analysis = None
+        self._dragging = False
+        self.show_special = True
         self._build()
 
     # ── build ──────────────────────────────────────────────────────────
@@ -1629,10 +2059,12 @@ class FunctionPlotterScreen(Screen):
         return c
 
     def _build(self):
-        root = BoxLayout(orientation="vertical", spacing=dp(4), padding=dp(4))
+        self.root_box = BoxLayout(spacing=dp(4), padding=dp(4))
 
+        # ---- graphics side: the graph, the view / tool buttons, the modes
+        self.graph_col = BoxLayout(orientation="vertical", spacing=dp(4))
         self.graph = GraphCanvas(size_hint=(1, 1))
-        root.add_widget(self.graph)
+        self.graph_col.add_widget(self.graph)
 
         tb = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(4))
         b_view = Button(text="View v  (0/0)", font_size=sp(11))
@@ -1649,7 +2081,7 @@ class FunctionPlotterScreen(Screen):
             b = Button(text=label, font_size=sp(11))
             b.bind(on_release=cb)
             tb.add_widget(b)
-        root.add_widget(tb)
+        self.graph_col.add_widget(tb)
 
         mode_bar = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(4))
         b_undo = Button(text="Undo", font_size=sp(12), size_hint_x=None,
@@ -1671,34 +2103,64 @@ class FunctionPlotterScreen(Screen):
                 b.state = "down"
             b.bind(on_release=lambda btn, m=mode_name: self._set_mode(m))
             mode_bar.add_widget(b)
-        root.add_widget(mode_bar)
+        self.special_btn = ToggleButton(text="Special pts", font_size=sp(11), state="down")
+        self.special_btn.bind(on_release=lambda *a: self._toggle_special())
+        mode_bar.add_widget(self.special_btn)
+        b_an = Button(text="Analyze", font_size=sp(11))
+        b_an.bind(on_release=lambda *a: self._open_analysis())
+        mode_bar.add_widget(b_an)
+        self.graph_col.add_widget(mode_bar)
 
-        sv = ScrollView(size_hint_y=None, height=dp(150))
-        self.rows_box = BoxLayout(orientation="vertical", size_hint_y=None,
-                                  spacing=dp(3), padding=dp(2))
+        # ---- algebra side: the object list, the single input bar, the add buttons
+        self.alg_col = BoxLayout(orientation="vertical", spacing=dp(3))
+        self.alg_col.add_widget(Label(text="[b]Algebra[/b]", markup=True, font_size=sp(12),
+                                      size_hint_y=None, height=dp(18), halign="left",
+                                      color=(0.75, 0.8, 0.9, 1)))
+        sv = ScrollView(size_hint_y=1)
+        self.rows_box = RowsBox(orientation="vertical", size_hint_y=None,
+                                spacing=dp(3), padding=dp(2))
+        self.rows_box.on_add = self._wire_row
         self.rows_box.bind(minimum_height=self.rows_box.setter("height"))
         sv.add_widget(self.rows_box)
-        root.add_widget(sv)
+        self.alg_col.add_widget(sv)
 
         self.fit_lbl = Label(text="", font_size=sp(11), size_hint_y=None,
                              height=dp(20), color=(0.6, 1, 0.7, 1))
-        root.add_widget(self.fit_lbl)
+        self.alg_col.add_widget(self.fit_lbl)
 
-        bb = BoxLayout(size_hint_y=None, height=dp(46), spacing=dp(4))
-        b_add = Button(text="+ Add function", font_size=sp(12),
-                       background_color=(0.2, 0.5, 0.25, 1))
-        b_add.bind(on_release=lambda *a: self._add_row())
-        b_help = Button(text="?", font_size=sp(14), size_hint_x=None, width=dp(40))
+        ib = BoxLayout(size_hint_y=None, height=dp(42), spacing=dp(4))
+        self.input_bar = _DarkInput(
+            multiline=False, font_size=sp(13),
+            hint_text="Input: f(x)=sin(x)   a=2   A=(1,2)   Tangent(x^2,1)")
+        self.input_bar.bind(on_text_validate=lambda *a: self._submit_input())
+        b_go = Button(text="Add", font_size=sp(12), size_hint_x=None, width=dp(52),
+                      background_color=(0.2, 0.5, 0.25, 1))
+        b_go.bind(on_release=lambda *a: self._submit_input())
+        ib.add_widget(self.input_bar)
+        ib.add_widget(b_go)
+        self.alg_col.add_widget(ib)
+
+        bb = BoxLayout(size_hint_y=None, height=dp(42), spacing=dp(4))
+        for label, cb in (("+ Function", lambda *a: self._add_row()),
+                          ("+ Slider", lambda *a: self._add_slider_next()),
+                          ("+ Point", lambda *a: self._add_point_next()),
+                          ("+ Tangent", lambda *a: self._add_tangent())):
+            b = Button(text=label, font_size=sp(11), background_color=(0.2, 0.5, 0.25, 1))
+            b.bind(on_release=cb)
+            bb.add_widget(b)
+        b_help = Button(text="?", font_size=sp(14), size_hint_x=None, width=dp(36))
         b_help.bind(on_release=lambda *a: self._show_help())
-        b_back = Button(text="Back", font_size=sp(12), size_hint_x=None, width=dp(70))
+        b_back = Button(text="Back", font_size=sp(12), size_hint_x=None, width=dp(58))
         b_back.bind(on_release=lambda *a: setattr(
             self.manager, "current", "dashboard"))
-        bb.add_widget(b_add)
         bb.add_widget(b_help)
         bb.add_widget(b_back)
-        root.add_widget(bb)
+        self.alg_col.add_widget(bb)
 
-        self.add_widget(root)
+        self.add_widget(self.root_box)
+        self._narrow = None
+        self._relayout(force=True)
+        self.bind(size=lambda *a: self._relayout())
 
         # callback wiring
         self.graph.on_stroke_done = self._on_stroke_done
@@ -1708,11 +2170,38 @@ class FunctionPlotterScreen(Screen):
         self.graph.on_warp_radius = self._warp_radius
         self.graph.on_points_changed = self._commit_undo
         self.graph.on_view_changed = self._on_view_changed
+        self.graph.on_point_drag = self._on_point_drag
+        self.graph.on_point_drag_end = self._on_point_drag_end
 
         Clock.schedule_once(lambda dt: self._seed_initial(), 0)
 
         self._add_row("sin(x)")
         self._add_row("x^2 / 4 - 3")
+
+    def _relayout(self, force=False):
+        """Wide window: algebra on the left, graphics on the right. Narrow: graphics on top."""
+        narrow = self.width < dp(820)
+        if not force and narrow == self._narrow:
+            return
+        self._narrow = narrow
+        for w in (self.graph_col, self.alg_col):
+            if w.parent:
+                w.parent.remove_widget(w)
+        rb = self.root_box
+        if narrow:
+            rb.orientation = "vertical"
+            self.graph_col.size_hint = (1, 1)
+            self.alg_col.size_hint = (1, None)
+            self.alg_col.height = dp(290)
+            rb.add_widget(self.graph_col)
+            rb.add_widget(self.alg_col)
+        else:
+            rb.orientation = "horizontal"
+            self.alg_col.size_hint = (None, 1)
+            self.alg_col.width = dp(400)
+            self.graph_col.size_hint = (1, 1)
+            rb.add_widget(self.alg_col)
+            rb.add_widget(self.graph_col)
 
     def _seed_initial(self):
         self._last_snap = self._snapshot()
@@ -1768,6 +2257,8 @@ class FunctionPlotterScreen(Screen):
 
     def _on_row_delete(self, row):
         if row in self._rows:
+            if hasattr(row, "stop"):
+                row.stop()
             self._rows.remove(row)
             self.rows_box.remove_widget(row)
             self._sync()
@@ -1779,50 +2270,311 @@ class FunctionPlotterScreen(Screen):
             self._sync_ev.cancel()
         self._sync_ev = Clock.schedule_once(lambda dt: self._sync(), 0.15)
 
-    def _sync(self):
+    def _wire_row(self, row):
+        """Hook the colour dot of a newly added row to its show / hide toggle."""
+        for w in row.walk():
+            if isinstance(w, ColorDot):
+                w.set_hidden(getattr(row, "hidden", False))
+                w.on_toggle = lambda r=row, d=w: self._toggle_hidden(r, d)
+                break
+
+    def _toggle_hidden(self, row, dot):
+        row.hidden = not getattr(row, "hidden", False)
+        dot.set_hidden(row.hidden)
+        self._sync()
+
+    def _sync(self, commit=True, _auto=True):
         self._sync_ev = None
-        funcs = []
-        for row in self._rows:
-            e = row.get_entry()
+        PARAMS.clear()
+        entries = [None] * len(self._rows)
+        for i, row in enumerate(self._rows):         # sliders and points define names first
+            if row.kind in ("slider", "point"):
+                entries[i] = row.get_entry()
+        for i, row in enumerate(self._rows):
+            if entries[i] is None:
+                entries[i] = row.get_entry()
+                row._entry = entries[i]
+        for row, e in zip(self._rows, entries):
             row._entry = e
-            funcs.append(e)
-        self.graph.set_functions(funcs)
-        self._commit_undo()
+            if getattr(row, "hidden", False):
+                e["visible"] = False
+        self.graph.set_functions(entries)
+        if _auto and self._auto_sliders():
+            return self._sync(commit=commit, _auto=False)
+        if commit:
+            self._commit_undo()
+        self._schedule_special()
+
+    def _auto_sliders(self):
+        """Typing `a*sin(x)` with no `a` makes a slider for `a`, like GeoGebra. True if any were added."""
+        if self._restoring or sum(1 for r in self._rows if r.kind == "slider") >= 30:
+            return False
+        defined = set()
+        for r in self._rows:
+            if r.kind == "slider":
+                defined.add(r.name_in.text.strip())
+            elif r.kind == "point":
+                n = r.name_in.text.strip()
+                defined |= {n + "_x", n + "_y"}
+        new = []
+        for r in self._rows:
+            for text in getattr(r, "expr_texts", lambda: [])():
+                for n in sorted(PA.free_names(text, allowed=defined | set(new))):
+                    if PA.valid_name(n) and len(new) < 8:
+                        new.append(n)
+        for n in new:
+            self._add_slider(n, 1.0, sync=False)
+        return bool(new)
+
+    def _on_slider_live(self, row):
+        """A slider moved: update the numbers and redraw without making an undo step."""
+        PARAMS[row.name_in.text.strip()] = row.value
+        if self._sync_ev:
+            self._sync_ev.cancel()
+            self._sync_ev = None
+        self._sync(commit=False, _auto=False)
+
+    def _on_slider_commit(self, row):
+        self._on_row_change(row)
+
+    # ── GeoGebra-style objects ─────────────────────────────────────────
+
+    def _free_name(self, taken, letters):
+        for c in letters:
+            if c not in taken:
+                return c
+        i = 1
+        while f"{letters[0]}{i}" in taken:
+            i += 1
+        return f"{letters[0]}{i}"
+
+    def _names_in_use(self):
+        names = set()
+        for r in self._rows:
+            if r.kind == "slider":
+                names.add(r.name_in.text.strip())
+            elif r.kind == "point":
+                names.add(r.name_in.text.strip())
+        return names
+
+    def _add_slider(self, name, value, vmin=None, vmax=None, step=None, sync=True):
+        for r in self._rows:                                  # same name: just change its value
+            if r.kind == "slider" and r.name_in.text.strip() == name:
+                if value < r.vmin or value > r.vmax:
+                    lo, hi, _st = PA.slider_range(value)
+                    r.vmin, r.vmax = min(r.vmin, lo), max(r.vmax, hi)
+                    r.slider.min, r.slider.max = r.vmin, r.vmax
+                    r.min_in.text, r.max_in.text = PA.fmt_num(r.vmin, 4), PA.fmt_num(r.vmax, 4)
+                r.set_value(value, live=False)
+                if sync:
+                    self._sync()
+                return r
+        lo, hi, st = PA.slider_range(value)
+        row = SliderRow(name, value, self._on_slider_live, self._on_slider_commit,
+                        self._on_row_delete,
+                        vmin=lo if vmin is None else vmin, vmax=hi if vmax is None else vmax,
+                        step=st if step is None else step)
+        self._rows.append(row)
+        self.rows_box.add_widget(row)
+        if sync:
+            self._sync()
+        return row
+
+    def _add_slider_next(self):
+        self._add_slider(self._free_name(self._names_in_use(), "abcdkmnpqs"), 1.0)
+
+    def _add_point(self, name, x, y, on=""):
+        row = PointRow(self._next_color(), name, x, y, on, self._on_row_change, self._on_row_delete)
+        self._rows.append(row)
+        self.rows_box.add_widget(row)
+        self._sync()
+        return row
+
+    def _add_point_next(self):
+        g = self.graph
+        cx, cy = (g.x_min + g.x_max) / 2, (g.y_min + g.y_max) / 2
+        self._add_point(self._free_name(self._names_in_use(), "ABCDEFGHIJKLMNOP"),
+                        PA.fmt_num(round(cx, 2), 4), PA.fmt_num(round(cy, 2), 4))
+
+    def _add_tangent(self, expr="", x0="0"):
+        if not expr:
+            for r in self._rows:                              # default: the first drawn function
+                if r.kind == "expr" and r.mode == "y" and r.rhs.text.strip():
+                    expr = r.rhs.text.strip()
+                    break
+        row = TangentRow(self._next_color(), expr, x0, self._on_row_change, self._on_row_delete)
+        self._rows.append(row)
+        self.rows_box.add_widget(row)
+        self._sync()
+        return row
+
+    def _function_table(self):
+        out = {}
+        for r in self._rows:
+            if r.kind == "expr" and r.mode == "y" and r.rhs.text.strip():
+                name = r.lhs.text.split("(")[0].strip()
+                if name:
+                    out.setdefault(name, r.rhs.text.strip())
+        return out
+
+    def _submit_input(self):
+        text = self.input_bar.text
+        try:
+            obj = PA.parse_input(text, self._function_table())
+        except ValueError as e:
+            self.fit_lbl.color = (1, 0.55, 0.5, 1)
+            self.fit_lbl.text = str(e)
+            return
+        self.fit_lbl.color = (0.6, 1, 0.7, 1)
+        self.create_from(obj)
+        self.input_bar.text = ""
+
+    def create_from(self, obj):
+        """Make the row an input-bar description asks for (see PA.parse_input)."""
+        k = obj["kind"]
+        if k == "slider":
+            self._add_slider(obj["name"], obj["value"])
+            self.fit_lbl.text = f"Slider {obj['name']} = {PA.fmt_num(obj['value'], 4)}"
+        elif k == "point":
+            name = obj["name"] or self._free_name(self._names_in_use(), "ABCDEFGHIJKLMNOP")
+            self._add_point(name, obj["x"], obj["y"])
+            self.fit_lbl.text = f"Point {name}"
+        elif k == "tangent":
+            self._add_tangent(obj["expr"], obj["x0"])
+            self.fit_lbl.text = "Tangent added"
+        else:
+            row = FunctionRow(self._next_color(), self._on_row_change, self._on_row_delete)
+            if obj["mode"] != "y":
+                row.mode_sp.text = {"polar": "r(\u03b8)", "param": "x,y(t)"}[obj["mode"]]
+            row.rhs.text = obj["expr"]
+            if obj["mode"] == "param":
+                row.rhs2.text = obj.get("expr2", "")
+            elif obj["mode"] == "y":
+                row.lhs.text = obj["name"]
+            self._rows.append(row)
+            self.rows_box.add_widget(row)
+            self._sync()
+            self.fit_lbl.text = f"Added {obj['name']}"
+
+    # ── dragging a point on the graph ──────────────────────────────────
+
+    def _on_point_drag(self, idx, wx, wy):
+        if idx >= len(self._rows) or self._rows[idx].kind != "point":
+            return
+        row = self._rows[idx]
+        self._dragging = True
+        g = self.graph
+        px = g.width / max(1.0, g.x_max - g.x_min)
+        if not row.on_in.text.strip():                       # snap to a tidy value while dragging
+            step = 10 ** math.floor(math.log10(max((g.x_max - g.x_min) / 100, 1e-9)))
+            wx, wy = round(wx / step) * step, round(wy / step) * step
+        row.set_xy(wx, wy)
+        self._sync(commit=False, _auto=False)
+
+    def _on_point_drag_end(self):
+        if self._dragging:
+            self._dragging = False
+            self._sync()
+
+    # ── special points and analysis ────────────────────────────────────
+
+    def _toggle_special(self):
+        self.show_special = self.special_btn.state == "down"
+        if self.show_special:
+            self._compute_special()
+        else:
+            self.graph.special = []
+            self.graph._redraw()
+
+    def _schedule_special(self):
+        if not self.show_special:
+            return
+        if self._special_ev:
+            self._special_ev.cancel()
+        self._special_ev = Clock.schedule_once(lambda dt: self._compute_special(), 0.35)
+
+    def _curve_funcs(self):
+        out = []
+        for i, e in enumerate(self.graph.functions):
+            if e.get("mode") == "y" and e.get("visible") and e.get("fn"):
+                out.append((e.get("name") or f"#{i + 1}", e["fn"]))
+        return out[:6]
+
+    def _compute_special(self):
+        self._special_ev = None
+        g = self.graph
+        try:
+            res = PA.analyse(self._curve_funcs(), g.x_min, g.x_max)
+        except Exception:
+            res = {"roots": [], "extrema": [], "yint": [], "cross": []}
+        self._analysis = res
+        pts = [(x, 0.0, "root") for x, _y, _l in res["roots"]]
+        pts += [(x, y, k) for x, y, k, _l in res["extrema"]]
+        pts += [(x, y, "yint") for x, y, _l in res["yint"]]
+        pts += [(x, y, "cross") for x, y, _a, _b in res["cross"]]
+        g.special = pts[:200] if self.show_special else []
+        g._redraw()
+
+    def _open_analysis(self):
+        g = self.graph
+        res = PA.analyse(self._curve_funcs(), g.x_min, g.x_max)
+        lines = [f"Visible x range: {PA.fmt_num(g.x_min, 4)} to {PA.fmt_num(g.x_max, 4)}\n"]
+
+        def sect(title, rows):
+            lines.append(f"[b]{title}[/b]")
+            lines.extend(rows or ["  none"])
+            lines.append("")
+
+        f = PA.fmt_num
+        sect("Roots (y = 0)", [f"  {l}:  x = {f(x)}" for x, _y, l in res["roots"]])
+        sect("Maxima and minima", [f"  {l}:  {k}  at ({f(x)}, {f(y)})" for x, y, k, l in res["extrema"]])
+        sect("y-intercepts", [f"  {l}:  (0, {f(y)})" for _x, y, l in res["yint"]])
+        sect("Intersections", [f"  {a} and {b}:  ({f(x)}, {f(y)})" for x, y, a, b in res["cross"]])
+        lbl = Label(text="\n".join(lines), markup=True, font_size=sp(13), halign="left",
+                    valign="top", size_hint_y=None, padding=(dp(8), dp(8)))
+        lbl.bind(width=lambda *a: lbl.setter("text_size")(lbl, (lbl.width, None)))
+        lbl.bind(texture_size=lambda *a: setattr(lbl, "height", lbl.texture_size[1] + dp(16)))
+        sv = ScrollView()
+        sv.add_widget(lbl)
+        Popup(title="Points of interest (numeric)", content=sv, size_hint=(0.9, 0.85)).open()
 
     # ── undo/redo (content) ────────────────────────────────────────────
 
     def _serialize_rows(self):
         out = []
         for row in self._rows:
-            if row.kind == "spline":
-                out.append({"kind": "spline",
-                            "color": row.color,
-                            "points": list(row.points)})
-            elif row.kind == "path":
-                out.append({"kind": "path", "color": row.color,
-                            "points": list(row.points),
-                            "xspan": row.xspan, "yspan": row.yspan,
-                            "smooth": row.smooth, "closed": row.closed})
-            elif row.kind == "piecewise":
-                out.append({"kind": "piecewise",
-                            "color": row.color,
-                            "pieces": [list(p) for p in row.pieces]})
-            else:
-                d = {"kind": "expr", "mode": row.mode, "color": row.color}
-                if row.mode == "y":
-                    d["lhs"] = row.lhs.text
-                    d["rhs"] = row.rhs.text
-                elif row.mode == "param":
-                    d["lhs"] = row.lhs.text
-                    d["rhs"] = row.rhs.text
-                    d["rhs2"] = row.rhs2.text
-                    d["range"] = row.range_in.text
-                else:
-                    d["lhs"] = row.lhs.text
-                    d["rhs"] = row.rhs.text
-                    d["range"] = row.range_in.text
-                out.append(d)
+            out.append(self._serialize_row(row))
+            out[-1]["hidden"] = bool(getattr(row, "hidden", False))
         return out
+
+    def _serialize_row(self, row):
+        if row.kind == "slider":
+            return {"kind": "slider", "name": row.name_in.text, "value": row.value,
+                    "vmin": row.vmin, "vmax": row.vmax, "step": row.step}
+        if row.kind == "point":
+            return {"kind": "point", "color": row.color, "name": row.name_in.text,
+                    "x": row.x_in.text, "y": row.y_in.text, "on": row.on_in.text}
+        if row.kind == "tangent":
+            return {"kind": "tangent", "color": row.color, "expr": row.expr_in.text,
+                    "x0": row.x0_in.text}
+        if row.kind == "spline":
+            return {"kind": "spline", "color": row.color, "points": list(row.points)}
+        if row.kind == "path":
+            return {"kind": "path", "color": row.color, "points": list(row.points),
+                    "xspan": row.xspan, "yspan": row.yspan,
+                    "smooth": row.smooth, "closed": row.closed}
+        if row.kind == "piecewise":
+            return {"kind": "piecewise", "color": row.color,
+                    "pieces": [list(p) for p in row.pieces]}
+        d = {"kind": "expr", "mode": row.mode, "color": row.color}
+        d["lhs"] = row.lhs.text
+        d["rhs"] = row.rhs.text
+        if row.mode == "param":
+            d["rhs2"] = row.rhs2.text
+            d["range"] = row.range_in.text
+        elif row.mode == "polar":
+            d["range"] = row.range_in.text
+        return d
 
     def _snapshot(self):
         return {
@@ -1846,6 +2598,14 @@ class FunctionPlotterScreen(Screen):
                 return "Change row kind"
             if a.get("mode") != b.get("mode"):
                 return "Change row mode"
+            if a.get("hidden") != b.get("hidden"):
+                return "Show / hide"
+            if a.get("kind") == "slider":
+                return "Change slider"
+            if a.get("kind") == "point":
+                return "Move point" if (a.get("x"), a.get("y")) != (b.get("x"), b.get("y")) else "Edit point"
+            if a.get("kind") == "tangent":
+                return "Edit tangent"
             if a.get("kind") == "piecewise":
                 if a.get("pieces") != b.get("pieces"):
                     return "Edit piecewise"
@@ -1880,10 +2640,23 @@ class FunctionPlotterScreen(Screen):
         self._restoring = True
         try:
             for row in list(self._rows):
+                if hasattr(row, "stop"):
+                    row.stop()
                 self.rows_box.remove_widget(row)
             self._rows = []
             for r in snap["rows"]:
-                if r["kind"] == "spline":
+                if r["kind"] == "slider":
+                    row = SliderRow(r["name"], r["value"], self._on_slider_live,
+                                    self._on_slider_commit, self._on_row_delete,
+                                    vmin=r.get("vmin", -5.0), vmax=r.get("vmax", 5.0),
+                                    step=r.get("step", 0.1))
+                elif r["kind"] == "point":
+                    row = PointRow(r["color"], r["name"], r["x"], r["y"], r.get("on", ""),
+                                   self._on_row_change, self._on_row_delete)
+                elif r["kind"] == "tangent":
+                    row = TangentRow(r["color"], r["expr"], r["x0"], self._on_row_change,
+                                     self._on_row_delete)
+                elif r["kind"] == "spline":
                     row = SplineRow(r["color"], r["points"],
                                     self._on_row_delete,
                                     on_expr=self._row_to_expr)
@@ -1918,6 +2691,7 @@ class FunctionPlotterScreen(Screen):
                         row.lhs.text = r["lhs"]
                         row.rhs.text = r["rhs"]
                         row.range_in.text = r["range"]
+                row.hidden = bool(r.get("hidden", False))
                 self._rows.append(row)
                 self.rows_box.add_widget(row)
             self.graph.points = list(snap["points"])
@@ -2046,6 +2820,7 @@ class FunctionPlotterScreen(Screen):
             return
         if cur == self._view_last:
             return
+        self._schedule_special()
         self._view_undo.append(self._view_last)
         if len(self._view_undo) > self.MAX_VIEW_UNDO:
             self._view_undo.pop(0)
@@ -2267,7 +3042,7 @@ class FunctionPlotterScreen(Screen):
         if entry_idx >= len(self._rows):
             return False
         row = self._rows[entry_idx]
-        if row.kind == "piecewise":
+        if row.kind in ("piecewise", "slider", "point", "tangent"):
             return False
         if getattr(row, "mode", "y") in ("param", "polar"):
             return False
@@ -2822,6 +3597,10 @@ class FunctionPlotterScreen(Screen):
         if self.graph._view_debounce:
             self.graph._view_debounce.cancel()
             self.graph._view_debounce = None
+        for r in self._rows:
+            if hasattr(r, "stop"):
+                r.stop()
+        self.graph._grab_pt = None
         self.graph._pencil_touches = {}
         self.graph._pencil_multi = False
         self.graph._pencil_pan_anchor = None
@@ -2855,6 +3634,17 @@ class FunctionPlotterScreen(Screen):
             "• y = f(x)\n"
             "• x,y(t) — parametric, range lo, hi\n"
             "• r(θ) — polar, range lo, hi\n\n"
+            "[b]GeoGebra-style tools[/b]\n"
+            "• Input bar: [i]f(x)=sin(x)[/i], [i]a=2[/i] (slider), [i]A=(1,2)[/i] (point), "
+            "[i]Tangent(x^2,1)[/i], [i](cos(t),sin(t))[/i], [i]r=1+cos(t)[/i]\n"
+            "• Sliders: use a name in any expression ([i]a*sin(b*x)[/i]); an unknown letter "
+            "makes its slider for you. Play animates it\n"
+            "• Points: drag them on the graph (Pan mode). Fill [i]on curve[/i] to slide along "
+            "y=f(x). [i]A_x[/i] and [i]A_y[/i] work in other expressions\n"
+            "• Tangent: the tangent line and its slope at x\n"
+            "• Special pts: roots, maxima / minima, y-intercepts and intersections of the "
+            "visible curves, found numerically. Analyze lists them\n"
+            "• The coloured dot of a row shows / hides it\n\n"
             "[b]Controls[/b]\n"
             "• Drag on empty graph → pan\n"
             "• Drag mode: one finger always moves the canvas, never warps\n"
