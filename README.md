@@ -1,6 +1,6 @@
 # Srboli
 
-Pocket swiss-army-knife desktop app — **51 tools in one window**, built with
+Pocket swiss-army-knife desktop app — **52 tools in one window**, built with
 Python + Kivy. Even if you don't see a use for every feature at first, odds
 are at least one will be useful — and you might even end up using several.
 
@@ -66,6 +66,7 @@ tool, with global shortcuts to jump between them.
 | **Cleanup** | *Junk files*: scan the caches, old temp files, thumbnail cache and (off by default) the Trash, see the size per group, preview the biggest files, tick what to clean, confirm. Only files inside those folders are removed, never symlinks, never files changed in the last day, and your Documents / Downloads / Pictures are never touched. *Memory* (computer): free Srboli's own memory and see your biggest programs, each with a confirmed, polite Close (system programs and Srboli are protected). Android explains that apps cannot free other apps' memory |
 | **Cursor Overlay** | Windows for now. A ring, dot, ring with dot, crosshair, square or arrow that follows the mouse pointer on top of everything (clicks pass straight through it), in your colour, size, thickness and see-through level, flashing bigger while a mouse button is held; hide and show it, and changes apply live. It is its own small process (`Srboli --cursor`). Linux and macOS cannot offer a click-through window with the global pointer position yet (Wayland forbids it), so there the screen only previews the look |
 | **File Inspector** | Look inside any file or folder: its real type from the contents (not the extension) with a warning when the name lies, MIME type, size, dates, permissions and owner, text or hex preview, and MD5/SHA-1/SHA-256/SHA-512 checksums with a "does it match the one I was given?" check. Read-only |
+| **Overlay Sandbox** | A practice phone screen for the floating tools, so they can be tried unsigned and on desktop: a master bubble with a radial menu, a calculator bubble with a draggable calculator panel, a simulated recorder bubble (Recording Setup dialog and timer; nothing is captured), and a click / drag macro tool - right-hand toolbar (run, add click, add drag, remove last, save, hide markers, settings you can minimise, quit), numbered draggable markers, drag actions as start and end markers joined by a bar, tap a marker to edit its interval (ms or seconds) and drag time or remove it, repeat count and speed, saved macros. Bubbles snap to the sides and drop on an X to dismiss. Real system-wide overlays need an Android service and the overlay permission, which come later |
 | **Bulk Renamer** | Rename a folder's files with stacked rules (replace, regex, case, prefix/suffix, numbering, dates, patterns, extension), a live old-to-new preview that flags clashes and bad names, a confirm step, and Undo. Swaps and chains work, and a failure part-way puts everything back |
 | **Text Workbench** | One screen, five tabs, for the jobs people write small scripts for: sort, reverse, shuffle, dedupe, filter and number lines; pull emails, links, IPs, numbers or dates out of a text; test a regex with live matches and replace with it; compare two texts or files; count words and reading time. "Use result as input" chains the steps |
 | **Learn** | Import an AI-written course (JSON) and study it Duolingo-style: the course is a winding path of lessons grouped in units, the next lesson glows, later ones are locked (or turn on "Open all lessons"), finished lessons earn 1-3 stars by score, each finished unit is a milestone with bonus XP, plus XP and a daily streak. Three kinds of material: a single lesson, a multi-lesson course, or general practice (independent sets plus a mixed random round). Points are optional per course. After every lesson you get a review of what you got right and wrong, can retry the misses (they are remembered until answered right), and, when an AI is set up in Settings, ask it for fresh questions on your weak spots. Courses and progress are saved as JSON in the app data folder |
@@ -226,8 +227,6 @@ srboli/
 │   ├── precision_canvas_core.py # Precision Canvas: objects, safe calculator, snapping, view maths, history, .srbd files, SVG/PNG export
 │   ├── studio_data.py           # Srboli Studio: table formulas / sort / filter, chart data and layout, picture headers
 │   ├── studio_export.py         # Srboli Studio: slide list / order, output sizes, PNGs to PDF
-│   ├── studio_data.py           # Srboli Studio: table formulas / sort / filter, chart data and layout, picture headers
-│   ├── studio_export.py         # Srboli Studio: slide list / order, output sizes, PNGs to PDF
 │   ├── studio_core.py           # Srboli Studio: document model, frames/groups, resize/turn maths, snapping, view, undo, .srbcanvas packages
 │   ├── plot_analysis.py         # Function Plotter: roots, extrema, intersections, tangents, input-bar parser
 │   ├── drawing_core.py          # Drawing: strokes, undo/redo/clear history, Pillow rendering to PNG
@@ -242,6 +241,8 @@ srboli/
 │   ├── gallery_session.py       # Gallery Sorter: remembers the last session for "Continue where you left off?"
 │   ├── clean_env.py             # Launch system programs without the AppImage's bundled libraries
 │   ├── file_inspect_core.py     # File type by contents, dates, permissions, checksums and previews for File Inspector
+│   ├── calc_core.py             # Calculator engine for the bubble calculator (safe expression evaluator, formatting)
+│   ├── macro_core.py            # Click / drag macros: model, timing plan, save / load
 │   ├── bulk_rename_core.py      # Rules, preview, safe two-phase rename and undo for Bulk Renamer
 │   ├── text_workbench_core.py   # Lines, extract, regex, diff and stats for Text Workbench
 │   ├── outline_core.py / slides_core.py / table_core.py  # kept for Studio's later tables / slides phases
