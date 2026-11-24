@@ -1,6 +1,6 @@
 # Srboli
 
-Pocket swiss-army-knife desktop app — **50 tools in one window**, built with
+Pocket swiss-army-knife desktop app — **51 tools in one window**, built with
 Python + Kivy. Even if you don't see a use for every feature at first, odds
 are at least one will be useful — and you might even end up using several.
 
@@ -58,6 +58,7 @@ tool, with global shortcuts to jump between them.
 | **QR Code** | Make a QR code from text, a link or a Wi-Fi login (live preview, two repair levels, up to 271 bytes), save it as a PNG, or read one from a picture (computer builds). Uses its own small encoder, no extra library |
 | **Colour Picker** | Pick a colour from anywhere on the screen (computer; Srboli hides for a moment and captures it, not on Wayland) or from a picture (everywhere, drag to fine-tune). Edit with sliders or a hex code, copy as HEX / RGB / HSL, see the contrast with white and black, keep a palette |
 | **Image Tools** | Two modes. *Each file*: shrink (longest side), compress (quality) and convert (JPG / PNG / WEBP) a whole batch and see before/after sizes. *Combine into one image*: stack, side by side or grid, with gap, size and order. Originals are never changed: results go to a `srboli_images` folder next to the first picture |
+| **Precision Canvas** | Paint with maths: editable shapes (point, line, arrow, polyline, rectangle, square, circle, ellipse, polygon, text, freehand) instead of pixels. Exact numeric fields that accept `2*pi`, grid / point / alignment snapping with a visible marker, angle lock, a live Maths panel (formula, substituted numbers, result with units, exact π and √ forms), layers (rename, hide, lock, reorder), alignment, undo / redo where a whole drag is one step, `.srbd` save / open, SVG and PNG export. Phone: pinch to zoom, two fingers pan, the panel opens from a button |
 | **Drawing** | A simple sketchpad: brush, eraser, line, box and oval (outline or filled), 10 colours plus any hex colour, size slider, four backgrounds, undo / redo (Clear can be undone too), and Save PNG |
 | **PDF Tools** | Merge several PDFs into one (set the order), or split one PDF: a file per page, N pages per file, or pick pages (`1-3, 5, 8-`) into a new file. Shows page counts, reports password-protected or damaged files clearly. Originals are never changed: results go to a `srboli_pdf` folder next to the first file. Needs the pypdf library (in the requirements files) |
 | **Pomodoro** | Focus timer: focus rounds with short breaks and a long break after every few rounds (all lengths adjustable), a notification when a phase ends, the screen stays on while it runs, and a count of today's finished rounds. Keeps running while you use other tools; a skipped focus round is not counted |
@@ -222,6 +223,7 @@ srboli/
 │   ├── qr_core.py               # QR Code: own encoder (versions 1-10, L/M), PNG export, OpenCV image scan, Wi-Fi text
 │   ├── color_core.py            # Colour Picker: parse/convert HEX-RGB-HSL, contrast, screen/picture sampling, palette
 │   ├── image_tools_core.py      # Image Tools: batch shrink/compress/convert, combine into one image
+│   ├── precision_canvas_core.py # Precision Canvas: objects, safe calculator, snapping, view maths, history, .srbd files, SVG/PNG export
 │   ├── drawing_core.py          # Drawing: strokes, undo/redo/clear history, Pillow rendering to PNG
 │   ├── pdf_tools_core.py        # PDF Tools: page-range parsing, merge, split, extract (pypdf, loaded on use)
 │   ├── pomodoro_core.py         # Pomodoro: phase state machine on an injected clock, settings, per-day totals
