@@ -10,9 +10,11 @@ from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.progressbar import ProgressBar
 from kivy.uix.screenmanager import Screen
+from kivy.uix.spinner import Spinner
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.textinput import TextInput
 from kivy.uix.widget import Widget
+from kivy.utils import escape_markup as esc
 
 from core import learn_core as L
 
@@ -32,6 +34,15 @@ def _wrap_label(text, font_size=sp(15), **kw):
     lb.bind(width=lambda w, v: setattr(w, "text_size", (v, None)))
     lb.bind(texture_size=lambda w, ts: setattr(w, "height", ts[1] + dp(6)))
     return lb
+
+
+def _mode_spinner():
+    return Spinner(text=L.MODE_LABELS["course"], values=list(L.MODE_LABELS.values()),
+                   size_hint_y=None, height=dp(40))
+
+
+def _mode_of(sp_):
+    return next((k for k, v in L.MODE_LABELS.items() if v == sp_.text), "course")
 
 
 def _btn(text, cb, h=44, color=None, **kw):
@@ -137,6 +148,8 @@ class LearnScreen(Screen):
                           height=dp(40))
         box.add_widget(topic)
         box.add_widget(level)
+        mode_sp = _mode_spinner()
+        box.add_widget(mode_sp)
         box.add_widget(_wrap_label(
             "A whole course is a lot to write: a local model can take several "
             "minutes, and small ones often get it wrong. Your topic is sent to "
@@ -146,7 +159,7 @@ class LearnScreen(Screen):
         row.add_widget(go)
         row.add_widget(_btn("Cancel", lambda: p.dismiss()))
         box.add_widget(row)
-        p = Popup(title="Course from AI", content=box, size_hint=(0.92, 0.6))
+        p = Popup(title="Course from AI", content=box, size_hint=(0.92, 0.7))
 
         def start():
             t, lv = topic.text.strip(), level.text.strip() or "beginner"
@@ -164,7 +177,8 @@ class LearnScreen(Screen):
                     self._toast("Made, but some parts were skipped:\n"
                                 + "\n".join(warns[:8]))
 
-            ai_ui.work(lambda: L.ai_course(t, lv), done,
+            md = _mode_of(mode_sp)
+            ai_ui.work(lambda: L.ai_course(t, lv, mode=md), done,
                        title="Writing the course...")
 
         p.open()
@@ -216,6 +230,8 @@ class LearnScreen(Screen):
                           size_hint_y=None, height=dp(40))
         box.add_widget(topic)
         box.add_widget(level)
+        mode_sp = _mode_spinner()
+        box.add_widget(mode_sp)
         # read-only TextInput: stays put, drag selects text, scrolls inside
         out = TextInput(text="", readonly=True, font_size=sp(12),
                         background_color=(0.12, 0.12, 0.14, 1),
@@ -223,15 +239,16 @@ class LearnScreen(Screen):
         box.add_widget(out)
 
         def refresh(*a):
-            out.text = L.build_prompt(topic.text, level.text)
+            out.text = L.build_prompt(topic.text, level.text, _mode_of(mode_sp))
 
         topic.bind(text=refresh)
         level.bind(text=refresh)
+        mode_sp.bind(text=refresh)
         refresh()
 
         def copy():
             try:
-                Clipboard.copy(L.build_prompt(topic.text, level.text))
+                Clipboard.copy(L.build_prompt(topic.text, level.text, _mode_of(mode_sp)))
                 msg.text = "Copied. Paste it into your AI chat."
             except Exception:
                 msg.text = "Could not copy - select the text by hand."
@@ -258,11 +275,19 @@ class LearnScreen(Screen):
         if plan["description"]:
             self._root.add_widget(_wrap_label(plan["description"], 13,
                                               color=(0.75, 0.75, 0.75, 1)))
+        general = plan.get("mode") == "general"
+        graded = L.is_graded(st, plan["id"])
+        self._root.add_widget(_wrap_label(
+            L.MODE_LABELS.get(plan.get("mode"), "") + ("  -  points on" if graded else "  -  points off"),
+            12, color=(0.65, 0.7, 0.8, 1)))
         bar = ProgressBar(max=max(total, 1), value=done, size_hint_y=None,
                           height=dp(10))
         self._root.add_widget(bar)
         nxt = L.next_lesson(st, plan)
-        if nxt:
+        if general:
+            self._root.add_widget(_btn(
+                "Mixed practice (10 random questions)", self._start_mixed, h=50, color=GOOD))
+        elif nxt:
             self._root.add_widget(_btn(
                 "Continue: " + plan["units"][nxt[0]]["lessons"][nxt[1]]["title"],
                 lambda: self._start_lesson(*nxt), h=50, color=GOOD))
@@ -270,9 +295,19 @@ class LearnScreen(Screen):
             self._root.add_widget(Label(
                 text="Course complete!", size_hint_y=None, height=dp(30),
                 color=(0.6, 1, 0.6, 1)))
-        self._root.add_widget(_btn(
-            "Open all lessons: " + ("on" if st.get("free_roam") else "off"),
-            self._toggle_free_roam, h=34, color=ACCENT if st.get("free_roam") else BG_BTN))
+        tools = BoxLayout(size_hint_y=None, height=dp(34), spacing=dp(6))
+        if not general and plan.get("mode") != "lesson":
+            tools.add_widget(_btn(
+                "Open all lessons: " + ("on" if st.get("free_roam") else "off"),
+                self._toggle_free_roam, h=34, color=ACCENT if st.get("free_roam") else BG_BTN))
+        tools.add_widget(_btn("Points: " + ("on" if graded else "off"), self._toggle_graded,
+                              h=34, color=ACCENT if graded else BG_BTN))
+        self._root.add_widget(tools)
+        miss = L.missed_items(st, plan)
+        if miss:
+            self._root.add_widget(_btn(f"Practice what I missed ({len(miss)})",
+                                       lambda: self._start_practice(miss, "Missed questions"),
+                                       h=40, color=BAD))
         col = self._scroll()
         current_row = None
         for n in L.path_nodes(st, plan):
@@ -300,6 +335,17 @@ class LearnScreen(Screen):
         st["free_roam"] = not st.get("free_roam")
         L.save_progress(st)
         self._show_plan(self._plan)
+
+    def _toggle_graded(self):
+        st = L.load_progress()
+        L.set_graded(st, self._plan["id"], not L.is_graded(st, self._plan["id"]))
+        L.save_progress(st)
+        self._show_plan(self._plan)
+
+    def _start_mixed(self):
+        items = L.mixed_items(self._plan, 10)
+        if items:
+            self._start_practice(items, "Mixed practice")
 
     def _path_row(self, plan, n):
         """One step of the winding path: a round node in one of five sideways slots."""
@@ -382,9 +428,17 @@ class LearnScreen(Screen):
         if les["intro"]:
             steps.append({"type": "info", "text": les["intro"]})
         steps += [dict(i, _first=True) for i in les["items"]]
-        self._les = {"ui": ui, "li": li, "steps": steps, "pos": 0,
+        self._les = {"ui": ui, "li": li, "steps": steps, "pos": 0, "records": [],
+                     "kind": "lesson", "title": les["title"],
                      "correct": 0, "total": sum(
                          1 for i in steps if i["type"] != "info")}
+        self._show_step()
+
+    def _start_practice(self, items, title):
+        steps = [dict(L.clean_item(i), _first=True) for i in items]
+        self._les = {"ui": None, "li": None, "steps": steps, "pos": 0, "records": [],
+                     "kind": "practice", "title": title, "correct": 0,
+                     "total": len(steps)}
         self._show_step()
 
     def _show_step(self):
@@ -393,7 +447,7 @@ class LearnScreen(Screen):
             return self._finish_lesson()
         item = s["steps"][s["pos"]]
         self._clear()
-        les = self._plan["units"][s["ui"]]["lessons"][s["li"]]
+        les = {"title": s["title"]}
         top = BoxLayout(size_hint_y=None, height=dp(30), spacing=dp(8))
         top.add_widget(_btn("X", self._quit_lesson, h=30, size_hint_x=None,
                             width=dp(40)))
@@ -466,6 +520,7 @@ class LearnScreen(Screen):
             given = next(iter(self._picked))
         ok = L.check_answer(item, given)
         s = self._les
+        s["records"].append(L.make_record(item, given, ok, bool(item.get("_first"))))
         if ok and item.get("_first"):
             s["correct"] += 1
         if not ok and item.get("_first"):
@@ -497,23 +552,79 @@ class LearnScreen(Screen):
     def _finish_lesson(self):
         s = self._les
         st = L.load_progress()
-        gained = L.record_lesson(st, self._plan["id"], s["ui"], s["li"],
-                                 s["correct"], s["total"])
-        bonus, notes = L.award_milestones(st, self._plan, s["ui"])
-        gained += bonus
+        pid = self._plan["id"]
+        graded = L.is_graded(st, pid)
+        notes = []
+        if s["kind"] == "lesson":
+            gained = L.record_lesson(st, pid, s["ui"], s["li"], s["correct"], s["total"])
+            bonus, notes = L.award_milestones(st, self._plan, s["ui"])
+            gained += bonus
+        else:
+            gained = L.record_practice(st, pid, s["correct"])
+        L.note_results(st, pid, s["records"])
         L.save_progress(st)
+        summ = L.review_summary(s["records"])
+        self._summary = summ
         self._clear()
-        pct = int(round(100 * s["correct"] / s["total"])) if s["total"] else 100
-        self._root.add_widget(Label(
-            text=("[b]Lesson complete![/b]\n\n"
-                  f"{s['correct']}/{s['total']} right first try ({pct}%)\n"
-                  f"+{gained} XP    Streak {L.current_streak(st)} day(s)"
-                  + "".join(f"\n\n[color=ffd24d][b]{m}[/b][/color]" for m in notes)),
-            markup=True, halign="center", font_size=sp(18)))
+        pct = summ["pct"]
+        head = "Lesson complete!" if s["kind"] == "lesson" else "Practice complete!"
+        lines = [f"[b]{head}[/b]", "",
+                 f"{len(summ['right'])}/{summ['total']} right first try"
+                 + (f" ({pct}%)" if graded else "")]
+        if graded:
+            lines.append(f"+{gained} XP    Streak {L.current_streak(st)} day(s)")
+        else:
+            lines.append(f"Streak {L.current_streak(st)} day(s)    (points are off)")
+        text = "\n".join(lines) + "".join(
+            f"\n\n[color=ffd24d][b]{m}[/b][/color]" for m in notes)
+        self._root.add_widget(Label(text=text, markup=True, halign="center", font_size=sp(18)))
+        wrong = summ["wrong"]
+        self._root.add_widget(_btn(
+            f"Review my answers ({len(summ['right'])} right, {len(wrong)} wrong)",
+            lambda: self._show_review(summ), h=46, color=ACCENT))
+        if wrong:
+            items = [r["item"] for r in wrong]
+            self._root.add_widget(_btn("Retry the ones I got wrong",
+                                       lambda: self._start_practice(items, "Retry"), h=44,
+                                       color=BAD))
+            from screens import ai_ui
+            if ai_ui.is_on("learn"):
+                self._root.add_widget(_btn("AI: new questions on my weak spots",
+                                           lambda: self._ai_followups(wrong), h=44, color=ACCENT))
         nxt = L.next_lesson(st, self._plan)
-        if nxt:
+        if nxt and s["kind"] == "lesson" and self._plan.get("mode") != "general":
             self._root.add_widget(_btn(
                 "Next lesson", lambda: self._start_lesson(*nxt), h=50,
                 color=GOOD))
         self._root.add_widget(_btn("Back to course",
                                    lambda: self._show_plan(self._plan)))
+
+    def _ai_followups(self, wrong):
+        from screens import ai_ui
+
+        def done(res, err):
+            if err:
+                return ai_ui.show_error(err)
+            self._start_practice(res, "AI follow-up")
+
+        ai_ui.work(lambda: L.ai_followups(self._plan, wrong), done,
+                   title="Writing new questions...")
+
+    def _show_review(self, summ):
+        self._clear()
+        self._root.add_widget(_wrap_label(
+            f"[b]Review[/b]   {len(summ['right'])} right, {len(summ['wrong'])} wrong",
+            18, markup=True))
+        col = self._scroll()
+        if not (summ["right"] or summ["wrong"]):
+            col.add_widget(_wrap_label("No questions were answered.", 14))
+        for r in summ["wrong"] + summ["right"]:
+            mark = "[color=ff8c80][b]Wrong[/b][/color]" if not r["ok"] else \
+                "[color=80ee90][b]Right[/b][/color]"
+            body = f"{mark}  {esc(r['q'])}\nYou answered: {esc(r['given'])}"
+            if not r["ok"]:
+                body += f"\nCorrect answer: {esc(r['answer'])}"
+            if r["explain"]:
+                body += f"\n[i]{esc(r['explain'])}[/i]"
+            col.add_widget(_wrap_label(body, 14, markup=True))
+        self._root.add_widget(_btn("Back", lambda: self._show_plan(self._plan)))

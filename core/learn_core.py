@@ -60,18 +60,30 @@ commentary) in exactly this shape:
 Rules: "answer" for choice is the 0-based index of the right option; for multi
 a list of indexes; for tf true/false; for type a list of accepted answers
 (short, lowercase-insensitive). Every lesson needs an "intro" and 4-8 items
-with at least 3 questions. 3-6 units, 3-6 lessons each, easy to hard.
+with at least 3 questions. {size_rule}
 Questions must be answerable from the intro and earlier lessons.
 """
 
+MODES = ("lesson", "course", "general")
+MODE_LABELS = {"lesson": "Single lesson", "course": "Course (many lessons)",
+               "general": "General practice"}
+SIZE_RULES = {
+    "course": "3-6 units, 3-6 lessons each, easy to hard.",
+    "lesson": 'Exactly ONE unit with exactly ONE lesson (it can have up to 12 items). Add "mode": "lesson".',
+    "general": ('Add "mode": "general". One or two units; each lesson is an independent '
+                "practice set on one sub-topic (6-10 items), in any order, with no "
+                "dependence on earlier sets."),
+}
 
-def build_prompt(topic, level="beginner"):
+
+def build_prompt(topic, level="beginner", mode="course"):
     topic = (topic or "").strip() or "<your topic>"
     level = (level or "").strip() or "beginner"
-    return PROMPT.format(topic=topic, level=level)
+    return PROMPT.format(topic=topic, level=level,
+                         size_rule=SIZE_RULES.get(mode, SIZE_RULES["course"]))
 
 
-def ai_course(topic, level="beginner", cfg=None):
+def ai_course(topic, level="beginner", cfg=None, mode="course"):
     """Ask the AI set up in Settings for a whole course. Returns (plan,
     warnings); nothing is saved. Raises core.ai_core.AIError."""
     from core import ai_core
@@ -79,7 +91,7 @@ def ai_course(topic, level="beginner", cfg=None):
     if not (topic or "").strip():
         raise ai_core.AIError("Say what you want to learn.")
     text = ai_core.chat("You write courses. Reply with ONLY the JSON object asked for.",
-                        build_prompt(topic, level), cfg,
+                        build_prompt(topic, level, mode), cfg,
                         timeout=max(cfg["timeout"], 400), max_tokens=8000)
     try:
         return parse_plan(text)
@@ -222,6 +234,10 @@ def parse_plan(text):
     plan = {"title": _s(data.get("title")) or "Untitled course",
             "topic": _s(data.get("topic")), "level": _s(data.get("level")),
             "description": _s(data.get("description")), "units": units}
+    mode = _s(data.get("mode")).lower()
+    if mode not in MODES:
+        mode = "lesson" if sum(len(u["lessons"]) for u in units) == 1 else "course"
+    plan["mode"] = mode
     plan["id"] = plan_id(plan)
     return plan, warnings
 
@@ -338,16 +354,7 @@ def best_score(st, pid, ui, li):
     return st["plans"].get(pid, {}).get("done", {}).get(lesson_key(ui, li))
 
 
-def record_lesson(st, pid, ui, li, correct, total, today=None):
-    """Update xp / streak / best score in `st`. Returns the xp gained."""
-    today = today or datetime.date.today().isoformat()
-    pct = int(round(100 * correct / total)) if total else 100
-    done = st["plans"].setdefault(pid, {}).setdefault("done", {})
-    k = lesson_key(ui, li)
-    first = k not in done
-    done[k] = max(pct, done.get(k, 0))
-    gained = correct * XP_PER_CORRECT + (XP_LESSON_BONUS if first else 0)
-    st["xp"] += gained
+def _touch_day(st, today):
     last = st.get("last_day", "")
     if last != today:
         try:
@@ -357,6 +364,43 @@ def record_lesson(st, pid, ui, li, correct, total, today=None):
             gap = None
         st["streak"] = st["streak"] + 1 if gap == 1 else 1
         st["last_day"] = today
+
+
+def is_graded(st, pid):
+    """Points and scores are optional per course (default on)."""
+    return st["plans"].get(pid, {}).get("graded", True)
+
+
+def set_graded(st, pid, on):
+    st["plans"].setdefault(pid, {})["graded"] = bool(on)
+
+
+def record_lesson(st, pid, ui, li, correct, total, today=None, graded=None):
+    """Update xp / streak / best score in `st`. Returns the xp gained (0 when the
+    course is not graded: the lesson still counts as done)."""
+    today = today or datetime.date.today().isoformat()
+    graded = is_graded(st, pid) if graded is None else graded
+    pct = int(round(100 * correct / total)) if total else 100
+    done = st["plans"].setdefault(pid, {}).setdefault("done", {})
+    k = lesson_key(ui, li)
+    first = k not in done
+    done[k] = max(pct, done.get(k, 0))
+    gained = (correct * XP_PER_CORRECT + (XP_LESSON_BONUS if first else 0)) if graded else 0
+    st["xp"] += gained
+    _touch_day(st, today)
+    return gained
+
+
+XP_PER_PRACTICE = 5
+
+
+def record_practice(st, pid, correct, today=None, graded=None):
+    """A practice round (mixed, retry, AI follow-up): half XP per right answer, no bonus."""
+    today = today or datetime.date.today().isoformat()
+    graded = is_graded(st, pid) if graded is None else graded
+    gained = correct * XP_PER_PRACTICE if graded else 0
+    st["xp"] += gained
+    _touch_day(st, today)
     return gained
 
 
@@ -410,7 +454,7 @@ def lesson_state(st, plan, ui, li):
     nxt = next_lesson(st, plan)
     if nxt == (ui, li):
         return "current"
-    return "open" if st.get("free_roam") else "locked"
+    return "open" if (st.get("free_roam") or plan.get("mode") == "general") else "locked"
 
 
 def unit_progress(st, plan, ui):
@@ -447,10 +491,11 @@ def path_nodes(st, plan):
     return nodes
 
 
-def award_milestones(st, plan, ui):
+def award_milestones(st, plan, ui, graded=None):
     """After a lesson: bonus XP the first time unit `ui` (and then the whole course) is
     complete. Returns (xp_gained, ["Unit complete!", ...]). Safe to call repeatedly."""
     pid = plan["id"]
+    graded = is_graded(st, pid) if graded is None else graded
     prog = st["plans"].setdefault(pid, {})
     given = prog.setdefault("milestones", [])
     gained, notes = 0, []
@@ -462,5 +507,160 @@ def award_milestones(st, plan, ui):
         given.append("course")
         gained += XP_COURSE_BONUS
         notes.append("Course complete!")
+    if not graded:
+        gained = 0
     st["xp"] += gained
     return gained, notes
+
+
+# ---- review, mistakes, practice, AI follow-ups ------------------------------
+MAX_MISSED = 40
+
+
+def given_text(item, given):
+    """What the learner answered, as readable text."""
+    t = item["type"]
+    try:
+        if t == "choice":
+            return item["options"][given]
+        if t == "multi":
+            return ", ".join(item["options"][i] for i in sorted(given or [])) or "(nothing)"
+        if t == "tf":
+            return "True" if given else "False"
+    except (IndexError, TypeError):
+        return "(nothing)"
+    return str(given or "").strip() or "(nothing)"
+
+
+def make_record(item, given, ok, first=True):
+    """One answered question, for the review."""
+    return {"q": item["q"], "type": item["type"], "given": given_text(item, given),
+            "answer": answer_text(item), "explain": item.get("explain", ""),
+            "ok": bool(ok), "first": bool(first), "item": clean_item(item)}
+
+
+def clean_item(item):
+    return {k: v for k, v in item.items() if not k.startswith("_")}
+
+
+def review_summary(records):
+    """First attempts only: {"right": [...], "wrong": [...], "total", "pct"}."""
+    firsts = [r for r in records if r.get("first")]
+    right = [r for r in firsts if r["ok"]]
+    wrong = [r for r in firsts if not r["ok"]]
+    total = len(firsts)
+    return {"right": right, "wrong": wrong, "total": total,
+            "pct": int(round(100 * len(right) / total)) if total else 100}
+
+
+def note_results(st, pid, records):
+    """Remember questions answered wrong (for 'practice what I missed') and forget the
+    ones answered right now. Only first attempts count."""
+    prog = st["plans"].setdefault(pid, {})
+    missed = [m for m in prog.get("missed", []) if isinstance(m, dict) and m.get("q")]
+    for r in records:
+        if not r.get("first") or not isinstance(r.get("item"), dict):
+            continue
+        missed = [m for m in missed if m["q"] != r["q"]]
+        if not r["ok"]:
+            missed.append(r["item"])
+    prog["missed"] = missed[-MAX_MISSED:]
+
+
+def missed_items(st, plan):
+    """Questions still to be got right, as normalized items."""
+    return [dict(m) for m in st["plans"].get(plan["id"], {}).get("missed", [])
+            if isinstance(m, dict) and m.get("q")]
+
+
+def all_questions(plan):
+    return [i for u in plan["units"] for l in u["lessons"] for i in l["items"]
+            if i["type"] != "info"]
+
+
+def mixed_items(plan, n=10, rng=None):
+    """A random practice round over the whole course."""
+    import random
+    qs = all_questions(plan)
+    (rng or random).shuffle(qs)
+    return qs[:n]
+
+
+FOLLOWUP_PROMPT = """\
+A learner is studying: {topic} (level: {level}).
+They got these questions wrong:
+
+{wrong}
+
+Write {n} NEW questions, different from those, that test the same ideas in a fresh way so
+they can practise their weak spots. Reply with ONLY one JSON object (no fences, no
+commentary):
+{{"items": [
+  {{"type": "choice", "q": "...", "options": ["A", "B", "C"], "answer": 1, "explain": "..."}},
+  {{"type": "tf", "q": "...", "answer": true, "explain": "..."}},
+  {{"type": "type", "q": "...", "answer": ["accepted answer"], "explain": "..."}},
+  {{"type": "multi", "q": "...", "options": ["A", "B", "C"], "answer": [0, 2], "explain": "..."}}
+]}}
+"answer" for choice is the 0-based option index; for multi a list of indexes; for tf
+true/false; for type a list of short accepted answers. Every "explain" says why.
+"""
+
+
+def build_followup_prompt(plan, wrong, n=4):
+    lines = []
+    for i, r in enumerate(wrong[:8], 1):
+        lines.append(f"{i}. {r['q']}\n   They answered: {r['given']}\n   Correct: {r['answer']}")
+    return FOLLOWUP_PROMPT.format(topic=plan.get("topic") or plan.get("title", ""),
+                                  level=plan.get("level") or "beginner",
+                                  wrong="\n".join(lines), n=max(1, min(int(n), 8)))
+
+
+def parse_items(text):
+    """(items, warnings) from an AI reply holding {"items": [...]} or a bare list."""
+    data = _extract_json_any(text)
+    raw = data.get("items") if isinstance(data, dict) else data
+    if not isinstance(raw, list):
+        raise ValueError('No "items" list found.')
+    warns, items = [], []
+    for i, it in enumerate(raw, 1):
+        n = _norm_item(it, f"item {i}", warns)
+        if n and n["type"] != "info":
+            items.append(n)
+    if not items:
+        raise ValueError("No usable questions came back.")
+    return items, warns
+
+
+def _extract_json_any(text):
+    text = (text or "").strip()
+    m = re.search(r"```(?:json)?\s*(.*?)```", text, re.S)
+    if m:
+        text = m.group(1).strip()
+    try:
+        return json.loads(text)
+    except ValueError:
+        pass
+    for o, c in (("{", "}"), ("[", "]")):
+        a, b = text.find(o), text.rfind(c)
+        if a != -1 and b > a:
+            try:
+                return json.loads(text[a:b + 1])
+            except ValueError:
+                continue
+    raise ValueError("That is not JSON.")
+
+
+def ai_followups(plan, wrong, n=4, cfg=None):
+    """Ask the configured AI for fresh questions on what the learner got wrong.
+    Returns a list of items. Raises core.ai_core.AIError."""
+    from core import ai_core
+    cfg = cfg or ai_core.load()
+    if not wrong:
+        raise ai_core.AIError("There is nothing wrong to practise.")
+    text = ai_core.chat("You write practice questions. Reply with ONLY the JSON object asked for.",
+                        build_followup_prompt(plan, wrong, n), cfg,
+                        timeout=max(cfg["timeout"], 200), max_tokens=3000)
+    try:
+        return parse_items(text)[0]
+    except ValueError as e:
+        raise ai_core.AIError(f"The model's questions weren't usable ({e}). Try again, or use a bigger model.")
