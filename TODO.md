@@ -43,8 +43,10 @@ Done (phases 1, 2 and 4 of the concept): infinite canvas with pan/zoom, text and
 objects, select / move / resize / turn, frames, grouping, layers, undo/redo, `.srbcanvas`
 packages with recovery autosave and versioning (`core/studio_core.py`).
 
-Next: phase 3 tables + charts (reuse `core/table_core.py`), images (assets/ folder is
-already part of the package), presentation mode from frames, smart text transformation,
+Phase 3 done in 5.33: tables (formulas, sort, filter, CSV), bar/line/pie charts linked to
+tables, pictures stored in `assets/` (`core/studio_data.py`).
+
+Next: presentation mode from frames, smart text transformation,
 import/export (md, txt, csv, html, pdf), connectors between objects.
 The old outline / slides / table cores (`outline_core.py`, `slides_core.py`,
 `table_core.py`) are kept for those phases; the old Full Editor screen is gone and its

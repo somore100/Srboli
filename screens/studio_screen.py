@@ -2,11 +2,14 @@
 # (text, shapes, frames, groups). The document and all editing rules live in core/studio_core.py;
 # this file draws the canvas, turns touches into edits and builds the toolbar, sidebar and panels.
 import copy
+import io
 import math
 import os
 
 from kivy.clock import Clock
+from kivy.core.image import Image as CoreImage
 from kivy.core.text import Label as CoreLabel
+from kivy.core.text.markup import MarkupLabel
 from kivy.core.window import Window
 from kivy.graphics import (Color, Ellipse, Line, PopMatrix, PushMatrix, Rectangle, Rotate,
                            RoundedRectangle, Triangle)
@@ -27,13 +30,14 @@ from kivy.utils import escape_markup
 import app_data
 from core import drawing_core
 from core import studio_core as sc
+from core import studio_data as sd
 from core import theme
 
 FOLDER = "studio"
 EXT = ".srbcanvas"
 TOOLS = [("select", "Select"), ("pan", "Pan"), ("text", "Text"), ("rect", "Rectangle"),
          ("rounded", "Rounded"), ("ellipse", "Ellipse"), ("line", "Line"), ("arrow", "Arrow"),
-         ("frame", "Frame")]
+         ("frame", "Frame"), ("table", "Table"), ("chart", "Chart"), ("image", "Image")]
 SHAPE_TOOLS = ("rect", "rounded", "ellipse", "line", "arrow")
 HINTS = {
     "select": "Click an object to select it. Drag to move, drag a handle to resize or turn. "
@@ -45,6 +49,11 @@ HINTS = {
     "ellipse": "Drag to draw an ellipse.",
     "line": "Drag from the start to the end. Shift snaps the angle.",
     "arrow": "Drag from the tail to the head. Shift snaps the angle.",
+    "table": "Drag to draw a table (or click for a default one). Double-click it to edit cells; "
+             "text starting with = is a formula, e.g. =SUM(B2:B4).",
+    "chart": "Drag to draw a chart. With a table selected the chart links to it and updates "
+             "whenever the table changes.",
+    "image": "Choose a PNG, JPEG or GIF picture to place in the middle of the view.",
     "frame": "Drag to draw a frame (a page or slide). Objects dropped inside move with it.",
 }
 HANDLE_R = 11.0          # screen px
@@ -84,7 +93,7 @@ def markup_for(o, zoom):
 
 def _core_label(o, zoom):
     inner = max(1.0, (o["w"] - 2 * o["pad"]) * zoom)
-    return CoreLabel(text=markup_for(o, zoom), markup=True, color=_rgb(o["color"]),
+    return MarkupLabel(text=markup_for(o, zoom), color=_rgb(o["color"]),
                      font_size=max(1, int(round(o["size"] * zoom))), halign=o["align"],
                      bold=o["bold"], italic=o["italic"], text_size=(inner, None))
 
@@ -135,7 +144,10 @@ class StudioCanvas(StencilView):
         self.on_live = lambda: None
         self.on_tool = lambda t: None
         self.on_edit_text = lambda o: None
+        self.on_edit_table = lambda o: None
         self._touches = {}
+        self._grids = {}
+        self._imgs = {}
         self._pinch = None
         self._mode = None
         self._start = self._cur = None
@@ -275,10 +287,10 @@ class StudioCanvas(StencilView):
                     hit = s
                     break
         if hit is not None:
-            if touch.is_double_tap and hit["type"] == "text":
+            if touch.is_double_tap and hit["type"] in ("text", "table"):
                 self.set_sel([hit["id"]])
                 self._mode = "done"
-                self.on_edit_text(hit)
+                (self.on_edit_text if hit["type"] == "text" else self.on_edit_table)(hit)
                 return
             if self.shift:
                 self.sel ^= {hit["id"]}
@@ -518,6 +530,15 @@ class StudioCanvas(StencilView):
             if not click:
                 o["x"], o["w"] = min(a[0], b[0]), max(abs(b[0] - a[0]), 40.0)
             o["h"] = measure_height(o)
+        elif t in ("table", "chart"):
+            o = sc.make(t, x=a[0], y=a[1])
+            if not click:
+                o.update(x=min(a[0], b[0]), y=min(a[1], b[1]), w=max(abs(b[0] - a[0]), 60.0),
+                         h=max(abs(b[1] - a[1]), 40.0))
+            tabs = [x for x in self.selected() if x["type"] == "table"]
+            if t == "chart" and len(tabs) == 1:
+                o["source"] = tabs[0]["id"]
+                o["data"] = sd.chart_data(o, tabs[0])
         elif t in ("line", "arrow"):
             o = sc.make("shape", shape=t, x=a[0], y=a[1], w=160.0, h=0.0)
             if not click:
@@ -661,6 +682,12 @@ class StudioCanvas(StencilView):
             else:
                 Color(*_rgb(o["color"], a * 0.6))
                 Rectangle(pos=(sx + o["pad"] * z, sy + h / 2), size=(max(w - 2 * o["pad"] * z, 1), 1.5))
+        elif t == "table":
+            self._draw_table(o, sx, sy, w, h, a)
+        elif t == "chart":
+            self._draw_chart(o, sx, sy, w, h, a)
+        elif t == "image":
+            self._draw_image(o, sx, sy, w, h, a)
         elif t == "shape":
             sh = o["shape"]
             wd = max(0.0, o["width"] * z)
@@ -761,6 +788,163 @@ class StudioCanvas(StencilView):
         else:
             Line(rectangle=(x0, y0, w, h), width=1.5)
 
+    # ----- tables, charts, pictures
+    def _tex_for(self, text, px, color, bold=False):
+        px = max(1, int(round(px)))
+        key = ("t", text, px, color, bold)
+        tex = self._tex.get(key)
+        if tex is None:
+            if len(self._tex) > 600:
+                self._tex.clear()
+            lb = CoreLabel(text=text, font_size=px, color=_rgb(color), bold=bold)
+            lb.refresh()
+            tex = lb.texture
+            self._tex[key] = tex
+        return tex
+
+    def _label_at(self, text, px, color, x, y, anchor="l", bold=False, maxw=None):
+        """Draw a one-line label whose left/centre/right edge (anchor) is at screen x, centred at y."""
+        if px < 4 or not text:
+            return
+        tex = self._tex_for(text, px, color, bold)
+        if tex is None:
+            return
+        tw = tex.width
+        if maxw is not None and tw > maxw:
+            if maxw < 4:
+                return
+            tex = tex.get_region(0, 0, maxw, tex.height)
+            tw = maxw
+        left = x if anchor == "l" else x - tw / 2 if anchor == "c" else x - tw
+        Color(1, 1, 1, 1)
+        Rectangle(texture=tex, pos=(left, y - tex.height / 2), size=(tw, tex.height))
+
+    def _grid_for(self, o):
+        key = (o["id"], hash(repr(o["cells"])))
+        g = self._grids.get(key)
+        if g is None:
+            if len(self._grids) > 60:
+                self._grids.clear()
+            g = sd.display_grid(o["cells"])
+            self._grids[key] = g
+        return g
+
+    def _draw_table(self, o, sx, sy, w, h, a):
+        z = self.view.zoom
+        rows = sd.visible_rows(o)
+        cols = len(o["cells"][0])
+        grid = self._grid_for(o)
+        rh, cw = h / len(rows), w / cols
+        px = min(o["size"], rh / z * 0.62) * z
+        for k, r in enumerate(rows):
+            hdr = o["header"] and r == 0
+            top = sy + h - k * rh
+            Color(*_rgb(o["hdr_bg"] if hdr else o["cell_bg"], a))
+            Rectangle(pos=(sx, top - rh), size=(w, rh))
+            if px >= 4:
+                fg = o["hdr_fg"] if hdr else o["cell_fg"]
+                for c in range(cols):
+                    txt = grid[r][c]
+                    right = not hdr and sd.num(txt) is not None
+                    x = sx + (c + 1) * cw - 4 * z if right else sx + c * cw + 4 * z
+                    self._label_at(txt, px, fg, x, top - rh / 2, "r" if right else "l", hdr,
+                                   maxw=int(cw - 8 * z))
+        Color(*_rgb(o["grid"], a))
+        for k in range(len(rows) + 1):
+            y = sy + h - k * rh
+            Line(points=[sx, y, sx + w, y], width=1)
+        for c in range(cols + 1):
+            Line(points=[sx + c * cw, sy, sx + c * cw, sy + h], width=1)
+
+    def _draw_chart(self, o, sx, sy, w, h, a):
+        z = self.view.zoom
+        data = sc.chart_data_for(self.doc, o)
+        lay = sd.chart_layout(o, data, o["w"], o["h"])
+        top = sy + h
+
+        def P(lx, ly):
+            return sx + lx * z, top - ly * z
+        Color(*_rgb(o["bg"], a))
+        Rectangle(pos=(sx, sy), size=(w, h))
+        fg = o["fg"]
+        small = 11 * z
+        if o["title"]:
+            self._label_at(o["title"], 15 * z, fg, sx + w / 2, top - 15 * z, "c", True, maxw=int(w - 8))
+        px_, py_, pw_, ph_ = lay["plot"]
+        if lay["kind"] != "pie":
+            for val, ly in lay["ticks"]:
+                x0, y0 = P(px_, ly)
+                Color(*_rgb(fg, 0.15 * a))
+                Line(points=[x0, y0, x0 + pw_ * z, y0], width=1)
+                self._label_at(sd.fmt_axis(val), small, fg, x0 - 4 * z, y0, "r")
+            stride = max(1, math.ceil(len(lay["cats"]) * 46 / pw_))
+            for i, (lab, lx) in enumerate(lay["cats"]):
+                if i % stride == 0:
+                    x0, _ = P(lx, 0)
+                    self._label_at(lab, small, fg, x0, P(0, py_ + ph_ + 14)[1], "c",
+                                   maxw=int(stride * pw_ / len(lay["cats"]) * z))
+            Color(*_rgb(fg, a))
+            ax, ay = P(px_, lay["zero_y"])
+            Line(points=[ax, ay, ax + pw_ * z, ay], width=1.2)
+            bx, by = P(px_, py_)
+            Line(points=[bx, by, bx, P(px_, py_ + ph_)[1]], width=1.2)
+        if lay["kind"] == "bar":
+            for x, y, bw, bh, si in lay["bars"]:
+                bx, by = P(x, y + bh)
+                Color(*_rgb(sd.CHART_COLORS[si % len(sd.CHART_COLORS)], a))
+                Rectangle(pos=(bx, by), size=(bw * z, bh * z))
+        elif lay["kind"] == "line":
+            for si, pts in enumerate(lay["lines"]):
+                col = sd.CHART_COLORS[si % len(sd.CHART_COLORS)]
+                flat = []
+                for lx, ly in pts:
+                    flat += list(P(lx, ly))
+                Color(*_rgb(col, a))
+                if len(flat) >= 4:
+                    Line(points=flat, width=max(1.5, 2 * z))
+                r = max(2.0, 3.5 * z)
+                for lx, ly in pts:
+                    qx, qy = P(lx, ly)
+                    Ellipse(pos=(qx - r, qy - r), size=(2 * r, 2 * r))
+        elif lay["kind"] == "pie" and "pie" in lay:
+            cx, cy, rad = lay["pie"]
+            qx, qy = P(cx, cy)
+            for start, sweep, i in lay["slices"]:
+                Color(*_rgb(sd.CHART_COLORS[i % len(sd.CHART_COLORS)], a))
+                Ellipse(pos=(qx - rad * z, qy - rad * z), size=(2 * rad * z, 2 * rad * z),
+                        angle_start=start, angle_end=start + sweep + 0.3)
+        for name, ci, lx, ly in lay["legend"]:
+            qx, qy = P(lx, ly + 8)
+            Color(*_rgb(sd.CHART_COLORS[ci], a))
+            Rectangle(pos=(qx, qy - 5 * z), size=(10 * z, 10 * z))
+            self._label_at(name, small, fg, qx + 14 * z, qy, "l",
+                           maxw=int(max(o["w"] - lx - 16, 10) * z))
+
+    def _asset_texture(self, name):
+        if name in self._imgs:
+            return self._imgs[name]
+        tex = None
+        data = self.doc.assets.get(name)
+        if data:
+            try:
+                tex = CoreImage(io.BytesIO(data), ext=os.path.splitext(name)[1].lstrip(".") or "png").texture
+            except Exception:
+                tex = None
+        self._imgs[name] = tex
+        return tex
+
+    def _draw_image(self, o, sx, sy, w, h, a):
+        tex = self._asset_texture(o["asset"])
+        if tex is None:
+            Color(0.35, 0.35, 0.38, a)
+            Rectangle(pos=(sx, sy), size=(w, h))
+            Color(0.8, 0.8, 0.85, a)
+            Line(points=[sx, sy, sx + w, sy + h], width=1)
+            Line(points=[sx, sy + h, sx + w, sy], width=1)
+            return
+        Color(1, 1, 1, a)
+        Rectangle(texture=tex, pos=(sx, sy), size=(w, h))
+
 
 # ====================================================================== the screen
 class StudioScreen(Screen):
@@ -788,6 +972,7 @@ class StudioScreen(Screen):
         cw.on_change, cw.on_select = self._doc_changed, self._sel_changed
         cw.on_view, cw.on_hint, cw.on_live = self._view_changed, self._hint, self._live
         cw.on_tool, cw.on_edit_text = self._tool_changed, self.edit_text
+        cw.on_edit_table = self.edit_table
         self.center_col = BoxLayout(orientation="vertical")
         self.panel = self._build_panel()
         self.main.add_widget(self.sidebar)
@@ -950,6 +1135,9 @@ class StudioScreen(Screen):
         self.hint_label.text = text
 
     def set_tool(self, tool):
+        if tool == "image":
+            self.add_image_dialog()
+            tool = "select"
         self.canvas_w.set_tool(tool)
         self._tool_changed(tool)
         self._hint(HINTS[tool])
@@ -1076,6 +1264,8 @@ class StudioScreen(Screen):
         self.canvas_w.doc = doc
         self.canvas_w.sel = set()
         self.canvas_w._tex.clear()
+        self.canvas_w._grids.clear()
+        self.canvas_w._imgs.clear()
         self.path, self.dirty = path, False
         if view:
             self.canvas_w.view.from_list(view)
@@ -1116,9 +1306,10 @@ class StudioScreen(Screen):
         lay.add_widget(row)
         pop.open()
 
-    def _chooser_popup(self, title, save, cb, default_name=""):
+    def _chooser_popup(self, title, save, cb, default_name="", exts=(EXT,), start=None):
         lay = BoxLayout(orientation="vertical", spacing=dp(4), padding=dp(4))
-        fc = FileChooserListView(path=self._folder(), filters=[f"*{EXT}"])
+        fc = FileChooserListView(path=start or self._folder(),
+                                 filters=[f"*{e}" for e in exts] + [f"*{e.upper()}" for e in exts])
         lay.add_widget(fc)
         name = TextInput(text=default_name, multiline=False, size_hint_y=None, height=dp(38),
                          font_size=sp(14), hint_text="File name")
@@ -1411,6 +1602,12 @@ class StudioScreen(Screen):
             self._shape_props(o)
         elif t == "frame":
             self._frame_props(o)
+        elif t == "table":
+            self._table_props(o)
+        elif t == "chart":
+            self._chart_props(o)
+        elif t == "image":
+            self._image_props(o)
         elif t == "group":
             n = len(self.doc.descendants(o["id"]))
             body.add_widget(_label(f"Holds {n} object(s). Moving, resizing or turning the group "
@@ -1617,3 +1814,319 @@ class StudioScreen(Screen):
         if self.doc.settings.get(key) == val:
             return
         self._edit(lambda: self.doc.settings.__setitem__(key, val))
+
+    # ------------------------------------------------------------ tables, charts, pictures
+    def add_image_dialog(self):
+        self._chooser_popup("Add a picture", False, self.add_image, exts=sd.IMAGE_EXT,
+                            start=os.path.expanduser("~"))
+
+    def add_image(self, path):
+        try:
+            if os.path.getsize(path) > sd.MAX_ASSET:
+                raise ValueError("The picture is larger than 20 MB.")
+            with open(path, "rb") as f:
+                data = f.read()
+            o = sc.add_image(self.doc, os.path.basename(path), data)
+        except (OSError, ValueError) as e:
+            self._hint(f"Could not add the picture: {e}")
+            return
+        cx, cy = self.canvas_w.view.to_world(self.canvas_w.width / 2, self.canvas_w.height / 2)
+        o["x"], o["y"] = cx - o["w"] / 2, cy - o["h"] / 2
+
+        def do():
+            self.doc.add(o)
+            sc.assign_parent(self.doc, o)
+        self._edit(do)
+        self.canvas_w._imgs.pop(o["asset"], None)
+        self.canvas_w.set_sel([o["id"]])
+        self._hint(f"Added {o['asset']}.")
+
+    def _image_props(self, o):
+        size = sd.image_size(self.doc.assets.get(o["asset"], b""))
+        info = f"{o['asset']}" + (f"  ({size[0]} x {size[1]} px)" if size else "  (picture missing)")
+        self.panel_body.add_widget(_label(escape_markup(info), 11, theme.MUTED, h=dp(36)))
+
+        def ratio():
+            if size:
+                self._edit(lambda: o.__setitem__("h", max(sc.MIN_SIZE, o["w"] * size[1] / size[0])))
+        self._btn_row([("Original proportions", ratio)])
+        self._btn_row([("Replace picture...", lambda: self._chooser_popup(
+            "Replace picture", False, lambda p: self._replace_image(o, p), exts=sd.IMAGE_EXT,
+            start=os.path.expanduser("~")))])
+
+    def _replace_image(self, o, path):
+        try:
+            with open(path, "rb") as f:
+                data = f.read()
+            new = sc.add_image(self.doc, os.path.basename(path), data)
+        except (OSError, ValueError) as e:
+            self._hint(f"Could not use the picture: {e}")
+            return
+        self._edit(lambda: o.__setitem__("asset", new["asset"]))
+
+    # ----- tables
+    def edit_table(self, o):
+        cells = o["cells"]
+        rows, cols = len(cells), len(cells[0])
+        if rows * cols > 700:
+            self._hint("This table is large: use Paste data... to replace it, or edit a column in a spreadsheet.")
+            return
+        cw, ch = dp(96), dp(34)
+        grid = GridLayout(cols=cols + 1, size_hint=(None, None), spacing=dp(2),
+                          height=(rows + 1) * (ch + dp(2)))
+        grid.add_widget(Label(size_hint=(None, None), size=(dp(30), ch)))
+        for c in range(cols):
+            grid.add_widget(Label(text=sd.col_name(c), size_hint=(None, None), size=(cw, ch),
+                                  color=theme.MUTED))
+        inputs = {}
+        for r in range(rows):
+            grid.add_widget(Label(text=str(r + 1), size_hint=(None, None), size=(dp(30), ch),
+                                  color=theme.MUTED))
+            for c in range(cols):
+                ti = TextInput(text=cells[r][c], multiline=False, size_hint=(None, None),
+                               size=(cw, ch), font_size=sp(13), write_tab=False)
+                inputs[(r, c)] = ti
+                grid.add_widget(ti)
+        grid.width = dp(30) + cols * (cw + dp(2)) + dp(4)
+        sv = ScrollView(do_scroll_x=True, do_scroll_y=True, bar_width=dp(6))
+        sv.add_widget(grid)
+        ok = Button(text="Apply", size_hint_y=None, height=dp(44))
+        cancel = Button(text="Cancel", size_hint_y=None, height=dp(44))
+        row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
+        row.add_widget(ok)
+        row.add_widget(cancel)
+        lay = BoxLayout(orientation="vertical", spacing=dp(4), padding=dp(4))
+        lay.add_widget(_label("Text starting with = is a formula: =SUM(B2:B4), =B2*C2", 11, theme.MUTED))
+        lay.add_widget(sv)
+        lay.add_widget(row)
+        pop = self._popup("Edit table", lay, 0.97, Window.height * 0.9)
+
+        def go(*a):
+            pop.dismiss()
+            new = {k: ti.text for k, ti in inputs.items()}
+            if all(cells[r][c] == v for (r, c), v in new.items()):
+                return
+
+            def do():
+                for (r, c), v in new.items():
+                    sd.set_cell(o, r, c, v)
+            self._edit(do)
+        ok.bind(on_release=go)
+        cancel.bind(on_release=lambda *a: pop.dismiss())
+        pop.open()
+
+    def paste_dialog(self, o, title="Paste table data", apply=None):
+        ti = TextInput(text="", multiline=True, font_size=sp(13), hint_text="Paste rows here")
+        msg = _label("Tab, comma or semicolon separated, or a Markdown table.", 11, theme.MUTED)
+        ok = Button(text="Replace with this data", size_hint_y=None, height=dp(44))
+        lay = BoxLayout(orientation="vertical", spacing=dp(6), padding=dp(6))
+        for w in (msg, ti, ok):
+            lay.add_widget(w)
+        pop = self._popup(title, lay, 0.9, dp(420))
+
+        def go(*a):
+            try:
+                cells = sd.parse_table_text(ti.text)
+            except ValueError as e:
+                msg.text = f"[color=ff6666]{escape_markup(str(e))}[/color]"
+                return
+            pop.dismiss()
+            (apply or self._apply_cells)(o, cells)
+        ok.bind(on_release=go)
+        pop.open()
+        Clock.schedule_once(lambda dt: setattr(ti, "focus", True), 0.2)
+
+    def _apply_cells(self, o, cells):
+        def do():
+            rows_before = len(o["cells"])
+            o["cells"] = cells
+            o["h"] = max(sc.MIN_SIZE, o["h"] / rows_before * len(cells))
+            o["w"] = max(sc.MIN_SIZE, 100.0 * len(cells[0]) if o["w"] < 40 else o["w"])
+            o["fcol"], o["ftext"] = -1, ""
+        self._edit(do)
+
+    def export_csv(self, o):
+        def write(path):
+            if not path.lower().endswith(".csv"):
+                path += ".csv"
+            try:
+                with open(path, "w", encoding="utf-8", newline="") as f:
+                    f.write(sd.to_csv(o["cells"]))
+            except OSError as e:
+                self._hint(f"Could not save: {e}")
+                return
+            self._hint(f"Saved {path}")
+        self._chooser_popup("Export table as CSV", True, write, (o["name"] or "table") + ".csv", exts=(".csv",))
+
+    def import_csv(self, o):
+        def read(path):
+            try:
+                if os.path.getsize(path) > 5_000_000:
+                    raise ValueError("The file is too large.")
+                with open(path, encoding="utf-8-sig") as f:
+                    cells = sd.parse_table_text(f.read())
+            except (OSError, ValueError, UnicodeDecodeError) as e:
+                self._hint(f"Could not read the CSV: {e}")
+                return
+            self._apply_cells(o, cells)
+        self._chooser_popup("Import a CSV file", False, read, exts=(".csv", ".tsv", ".txt"),
+                            start=os.path.expanduser("~"))
+
+    def _col_row_inputs(self, o):
+        """Row number and column letter used by the row / column buttons."""
+        st = self.__dict__.setdefault("_tsel", {"row": "2", "col": "A"})
+        self._row("Row #", self._num_input("t_row", st["row"], lambda t: st.__setitem__("row", t)))
+        self._row("Column", self._num_input("t_col", st["col"], lambda t: st.__setitem__("col", t.upper())))
+        return st
+
+    def _table_do(self, o, st, what):
+        def row():
+            r = int(float(self._fields["t_row"].text)) - 1
+            if not 0 <= r < len(o["cells"]):
+                raise ValueError("That row does not exist.")
+            return r
+
+        def col():
+            c = sd.parse_col(self._fields["t_col"].text)
+            if c >= len(o["cells"][0]):
+                raise ValueError("That column does not exist.")
+            return c
+        try:
+            if what == "row+":
+                r = row()
+                self._edit(lambda: sd.add_row(o, r))
+            elif what == "row-":
+                r = row()
+                if len(o["cells"]) <= 1:
+                    raise ValueError("A table needs at least one row.")
+                self._edit(lambda: sd.delete_row(o, r))
+            elif what == "col+":
+                c = col()
+                self._edit(lambda: sd.add_col(o, c))
+            elif what == "col-":
+                c = col()
+                if len(o["cells"][0]) <= 1:
+                    raise ValueError("A table needs at least one column.")
+                self._edit(lambda: sd.delete_col(o, c))
+            elif what in ("asc", "desc"):
+                c = col()
+                self._edit(lambda: sd.sort_rows(o, c, what == "desc"))
+        except ValueError as e:
+            self._hint(str(e) if "column" in str(e).lower() or "row" in str(e).lower() else "Enter a number for the row.")
+
+    def _table_props(self, o):
+        nr, nc = len(o["cells"]), len(o["cells"][0])
+        self.panel_body.add_widget(_label(f"{nr} rows x {nc} columns. Double-click the table to edit it.",
+                                          11, theme.MUTED, h=dp(34)))
+        self._btn_row([("Edit cells...", lambda: self.edit_table(o)),
+                       ("Paste data...", lambda: self.paste_dialog(o))])
+        self._btn_row([("Import CSV...", lambda: self.import_csv(o)),
+                       ("Export CSV...", lambda: self.export_csv(o))])
+        st = self._col_row_inputs(o)
+        self._btn_row([("Insert row below", lambda: self._table_do(o, st, "row+")),
+                       ("Delete row", lambda: self._table_do(o, st, "row-"))])
+        self._btn_row([("Insert col right", lambda: self._table_do(o, st, "col+")),
+                       ("Delete column", lambda: self._table_do(o, st, "col-"))])
+        self._btn_row([("Sort column A-Z", lambda: self._table_do(o, st, "asc")),
+                       ("Sort Z-A", lambda: self._table_do(o, st, "desc"))])
+
+        def set_filter(txt):
+            try:
+                c = sd.parse_col(self._fields["t_col"].text)
+            except ValueError as e:
+                self._hint(str(e))
+                return
+            if txt != o["ftext"] or c != o["fcol"]:
+                def do():
+                    o["fcol"], o["ftext"] = (c, txt) if txt.strip() else (-1, "")
+                self._edit(do)
+        self._row("Show rows with", self._num_input("t_filter", o["ftext"], set_filter))
+        self.panel_body.add_widget(_label("(looks in the Column above; empty shows all rows)", 10, theme.MUTED))
+        self._btn_row([("Header row: " + ("on" if o["header"] else "off"), lambda: self._toggle(o, "header"))])
+        self._num_prop("Font size", o, "size", 4, 200)
+        self._color_row("Header fill", o, "hdr_bg")
+        self._color_row("Header text", o, "hdr_fg")
+        self._color_row("Cell fill", o, "cell_bg")
+        self._color_row("Cell text", o, "cell_fg")
+        self._color_row("Grid lines", o, "grid")
+        users = [c for c in self.doc.objects if c["type"] == "chart" and c.get("source") == o["id"]]
+        if users:
+            self.panel_body.add_widget(_label(f"Feeds {len(users)} chart(s).", 11, theme.MUTED))
+        self._btn_row([("Make a chart from this", lambda: self._chart_from(o))])
+
+    def _chart_from(self, t):
+        ch = sc.make("chart", x=t["x"] + t["w"] + 40, y=t["y"], source=t["id"],
+                     value_cols=[1] if len(t["cells"][0]) > 1 else [0])
+        ch["data"] = sd.chart_data(ch, t)
+
+        def do():
+            self.doc.add(ch)
+            sc.assign_parent(self.doc, ch)
+        self._edit(do)
+        self.canvas_w.set_sel([ch["id"]])
+
+    # ----- charts
+    def _chart_props(self, o):
+        kind = Spinner(text=o["kind"], values=sd.CHART_KINDS, size_hint_y=None, height=dp(32),
+                       font_size=sp(12))
+        kind.bind(text=lambda w, v: self._set(o, "kind", v))
+        self._row("Type", kind, 32)
+        tables = [t for t in self.doc.objects if t["type"] == "table"]
+        names = {f"{t['name']} #{t['id']}": t["id"] for t in tables}
+        cur = next((k for k, v in names.items() if v == o["source"]), "(own data)")
+        src = Spinner(text=cur, values=["(own data)"] + list(names), size_hint_y=None, height=dp(32),
+                      font_size=sp(12))
+
+        def pick(w, v):
+            new = names.get(v)
+            if new == o["source"]:
+                return
+
+            def do():
+                o["source"] = new
+            self._edit(do)
+        src.bind(text=pick)
+        self._row("Data from", src, 32)
+        title = TextInput(text=o["title"], multiline=False, font_size=sp(13), size_hint_y=None, height=dp(32))
+        title.bind(on_text_validate=lambda w: self._set(o, "title", w.text),
+                   focus=lambda w, f: (not f) and w.text != o["title"] and self._set(o, "title", w.text))
+        self._row("Title", title)
+        if o["source"] is not None and self.doc.get(o["source"]):
+            def lab(txt):
+                try:
+                    c = sd.parse_col(txt)
+                except ValueError as e:
+                    self._hint(str(e))
+                    return
+                self._set(o, "label_col", c)
+
+            def vals(txt):
+                try:
+                    cs = [sd.parse_col(p) for p in txt.replace(" ", "").split(",") if p]
+                except ValueError as e:
+                    self._hint(str(e))
+                    return
+                if cs and cs != o["value_cols"]:
+                    self._set(o, "value_cols", cs[:sd.MAX_SERIES])
+            self._row("Labels from", self._num_input("c_lab", sd.col_name(o["label_col"]), lab))
+            self._row("Values from", self._num_input("c_vals", ",".join(sd.col_name(c) for c in o["value_cols"]), vals))
+            self.panel_body.add_widget(_label("Columns use the table's letters, e.g. B,C", 10, theme.MUTED))
+        else:
+            self._btn_row([("Edit data...", lambda: self.paste_dialog(
+                o, "Chart data (first column = labels)", self._apply_chart_cells))])
+        self._btn_row([("Legend: " + ("on" if o["legend"] else "off"), lambda: self._toggle(o, "legend"))])
+        self._color_row("Background", o, "bg")
+        self._color_row("Text colour", o, "fg")
+
+    def _apply_chart_cells(self, o, cells):
+        header = cells[0]
+        body = cells[1:] or cells
+        labels = [r[0] for r in body]
+        ncol = len(header)
+        series = [[sd.num(r[c]) or 0.0 for r in body] for c in range(1, ncol)]
+        names = [header[c] or f"Series {c}" for c in range(1, ncol)]
+        if not series:
+            self._hint("Add at least two columns: labels, then values.")
+            return
+        data = sd.clean_chart_data({"labels": labels, "names": names, "series": series})
+        self._edit(lambda: (o.__setitem__("data", data), o.__setitem__("source", None)))

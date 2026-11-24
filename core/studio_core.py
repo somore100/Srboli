@@ -15,9 +15,11 @@ import re
 import time
 import zipfile
 
+from core import studio_data as sd
+
 FORMAT = "srbcanvas"
 VERSION = 1
-TYPES = ("text", "shape", "frame", "group")
+TYPES = ("text", "shape", "frame", "group", "table", "chart", "image")
 SHAPES = ("rect", "rounded", "ellipse", "line", "arrow")
 FRAME_PRESETS = {"Slide 16:9": (1280, 720), "A4 portrait": (794, 1123),
                  "A4 landscape": (1123, 794), "Square": (800, 800), "Custom": (600, 400)}
@@ -41,7 +43,7 @@ def fmt(v, nd=1):
 
 
 # ---------------------------------------------------------------- objects
-def make(kind, **kw):
+def make(kind, /, **kw):
     """A new object of `kind` ("text", "shape", "frame", "group") with defaults; no id yet."""
     if kind not in TYPES:
         raise ValueError(f"unknown object type {kind!r}")
@@ -55,6 +57,15 @@ def make(kind, **kw):
                  fx=False, fy=False)
     elif kind == "frame":
         o.update(w=1280.0, h=720.0, bg="#FFFFFF", border="#8A8D93", preset="Slide 16:9")
+    elif kind == "table":
+        o.update(w=360.0, h=140.0, cells=sd.default_cells(), header=True, size=14.0,
+                 hdr_bg="#2F5597", hdr_fg="#FFFFFF", cell_bg="#FFFFFF", cell_fg="#111111",
+                 grid="#9AA0A6", fcol=-1, ftext="")
+    elif kind == "chart":
+        o.update(w=380.0, h=260.0, kind="bar", source=None, label_col=0, value_cols=[1],
+                 title="", legend=True, data=sd.default_data(), bg="#FFFFFF", fg="#222222")
+    elif kind == "image":
+        o.update(w=240.0, h=160.0, asset="")
     kw_style = kw.pop("style", None)
     o.update(kw)
     if kw_style:
@@ -181,6 +192,7 @@ class Document:
     def __init__(self):
         self.settings = dict(DEFAULT_SETTINGS)
         self.objects = []
+        self.assets = {}                  # file name -> bytes (pictures); not part of undo
         self._next = 1
         self._undo, self._redo = [], []
 
@@ -270,6 +282,8 @@ class Document:
         out = []
         for old, nid in mapping.items():
             c = self.get(nid)
+            if c.get("source") in mapping:
+                c["source"] = mapping[c["source"]]
             if c["parent"] in mapping:
                 c["parent"] = mapping[c["parent"]]
             elif old in ids:
@@ -408,10 +422,15 @@ class Document:
         for o in doc.objects:                                  # drop dangling or cyclic parents
             if o["parent"] not in ids or o["parent"] == o["id"]:
                 o["parent"] = None
+        for o in doc.objects:
+            if o.get("source") is not None and (o["source"] not in ids or
+                                                doc.get(o["source"])["type"] != "table"):
+                o["source"] = None
         for o in doc.objects:                                  # break parent cycles
             if any(a["id"] == o["id"] for a in doc.ancestors(o)):
                 o["parent"] = None
         doc._next = max(used or {0}) + 1
+        refresh_charts(doc)
         return doc
 
 
@@ -429,10 +448,12 @@ def clean_object(d):
             if k not in d:
                 continue
             v = d[k]
-            if k == "parent":
+            if k in ("parent", "source"):
                 o[k] = int(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
             elif isinstance(dv, bool):
                 o[k] = bool(v)
+            elif isinstance(dv, int):
+                o[k] = int(clamp(float(v), -1, 1000)) if isinstance(v, (int, float)) and math.isfinite(v) else dv
             elif isinstance(dv, float):
                 v = float(v)
                 if not math.isfinite(v) or abs(v) > 1e8:
@@ -440,7 +461,23 @@ def clean_object(d):
                 o[k] = v
             elif isinstance(dv, str):
                 o[k] = str(v)[:50000] if k == "text" else str(v)[:200]
-        for k in ("color", "fill", "stroke", "bg", "border"):
+        if o["type"] == "table":
+            o["cells"] = sd.clean_cells(d.get("cells"))
+            o["size"] = clamp(o["size"], 4.0, 200.0)
+            o["fcol"] = o["fcol"] if o["fcol"] < len(o["cells"][0]) else -1
+            o["ftext"] = o["ftext"][:100]
+        elif o["type"] == "chart":
+            o["kind"] = o["kind"] if o["kind"] in sd.CHART_KINDS else "bar"
+            vc = d.get("value_cols")
+            o["value_cols"] = [int(c) for c in vc if isinstance(c, int) and 0 <= c < sd.MAX_COLS][:sd.MAX_SERIES] \
+                if isinstance(vc, list) else [1]
+            o["label_col"] = int(clamp(o["label_col"], 0, sd.MAX_COLS - 1))
+            o["data"] = sd.clean_chart_data(d.get("data"))
+            o["title"] = o["title"][:120]
+        elif o["type"] == "image":
+            o["asset"] = os.path.basename(o["asset"])
+        for k in ("color", "fill", "stroke", "bg", "border", "hdr_bg", "hdr_fg", "cell_bg", "cell_fg",
+                  "grid", "fg"):
             if k in o and o[k] != "" and not _hex(o[k]):
                 o[k] = make(d["type"])[k]
         o["w"], o["h"] = max(o["w"], 0.0), max(o["h"], 0.0)
@@ -494,6 +531,50 @@ def recalc_group(doc, g):
 def refresh_groups(doc):
     for g in [o for o in doc.objects if o["type"] == "group"]:
         recalc_group(doc, g)
+    refresh_charts(doc)
+
+
+def refresh_charts(doc):
+    """Keep every linked chart's cached data equal to its table (so it survives the table's
+    deletion). A chart's own data is kept as the fallback."""
+    for o in doc.objects:
+        if o["type"] == "chart" and o.get("source") is not None:
+            t = doc.get(o["source"])
+            if t is not None and t["type"] == "table":
+                o["data"] = sd.chart_data(o, t)
+            else:
+                o["source"] = None
+
+
+def chart_data_for(doc, o):
+    t = doc.get(o["source"]) if o.get("source") is not None else None
+    return sd.chart_data(o, t)
+
+
+def add_image(doc, filename, data, max_w=480.0):
+    """Store a picture in the document and return a new image object (not yet added)."""
+    if len(data) > sd.MAX_ASSET:
+        raise ValueError("The picture is larger than 20 MB.")
+    if sum(len(v) for v in doc.assets.values()) + len(data) > MAX_PACKAGE // 2:
+        raise ValueError("The workspace already holds too many pictures.")
+    size = sd.image_size(data)
+    if size is None or size[0] < 1 or size[1] < 1:
+        raise ValueError("Only PNG, JPEG and GIF pictures can be added.")
+    ext = ".png"
+    for key, e in ((b"\x89PNG", ".png"), (b"GIF8", ".gif"), (b"\xff\xd8", ".jpg")):
+        if data.startswith(key):
+            ext = e
+    stem = os.path.splitext(os.path.basename(filename))[0]
+    name = sd.safe_asset_name(stem + ext, doc.assets)
+    doc.assets[name] = bytes(data)
+    w = float(min(size[0], max_w))
+    return make("image", asset=name, w=w, h=max(w * size[1] / size[0], MIN_SIZE),
+                name=os.path.splitext(name)[0])
+
+
+def used_assets(doc):
+    names = {o["asset"] for o in doc.objects if o["type"] == "image"}
+    return {n: b for n, b in doc.assets.items() if n in names}
 
 
 def scale_tree(doc, o, ax, ay, sx, sy):
@@ -664,7 +745,9 @@ def save_package(doc, path, view=None, thumbnail=None, assets=None):
     with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("manifest.json", json.dumps(manifest(doc), indent=1))
         z.writestr("canvas.json", json.dumps(canvas, ensure_ascii=False))
-        for name, data in (assets or {}).items():
+        allassets = dict(used_assets(doc))
+        allassets.update(assets or {})
+        for name, data in allassets.items():
             z.writestr("assets/" + os.path.basename(name), data)
         if thumbnail:
             z.writestr("previews/thumbnail.png", thumbnail)
@@ -696,6 +779,18 @@ def load_package(path):
     except (json.JSONDecodeError, UnicodeDecodeError, KeyError):
         raise ValueError("The file is damaged (unreadable data).")
     doc = Document.from_dict(canvas)
+    try:
+        with zipfile.ZipFile(path) as z:
+            for n in z.namelist():
+                if n.startswith("assets/") and not n.endswith("/"):
+                    info = z.getinfo(n)
+                    name = os.path.basename(n)
+                    if info.file_size <= sd.MAX_ASSET and name:
+                        data = z.read(n)
+                        if sd.image_size(data):
+                            doc.assets[name] = data
+    except (zipfile.BadZipFile, KeyError):
+        pass
     view = canvas.get("view")
     if not (isinstance(view, list) and len(view) == 3 and all(
             isinstance(v, (int, float)) and math.isfinite(v) for v in view)):
@@ -741,6 +836,9 @@ def render_preview(doc, max_side=320):
                     break
                 d.line([P(o["x"] + o["pad"], ly), P(o["x"] + o["w"] * (0.9 if i < n - 1 else 0.5), ly)],
                        fill=o["color"], width=max(1, int(o["size"] * k * 0.5)))
+        elif o["type"] in ("table", "chart", "image"):
+            d.polygon(pts, fill={"table": "#FFFFFF", "chart": "#FFFFFF", "image": "#8A8D93"}[o["type"]],
+                      outline="#555555")
         elif o["type"] == "shape":
             if o["shape"] in ("line", "arrow"):
                 a, bb = line_ends(o)
