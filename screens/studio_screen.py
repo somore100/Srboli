@@ -19,6 +19,7 @@ from kivy.uix.button import Button
 from kivy.uix.filechooser import FileChooserListView
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
+from kivy.uix.modalview import ModalView
 from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import Screen
 from kivy.uix.scrollview import ScrollView
@@ -31,6 +32,7 @@ import app_data
 from core import drawing_core
 from core import studio_core as sc
 from core import studio_data as sd
+from core import studio_export as se
 from core import theme
 
 FOLDER = "studio"
@@ -148,6 +150,7 @@ class StudioCanvas(StencilView):
         self._touches = {}
         self._grids = {}
         self._imgs = {}
+        self.only = None                      # ids to draw (slide mode); None = the whole workspace
         self._pinch = None
         self._mode = None
         self._start = self._cur = None
@@ -567,13 +570,15 @@ class StudioCanvas(StencilView):
         self.canvas.clear()
         z = self.view.zoom
         with self.canvas:
-            Color(*_rgb(self.doc.settings["background"]))
+            Color(*(_rgb(self.doc.settings["background"]) if self.only is None else (0, 0, 0, 1)))
             Rectangle(pos=self.pos, size=self.size)
-            if self.doc.settings["grid"]:
+            if self.doc.settings["grid"] and self.only is None:
                 self._grid()
             for o in self.doc.draw_order():
-                self._draw(o)
-            self._draw_selection()
+                if self.only is None or o["id"] in self.only:
+                    self._draw(o)
+            if self.only is None:
+                self._draw_selection()
             for kind, v in self._guides:
                 Color(1, 0.35, 0.65, 0.9)
                 if kind == "v":
@@ -664,11 +669,12 @@ class StudioCanvas(StencilView):
         if t == "frame":
             Color(*_rgb(o["bg"], a))
             Rectangle(pos=(sx, sy), size=(w, h))
-            Color(*_rgb(o["border"], 1))
-            Line(rectangle=(sx, sy, w, h), width=1.2)
-            tex = self._title_tex(o["name"])
-            Color(*_rgb(o["border"], 1))
-            Rectangle(texture=tex, pos=(sx, sy + h + 2), size=tex.size)
+            if self.only is None:                 # no border or title while presenting / exporting
+                Color(*_rgb(o["border"], 1))
+                Line(rectangle=(sx, sy, w, h), width=1.2)
+                tex = self._title_tex(o["name"])
+                Color(*_rgb(o["border"], 1))
+                Rectangle(texture=tex, pos=(sx, sy + h + 2), size=tex.size)
         elif t == "text":
             if o["fill"]:
                 Color(*_rgb(o["fill"], a))
@@ -946,6 +952,119 @@ class StudioCanvas(StencilView):
         Rectangle(texture=tex, pos=(sx, sy), size=(w, h))
 
 
+# ====================================================================== slides
+class SlideCanvas(StudioCanvas):
+    """Draws one frame (a slide) fitted to its box; a tap goes to the next / previous slide."""
+
+    def __init__(self, doc, **kw):
+        self.frame = None
+        self.on_nav = lambda step: None
+        super().__init__(doc, **kw)
+
+    def show(self, frame):
+        self.frame = frame
+        self.only = se.slide_ids(self.doc, frame)
+        self.fit()
+
+    def fit(self):
+        if self.frame is not None and self.width > 1 and self.height > 1:
+            self.view.fit(sc.bbox(self.frame), self.width, self.height, pad=0)
+        self.redraw()
+
+    def _resized(self, *a):
+        self.view.h = self.height
+        self.fit()
+
+    def on_touch_down(self, touch):
+        if not self.collide_point(*touch.pos):
+            return False
+        btn = getattr(touch, "button", "left")
+        if btn == "scrollup":
+            self.on_nav(-1)
+        elif btn == "scrolldown":
+            self.on_nav(1)
+        elif btn == "right" or (touch.x - self.x) < self.width * 0.3:
+            self.on_nav(-1)
+        else:
+            self.on_nav(1)
+        return True
+
+    def on_touch_move(self, touch):
+        return True
+
+    def on_touch_up(self, touch):
+        return True
+
+
+class SlideShow(ModalView):
+    def __init__(self, doc, slides, index, **kw):
+        super().__init__(size_hint=(1, 1), auto_dismiss=False, background="",
+                         background_color=(0, 0, 0, 1), **kw)
+        self.doc, self.slides = doc, slides
+        self.i = max(0, min(index, len(slides) - 1))
+        col = BoxLayout(orientation="vertical")
+        self.cv = SlideCanvas(doc)
+        self.cv.on_nav = self.step
+        col.add_widget(self.cv)
+        bar = BoxLayout(size_hint_y=None, height=dp(34), spacing=dp(4), padding=(dp(4), 0))
+        for text, fn, w in (("< Prev", lambda: self.step(-1), 70), ("Next >", lambda: self.step(1), 70)):
+            b = Button(text=text, size_hint_x=None, width=dp(w), font_size=sp(12))
+            b.bind(on_release=lambda *a, f=fn: f())
+            bar.add_widget(b)
+        self.count = Label(text="", font_size=sp(12), color=(0.8, 0.8, 0.8, 1))
+        bar.add_widget(self.count)
+        ex = Button(text="Exit (Esc)", size_hint_x=None, width=dp(90), font_size=sp(12))
+        ex.bind(on_release=lambda *a: self.dismiss())
+        bar.add_widget(ex)
+        col.add_widget(bar)
+        self.add_widget(col)
+        self.bind(on_open=lambda *a: Window.bind(on_key_down=self._key), on_dismiss=lambda *a: Window.unbind(on_key_down=self._key))
+        self.go(self.i)
+
+    def go(self, i):
+        self.i = max(0, min(i, len(self.slides) - 1))
+        self.cv.show(self.slides[self.i])
+        self.count.text = f"{self.i + 1} / {len(self.slides)}   {self.slides[self.i]['name']}"
+
+    def step(self, d):
+        if d > 0 and self.i == len(self.slides) - 1:
+            return
+        self.go(self.i + d)
+
+    def _key(self, win, key, *a):
+        if key in (275, 32, 281, 13, 271):
+            self.step(1)
+        elif key in (276, 280, 8):
+            self.step(-1)
+        elif key == 278:
+            self.go(0)
+        elif key == 279:
+            self.go(len(self.slides) - 1)
+        elif key == 27:
+            self.dismiss()
+        else:
+            return False
+        return True
+
+
+def render_slide_png(doc, frame, path, scale=1.0):
+    """Draw one slide off screen and save it as a PNG; returns (width, height)."""
+    from kivy.graphics import ClearBuffers, ClearColor, Fbo
+    w, h = se.slide_pixels(frame, scale=scale)
+    cv = SlideCanvas(doc)
+    cv.pos, cv.size = (0, 0), (w, h)
+    cv.show(frame)
+    fbo = Fbo(size=(w, h))
+    with fbo:
+        ClearColor(0, 0, 0, 0)
+        ClearBuffers()
+    fbo.add(cv.canvas)
+    fbo.draw()
+    fbo.texture.save(path, flipped=True)
+    fbo.remove(cv.canvas)
+    return w, h
+
+
 # ====================================================================== the screen
 class StudioScreen(Screen):
     title = "Srboli Studio"
@@ -1042,6 +1161,8 @@ class StudioScreen(Screen):
         bar.add_widget(self.zoom_label)
         add("Zoom +", lambda: self.canvas_w.zoom_by(1.25), 62)
         add("Fit", lambda: self.canvas_w.fit(), 44)
+        add("Present", self.present, 66)
+        add("Export slides", self.export_dialog, 100)
         self.panel_btn = add("Panel", self.toggle_panel, 60)
         sv.add_widget(bar)
         return sv
@@ -2130,3 +2251,67 @@ class StudioScreen(Screen):
             return
         data = sd.clean_chart_data({"labels": labels, "names": names, "series": series})
         self._edit(lambda: (o.__setitem__("data", data), o.__setitem__("source", None)))
+
+    # ------------------------------------------------------------ presentation and slide export
+    def present(self):
+        slides = se.slides(self.doc)
+        if not slides:
+            self._hint("Draw a frame first: every frame is a slide, in the order shown in Layers.")
+            return
+        show = SlideShow(self.doc, slides, se.start_index(self.doc, self.canvas_w.sel))
+        self._popups += 1                    # keys belong to the slide show until it closes
+        show.bind(on_dismiss=lambda *a: setattr(self, "_popups", max(0, self._popups - 1)))
+        self._show = show
+        show.open()
+
+    def export_dialog(self):
+        slides = se.slides(self.doc)
+        if not slides:
+            self._hint("Nothing to export: draw a frame first (each frame is a slide).")
+            return
+        lay = BoxLayout(orientation="vertical", spacing=dp(6), padding=dp(6))
+        fmt = Spinner(text="PNG pictures", values=["PNG pictures", "PDF document"], size_hint_y=None,
+                      height=dp(40))
+        which = Spinner(text="All slides", values=["All slides", "Selected slide"], size_hint_y=None,
+                        height=dp(40))
+        scale = Spinner(text="1x", values=["1x", "2x", "3x"], size_hint_y=None, height=dp(40))
+        out = _label(f"Saved in: {os.path.join(self._folder(), 'exports')}", 10, theme.MUTED, h=dp(34))
+        go = Button(text="Export", size_hint_y=None, height=dp(44))
+        for w in (fmt, which, scale, out, go):
+            lay.add_widget(w)
+        pop = self._popup("Export slides", lay, 0.9, dp(330))
+
+        def run(*a):
+            pop.dismiss()
+            chosen = slides
+            if which.text == "Selected slide":
+                i = se.start_index(self.doc, self.canvas_w.sel)
+                chosen = [slides[i]]
+            self.export_slides(chosen, "pdf" if fmt.text.startswith("PDF") else "png",
+                               float(scale.text[0]))
+        go.bind(on_release=run)
+        pop.open()
+
+    def export_slides(self, frames, kind="png", scale=1.0):
+        """Write the slides as PNG files (or one PDF) under <studio folder>/exports/<title>/."""
+        import shutil
+        import tempfile
+        folder = os.path.join(self._folder(), "exports", se.file_stem(self.doc.settings["title"]))
+        try:
+            os.makedirs(folder, exist_ok=True)
+            work = tempfile.mkdtemp() if kind == "pdf" else folder
+            paths = []
+            for n, fr in enumerate(frames, 1):
+                p = os.path.join(work, f"slide-{n:02d}.png")
+                render_slide_png(self.doc, fr, p, scale)
+                paths.append(p)
+            if kind == "pdf":
+                target = se.images_to_pdf(paths, os.path.join(folder, se.file_stem(self.doc.settings["title"]) + ".pdf"))
+                shutil.rmtree(work, ignore_errors=True)
+            else:
+                target = folder
+        except (OSError, ValueError, ImportError) as e:
+            self._hint(f"Could not export: {e}")
+            return None
+        self._hint(f"Exported {len(frames)} slide(s) to {target}")
+        return target

@@ -46,7 +46,9 @@ packages with recovery autosave and versioning (`core/studio_core.py`).
 Phase 3 done in 5.33: tables (formulas, sort, filter, CSV), bar/line/pie charts linked to
 tables, pictures stored in `assets/` (`core/studio_data.py`).
 
-Next: presentation mode from frames, smart text transformation,
+Presentation mode + slide export (PNG / PDF) done in 5.34.
+
+Next: speaker notes / transitions, from frames, smart text transformation,
 import/export (md, txt, csv, html, pdf), connectors between objects.
 The old outline / slides / table cores (`outline_core.py`, `slides_core.py`,
 `table_core.py`) are kept for those phases; the old Full Editor screen is gone and its
