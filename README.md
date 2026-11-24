@@ -24,7 +24,7 @@ tool, with global shortcuts to jump between them.
 | **Loading / Timer** | Countdown timer with shutdown / suspend / notify actions. For "shut down when the upload is done" use Power Off When Done |
 | **Text Editor** | Plain-text editor with Raw ⇄ Styled Markdown view, colour wheel, autosave; exports .txt / .html / .md / checked-and-indented .json |
 | **Script / Teleprompter** | Paste full text, auto-copy chunks one at a time; auto-advance on paste |
-| **Full Editor** | Outline document (nested sections with Markdown bodies, colour swatches + wheel) + slides generated from the outline (per-slide colours / image / skip, full-screen presenter) + coloured tables (per-cell fill/text colours, add/remove rows and columns, SUM/AVG/formulas) that can be placed inside sections; exports everything to HTML |
+| **Srboli Studio** | One infinite workspace (replaces the old Full Editor): pan/zoom canvas of independent objects - text (light Markdown: headings, lists, quotes, bold/italic), rectangles, rounded boxes, ellipses, lines and arrows - plus optional frames (page / slide / custom areas that carry their contents), groups, layers (show/hide, lock, order), align / distribute, grid and object snapping, undo/redo, and `.srbcanvas` files (ZIP with manifest, canvas data, thumbnail; backup copy, crash-recovery autosave, versioned format) |
 | **Math Steps** | Type an equation or expression and solve it line by line: every line is checked, the first wrong one is explained ("a sign looks wrong", "you moved 3 across `=` without flipping it"), three levels of hints, and a full solution on request. Covers linear and quadratic equations (factoring, square root, quadratic formula) and simplifying; other polynomials are checked but not solved |
 | **Basic Tools** | Clock, stopwatch, alarm, real calculator |
 | **System Stats** | CPU / RAM / Disk / GPU + live FPS & ping graphs, plus an always-on-top overlay window |
@@ -224,6 +224,7 @@ srboli/
 │   ├── color_core.py            # Colour Picker: parse/convert HEX-RGB-HSL, contrast, screen/picture sampling, palette
 │   ├── image_tools_core.py      # Image Tools: batch shrink/compress/convert, combine into one image
 │   ├── precision_canvas_core.py # Precision Canvas: objects, safe calculator, snapping, view maths, history, .srbd files, SVG/PNG export
+│   ├── studio_core.py           # Srboli Studio: document model, frames/groups, resize/turn maths, snapping, view, undo, .srbcanvas packages
 │   ├── plot_analysis.py         # Function Plotter: roots, extrema, intersections, tangents, input-bar parser
 │   ├── drawing_core.py          # Drawing: strokes, undo/redo/clear history, Pillow rendering to PNG
 │   ├── pdf_tools_core.py        # PDF Tools: page-range parsing, merge, split, extract (pypdf, loaded on use)
@@ -239,7 +240,7 @@ srboli/
 │   ├── file_inspect_core.py     # File type by contents, dates, permissions, checksums and previews for File Inspector
 │   ├── bulk_rename_core.py      # Rules, preview, safe two-phase rename and undo for Bulk Renamer
 │   ├── text_workbench_core.py   # Lines, extract, regex, diff and stats for Text Workbench
-│   ├── outline_core.py / slides_core.py / table_core.py  # Full Editor
+│   ├── outline_core.py / slides_core.py / table_core.py  # kept for Studio's later tables / slides phases
 │   ├── converter_core.py        # File Converter engine
 │   ├── cover_core.py / cover_app.py  # Cover boxes (separate tkinter process)
 │   ├── desktop_entry.py         # .desktop launcher builder

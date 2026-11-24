@@ -73,7 +73,7 @@ print("collapse + persistence OK")
 
 # search
 d2._search.text = "edit"
-assert tool_labels(d2) == ["Text Editor", "Full Editor"], tool_labels(d2)
+assert tool_labels(d2) == ["Text Editor", "Srboli Studio"], tool_labels(d2)
 d2._search.text = "zzzz"
 assert any("No tool matches" in getattr(w, "text", "") for w in d2._grid.children)
 d2._search.text = ""

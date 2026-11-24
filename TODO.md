@@ -37,30 +37,18 @@ to see what is half-done and what is planned. Newest decisions first.
   (lsof); a settle-seconds field in Fast Transfer; hash verification option;
   Auto-tune for a few LARGE files (it only samples smaller ones).
 
-## Full Editor roadmap
+## Srboli Studio roadmap (replaced the Full Editor in 5.32)
 
-Done:
-1. Outline document: nested sections, Markdown bodies, formatting bar with
-   colour swatches + wheel, preview, section previews in the tree.
-2. Coloured tables replace the Sheet tab; `[[table:Name]]` places one in a section.
-3. Slides are derived from the outline (`core/slides_core.py`): a mode switch
-   (sub-sections as separate slides / as bullets), optional title slide,
-   per-slide background / text colour / image / skip, presenter. Old
-   hand-written slides are imported as a "Slides (imported)" section.
+Done (phases 1, 2 and 4 of the concept): infinite canvas with pan/zoom, text and shape
+objects, select / move / resize / turn, frames, grouping, layers, undo/redo, `.srbcanvas`
+packages with recovery autosave and versioning (`core/studio_core.py`).
 
-Known limits / later:
-- Tree and editor sit side by side; on a narrow phone screen show one at a time.
-- Leaving the Full Editor through a global shortcut or the dashboard skips the
-  unsaved-changes prompt (only the in-editor Back button asks).
-- A formula cell keeps only its result, not the formula.
-- The formatting-bar logic in `screens/md_editor.py` is copied from
-  `screens/text_editor_screen.py`; the two could share one implementation.
-- Recent colours (`RECENT_COLORS` in `screens/md_editor.py`) reset on restart.
-- The colour strip exists three times: `MarkdownEditor`, the Tables panel and
-  `ColorStrip` (used by the Slides panel). Move the first two onto `ColorStrip`.
-- Slides: no speaker notes, no per-slide font size, no transitions; slide text
-  is rendered as Kivy markup (headings, lists, quotes, code, tables as text rows).
-- Slides can't be reordered separately from the outline (reorder the sections).
+Next: phase 3 tables + charts (reuse `core/table_core.py`), images (assets/ folder is
+already part of the package), presentation mode from frames, smart text transformation,
+import/export (md, txt, csv, html, pdf), connectors between objects.
+The old outline / slides / table cores (`outline_core.py`, `slides_core.py`,
+`table_core.py`) are kept for those phases; the old Full Editor screen is gone and its
+documents in the `full_editor` data folder are untouched but no longer opened by the app.
 
 ## Other
 
