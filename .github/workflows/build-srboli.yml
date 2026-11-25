@@ -17,9 +17,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install dependencies
@@ -41,7 +41,7 @@ jobs:
           cat selftest.txt
           grep -q "^SELFTEST OK" selftest.txt
       - name: Upload Windows build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Srboli-Windows
           path: dist/
@@ -52,9 +52,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install system packages
@@ -96,7 +96,7 @@ jobs:
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x appimagetool-x86_64.AppImage
           ./appimagetool-x86_64.AppImage Srboli.AppDir Srboli.AppImage
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: Srboli-Linux-AppImage
           path: Srboli.AppImage
@@ -116,7 +116,7 @@ jobs:
                 --url https://github.com/somore100/Srboli -p pkgs/ -C pkgroot .
           done
           ls -l pkgs
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: Srboli-Linux-Packages
           path: pkgs/
@@ -127,9 +127,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install dependencies
@@ -149,7 +149,7 @@ jobs:
           cat selftest.txt
           grep -q "^SELFTEST OK" selftest.txt
       - name: Upload macOS build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Srboli-macOS
           path: dist/
@@ -164,19 +164,19 @@ jobs:
     timeout-minutes: 90
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Purge stray requirements files
         run: |
           find . -name "requirements.txt" -type f -delete
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
       - name: Setup Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
@@ -199,7 +199,7 @@ jobs:
           which cmake
 
       - name: Cache buildozer state
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             .buildozer
@@ -275,13 +275,13 @@ jobs:
 
       - name: Upload build log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: buildozer-log
           path: buildozer-full.log
 
       - name: Upload APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Srboli-Android-APK
           path: bin/*.apk
@@ -299,7 +299,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout (for the list of changes)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -317,7 +317,7 @@ jobs:
           cat notes.md
 
       - name: Download the build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: Srboli-*
           path: artifacts

@@ -36,6 +36,7 @@ from kivy.uix.label import Label
 from kivy.uix.checkbox import CheckBox
 from kivy.uix.popup import Popup
 from kivy.uix.widget import Widget
+from kivy.uix.textinput import TextInput
 from kivy.graphics import Color, Rectangle
 from kivy.core.window import Window
 from kivy.clock import Clock
@@ -110,6 +111,7 @@ def load_settings():
     from core import theme as _theme
     data["theme"] = data.get("theme") if data.get("theme") in _theme.PRESETS \
         else _theme.DEFAULT_THEME
+    data["custom_colors"] = _theme.clean_custom(data.get("custom_colors"))
     return data
 
 
@@ -291,6 +293,26 @@ class SettingsScreen(Screen):
         self._theme_btns = {}
         choice("Theme", [(k, p["label"]) for k, p in _theme.PRESETS.items()],
                self._set_theme, self._theme_btns, None)
+        content.add_widget(wrapped("Custom colours (#rrggbb)", 13))
+        self._custom_in, self._custom_sw = {}, {}
+        saved = self._cfg.get("custom_colors") or {}
+        base = _theme.PRESETS["custom"]
+        for key, label in _theme.CUSTOM_FIELDS:
+            row = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(6))
+            row.add_widget(wrapped(label, 12))
+            ti = TextInput(text=saved.get(key) or _theme.to_hex(base[key]), multiline=False,
+                           font_size=sp(13), size_hint_x=None, width=dp(110))
+            sw = Widget(size_hint_x=None, width=dp(40))
+            self._custom_in[key], self._custom_sw[key] = ti, sw
+            sw.bind(pos=self._swatch_move, size=self._swatch_move)
+            ti.bind(text=lambda *_a: self._custom_preview())
+            row.add_widget(ti)
+            row.add_widget(sw)
+            content.add_widget(row)
+        self._custom_msg = wrapped("", 11, _theme.MUTED)
+        content.add_widget(self._custom_msg)
+        action("Use these colours", lambda *a: self._use_custom(), 40)
+        self._custom_preview()
         self._rnd_cb = check("Rounded buttons", self._cfg.get("rounded", True),
                              self._toggle_rounded)
         self._pick_btns = {}
@@ -506,6 +528,48 @@ class SettingsScreen(Screen):
             b.text = _theme.PRESETS[key]["label"]
             b.background_color = (_theme.ACCENT if key == self._cfg.get("theme")
                                   else _theme.SURFACE2)
+
+    def _custom_values(self):
+        return {k: ti.text for k, ti in self._custom_in.items()}
+
+    def _custom_preview(self):
+        """Colour swatches next to the fields, and a warning for unreadable text."""
+        from core import theme as _theme
+        cols = {k: _theme.parse_hex(ti.text) for k, ti in self._custom_in.items()}
+        for sw in self._custom_sw.values():
+            self._swatch_move(sw)
+        bad = [lab for k, lab in _theme.CUSTOM_FIELDS if cols[k] is None]
+        if bad:
+            self._custom_msg.text = "Not a colour: " + ", ".join(bad) + " (use #rrggbb)."
+        elif min(_theme.contrast(cols["TEXT"], cols["BG"]),
+                 _theme.contrast(cols["TEXT"], cols["SURFACE2"])) < 3:
+            self._custom_msg.text = ("Text is hard to read on those backgrounds - "
+                                     "pick a lighter or darker text colour.")
+        else:
+            self._custom_msg.text = "Looks fine. Saved colours apply after you restart Srboli."
+
+    def _swatch_move(self, sw, *a):
+        from core import theme as _theme
+        from kivy.graphics import Color, Rectangle
+        key = next((k for k, w in self._custom_sw.items() if w is sw), None)
+        c = _theme.parse_hex(self._custom_in[key].text) if key else None
+        sw.canvas.clear()
+        with sw.canvas:
+            Color(*(c or (0.5, 0.1, 0.1, 1)))
+            Rectangle(pos=sw.pos, size=sw.size)
+
+    def _use_custom(self):
+        from core import theme as _theme
+        vals = self._custom_values()
+        if any(_theme.parse_hex(v) is None for v in vals.values()):
+            self._status.text = "Fix the colours first (use #rrggbb)."
+            return False
+        self._cfg["custom_colors"] = _theme.clean_custom(vals)
+        self._cfg["theme"] = "custom"
+        save_settings(self._cfg)
+        self._mark_theme()
+        self._status.text = "Custom colours saved - restart Srboli to apply."
+        return True
 
     def _set_theme(self, key):
         self._cfg["theme"] = key
