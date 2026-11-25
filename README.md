@@ -71,7 +71,7 @@ tool, with global shortcuts to jump between them.
 | **Text Workbench** | One screen, five tabs, for the jobs people write small scripts for: sort, reverse, shuffle, dedupe, filter and number lines; pull emails, links, IPs, numbers or dates out of a text; test a regex with live matches and replace with it; compare two texts or files; count words and reading time. "Use result as input" chains the steps |
 | **Learn** | Import an AI-written course (JSON) and study it Duolingo-style: the course is a winding path of lessons grouped in units, the next lesson glows, later ones are locked (or turn on "Open all lessons"), finished lessons earn 1-3 stars by score, each finished unit is a milestone with bonus XP, plus XP and a daily streak. Three kinds of material: a single lesson, a multi-lesson course, or general practice (independent sets plus a mixed random round). Points are optional per course. After every lesson you get a review of what you got right and wrong, can retry the misses (they are remembered until answered right), and, when an AI is set up in Settings, ask it for fresh questions on your weak spots. Courses and progress are saved as JSON in the app data folder |
 | **Cover / Privacy Boxes** | Desktop-only privacy boxes, blackout and hide-from-recording with global hotkeys |
-| **Linux Shortcut Creator** | Fill in a form to make a `.desktop` launcher for the application menu (and Desktop); lists, edits and deletes the ones it made |
+| **Linux Shortcut Creator** | Fill in a form to make a `.desktop` launcher for the application menu (and Desktop); lists, edits and deletes the ones it made. "Pick for me" buttons fill the command for you: any Srboli tool (the launcher opens Srboli straight on it, e.g. "Srboli Paint"; also `main.py --open paint`, and a second launch hands the tool to the copy already running), any file or folder (opened with its usual app), or Srboli itself |
 | **Touch Test** | Shows what each tap looks like to the app (finger vs. mouse duplicates) and has the duplicate-tap filter switch |
 | **File Converter** | Batch-convert images (png/jpg/webp/bmp/gif/tiff/ico/pdf), documents (txt/md/html/docx/pdf/csv/tsv/json) and - on desktop with ffmpeg - audio/video |
 | **Settings** | Reorder (within a section) / hide dashboard screens, toggle lazy-loading, manage the background service and autostart, move or clear your data folder safely, export logs/data as a zip, save a diagnostic report, see and grant Android permissions |
@@ -249,6 +249,7 @@ srboli/
 │   ├── converter_core.py        # File Converter engine
 │   ├── cover_core.py / cover_app.py  # Cover boxes (separate tkinter process)
 │   ├── desktop_entry.py         # .desktop launcher builder
+│   ├── launch_target.py         # --open flag, tool-name matching, hand-off to a running copy
 │   ├── touch_dedupe.py / tap_guard.py  # Ghost-tap filters
 │   ├── notify.py                # Desktop notifications
 │   ├── android_storage.py / psutil_lite.py  # Android helpers

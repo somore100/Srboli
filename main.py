@@ -1,5 +1,9 @@
 # main.py — Srboli (version: core/version.py)
 import sys, os
+# `main.py --open paint` starts on that tool (shortcuts from the Shortcut Creator use it).
+# Stripped first of all, before anything can import Kivy: Kivy aborts on flags it doesn't know.
+from core import launch_target as _lt
+_OPEN_TARGET, sys.argv[:] = _lt.extract_open(sys.argv)
 # Helper modes (--cover, --cover-cmd, --daemon, --overlay) must not touch Kivy
 # before their own dispatch below: Kivy parses sys.argv on import and aborts
 # on flags it doesn't know. The boot log imports Kivy indirectly, so it only
@@ -577,7 +581,33 @@ class SrboliApp(App):
                     print(f"SRB heartbeat error {e}")
             from kivy.clock import Clock as _HBC
             _HBC.schedule_interval(_heartbeat, 4.0)
+        self._setup_open_requests(sm)
         return sm
+
+    def _setup_open_requests(self, sm):
+        """Open the tool named by --open, and keep listening for later launches that ask the
+        running copy to open one."""
+        from kivy.clock import Clock
+        folder = os.path.dirname(app_data._CONFIG_FILE)
+
+        def go(target):
+            route = _lt.resolve(target)
+            if route is None:
+                print(f"--open: no tool matches '{target}'")
+                return
+            try:
+                from kivy.core.window import Window
+                Window.raise_window()
+            except Exception:
+                pass
+            self._open_route(route)
+
+        if _OPEN_TARGET:
+            Clock.schedule_once(lambda dt: go(_OPEN_TARGET), 0.2)
+        if not _ON_ANDROID:
+            _lt.take_request(folder)             # forget anything stale from before this start
+            Clock.schedule_interval(
+                lambda dt: (lambda t: go(t) if t else None)(_lt.take_request(folder)), 1.0)
 
 
 if __name__ == "__main__":
@@ -587,6 +617,10 @@ if __name__ == "__main__":
         from core import single_instance
         if not single_instance.acquire(os.path.join(
                 os.path.dirname(app_data._CONFIG_FILE), ".srboli.lock")):
-            print("Srboli is already running.")
+            if _OPEN_TARGET:
+                _lt.write_request(os.path.dirname(app_data._CONFIG_FILE), _OPEN_TARGET)
+                print("Srboli is already running; asked it to open", _OPEN_TARGET)
+            else:
+                print("Srboli is already running.")
             sys.exit(0)
     SrboliApp().run()

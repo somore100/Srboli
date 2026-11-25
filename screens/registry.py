@@ -142,7 +142,7 @@ ALIASES = {
     "clipboard":      ["copy", "paste", "history", "pinned", "snippets"],
     "startup":        ["autostart", "boot", "login", "launch", "programs", "disable", "slow start"],
     "when_done":      ["shutdown", "shut down", "power off", "sleep", "finish", "done", "upload", "drive", "turn off", "task"],
-    "folder_colors":  ["folder", "colour", "color", "icon", "picture", "paint", "folderico"],
+    "folder_colors":  ["folder", "colour", "color", "icon", "picture", "folderico"],
     "file_inspector": ["inspect", "hash", "checksum", "sha256", "md5", "hex", "mime", "type", "permissions", "file info"],
     "overlay_sandbox": ["bubble", "floating", "calculator", "macro", "auto clicker", "autoclicker", "automation", "click", "drag", "recorder", "screen record", "overlay"],
     "bulk_rename":    ["rename", "batch", "files", "numbering", "regex", "undo"],

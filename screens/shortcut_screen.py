@@ -18,6 +18,7 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.togglebutton import ToggleButton
 
 from core import desktop_entry as D
+from core import launch_target as LT
 from core.tickbox import TickBox
 from screens.dialogs import confirm_popup, message_popup
 
@@ -69,9 +70,23 @@ class ShortcutScreen(Screen):
             return ti
 
         self._name = field("Name", "What it is called in the menu")
-        self._cmd = field("Command", "e.g. firefox  or  python3 /path/script.py",
-                          [("This app", self._fill_this_app),
-                           ("Browse", self._browse_command)])
+        self._cmd = field("What to run", "Use the buttons below, or type a command",
+                          [("Browse", self._browse_command)])
+        quick = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(4))
+        quick.add_widget(Label(text="Pick for me", size_hint_x=None, width=dp(86),
+                               font_size=sp(12), halign="right"))
+        for text, cb in (("Srboli tool", self._pick_tool), ("File / folder", self._pick_file),
+                         ("Srboli", self._fill_this_app)):
+            b = Button(text=text, font_size=sp(12))
+            b.bind(on_release=cb)
+            quick.add_widget(b)
+        form.add_widget(quick)
+        form.add_widget(Label(text="Srboli tool: opens Srboli straight on that tool.  "
+                                   "File / folder: opens it with its usual app.  "
+                                   "Browse: a program or script.",
+                              size_hint_y=None, height=dp(34), font_size=sp(11),
+                              halign="left", valign="top", color=(0.62, 0.65, 0.71, 1),
+                              text_size=(dp(330), None)))
         self._comment = field("Comment", "Optional tooltip")
         self._icon = field("Icon", "Image path or an icon name (optional)",
                            [("Browse", self._browse_icon)])
@@ -169,8 +184,47 @@ class ShortcutScreen(Screen):
         if not self._comment.text.strip():
             self._comment.text = "Pocket swiss-army-knife of small tools"
 
-    def _choose_file(self, title, button, filters, on_pick):
-        chooser = FileChooserIconView(path=_home(), filters=filters)
+    def _pick_tool(self, *a):
+        box = BoxLayout(orientation="vertical", spacing=dp(4), padding=dp(6))
+        pop = Popup(title="Which Srboli tool?", content=box, size_hint=(0.92, 0.85))
+        sv = ScrollView()
+        col = GridLayout(cols=2, spacing=dp(4), size_hint_y=None)
+        col.bind(minimum_height=col.setter("height"))
+        for label, route in LT.tool_choices():
+            b = Button(text=label, size_hint_y=None, height=dp(44), font_size=sp(13),
+                       shorten=True, shorten_from="right")
+            b.bind(on_release=lambda inst, r=route, l=label: (pop.dismiss(), self.fill_tool(r, l)))
+            col.add_widget(b)
+        sv.add_widget(col)
+        box.add_widget(sv)
+        close = Button(text="Cancel", size_hint_y=None, height=dp(44))
+        close.bind(on_release=lambda *a: pop.dismiss())
+        box.add_widget(close)
+        pop.open()
+
+    def fill_tool(self, route, label):
+        cmd, logo = _srboli_command()
+        self._cmd.text = " ".join(shlex.quote(c) for c in LT.tool_argv(cmd, route))
+        if not self._name.text.strip():
+            self._name.text = f"Srboli {label}"
+        if not self._icon.text.strip() and logo:
+            self._icon.text = logo
+        if not self._comment.text.strip():
+            self._comment.text = f"Open {label} in Srboli"
+        self._status.text = f"Will open Srboli on {label}."
+
+    def fill_file(self, path):
+        self._cmd.text = " ".join(shlex.quote(c) for c in LT.open_file_argv(path))
+        if not self._name.text.strip():
+            self._name.text = os.path.basename(path.rstrip("/")) or path
+        self._status.text = "Will open it with the app your desktop uses for it."
+
+    def _pick_file(self, *a):
+        self._choose_file("Choose a file or folder", "Use this", [], self.fill_file,
+                          dirselect=True)
+
+    def _choose_file(self, title, button, filters, on_pick, dirselect=False):
+        chooser = FileChooserIconView(path=_home(), filters=filters, dirselect=dirselect)
         btn = Button(text=button, size_hint_y=None, height=dp(44))
         layout = BoxLayout(orientation="vertical")
         layout.add_widget(chooser)

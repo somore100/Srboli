@@ -48,4 +48,19 @@ assert scr._name.text == "Srboli" and scr._cmd.text.strip() and scr._comment.tex
 scr._preview(); scr._show_mine()                  # popups open without errors
 D.delete("hello-tool.desktop")
 assert D.list_created() == []
+
+# ---- "Srboli tool" and "File / folder" pickers --------------------------------------------
+scr._clear()
+scr.fill_tool("drawing", "Drawing")
+assert scr._name.text == "Srboli Drawing" and "Drawing" in scr._comment.text
+assert scr._argv()[-2:] == ["--open", "drawing"], scr._argv()
+text, problems = scr._entry_text()
+assert text is not None and "--open drawing" in text, text
+scr._create()
+assert D.exists("srboli-drawing.desktop")
+scr._clear()
+scr.fill_file("/tmp/some file.txt")
+assert scr._argv() == ["xdg-open", "/tmp/some file.txt"] and scr._name.text == "some file.txt"
+scr._clear()
+scr._pick_tool()                                  # opens the picker without error
 print("shortcut screen OK")
