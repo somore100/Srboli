@@ -13,6 +13,8 @@
 #     "rounded": bool,                     # rounded buttons (default True)
 #     "theme": "dark" | "blue" | "light",   # colour preset, applied at startup
 #     "show_recent": bool,                 # show the Dashboard "Recent" row (default True)
+#     "start_collapsed": bool,             # every Dashboard section starts folded (default False)
+#     "group_overrides": {route: section key},  # tools moved to another Dashboard section
 #     "recent":     [route, ...],          # last used tools (Dashboard "Recent" row)
 #     "collapsed":  [group key, ...]       # Dashboard sections folded shut
 #   }
@@ -99,6 +101,9 @@ def load_settings():
     data["preload_bg"] = bool(data.get("preload_bg", False))
     data["advanced_logging"] = bool(data.get("advanced_logging", False))
     data["show_recent"] = bool(data.get("show_recent", True))
+    data["start_collapsed"] = bool(data.get("start_collapsed", False))
+    data["group_overrides"] = dash.clean_overrides(
+        data.get("group_overrides"), known, dash.all_group_keys(GROUPS))
     data["recent"], data["collapsed"] = dash.clean_state(
         data.get("recent"), data.get("collapsed"), known,
         [k for k, _t, _r in GROUPS] + [dash.OTHER_KEY])
@@ -330,6 +335,9 @@ class SettingsScreen(Screen):
         self._rec_cb = check("Show a \"Recent\" row (the tools you opened last)",
                              self._cfg.get("show_recent", True),
                              self._toggle_recent)
+        self._fold_cb = check("Start with every category folded (tap one to open it)",
+                              self._cfg.get("start_collapsed", False),
+                              self._toggle_start_collapsed)
         content.add_widget(wrapped(
             "Tap a tool to select it, then move it up or down inside its "
             "section. Hidden tools stay reachable through Quick Switcher.",
@@ -339,8 +347,11 @@ class SettingsScreen(Screen):
         down_btn = Button(text="Move down", font_size=sp(12))
         up_btn.bind(on_release=lambda *a: self._move_selected(-1))
         down_btn.bind(on_release=lambda *a: self._move_selected(1))
+        cat_btn = Button(text="Move to category...", font_size=sp(12))
+        cat_btn.bind(on_release=lambda *a: self._move_category())
         move_row.add_widget(up_btn)
         move_row.add_widget(down_btn)
+        move_row.add_widget(cat_btn)
         content.add_widget(move_row)
         sv = ScrollView(size_hint_y=None, height=dp(300))
         self._grid = GridLayout(cols=1, spacing=2, size_hint_y=None, padding=(0, 4))
@@ -507,9 +518,45 @@ class SettingsScreen(Screen):
         self._refresh_list()
         self._status.text = f"Moved: {LABELS.get(self._selected, self._selected)}"
 
+    def _toggle_start_collapsed(self, inst, active):
+        self._cfg["start_collapsed"] = active
+        save_settings(self._cfg)
+        self._status.text = ("Categories will start folded." if active
+                             else "Categories will start the way you left them.")
+
+    def _move_category(self):
+        if self._selected is None:
+            self._status.text = "Tap a tool in the list first."
+            return
+        route = self._selected
+        box = BoxLayout(orientation="vertical", spacing=dp(4), padding=dp(6))
+        pop = Popup(title=f"Move {LABELS.get(route, route)} to...", content=box,
+                    size_hint=(0.85, None), height=dp(120 + 44 * (len(GROUPS) + 2)))
+        for key, title, _r in GROUPS + [(dash.OTHER_KEY, dash.OTHER_TITLE, [])]:
+            b = Button(text=title, size_hint_y=None, height=dp(40))
+            b.bind(on_release=lambda w, k=key, t=title: (pop.dismiss(), self.set_category(route, k, t)))
+            box.add_widget(b)
+        back = Button(text="Back to its normal category", size_hint_y=None, height=dp(40))
+        back.bind(on_release=lambda w: (pop.dismiss(), self.set_category(route, None, "")))
+        box.add_widget(back)
+        pop.open()
+
+    def set_category(self, route, key, title=""):
+        """Put a tool in another Dashboard section (key None = back to the default)."""
+        ov = dict(self._cfg.get("group_overrides") or {})
+        if key is None:
+            ov.pop(route, None)
+        else:
+            ov[route] = key
+        self._cfg["group_overrides"] = ov
+        save_settings(self._cfg)
+        self._status.text = (f"{LABELS.get(route, route)} is back in its normal category."
+                             if key is None else f"{LABELS.get(route, route)} moved to {title}.")
+
     def _reset_defaults(self, *a):
         self._cfg["order"]  = default_route_order()
         self._cfg["hidden"] = []
+        self._cfg["group_overrides"] = {}
         self._selected = None
         save_settings(self._cfg)
         self._refresh_list()

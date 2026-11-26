@@ -81,6 +81,8 @@ class Dashboard(Screen):
         super().__init__(**kw)
         self._open_route = open_route
         self._version = version
+        if load_settings().get("start_collapsed"):
+            update_dashboard_state(collapsed=dash.all_group_keys(GROUPS))
         self._build()
         Window.bind(width=self._on_width)
 
@@ -182,7 +184,7 @@ class Dashboard(Screen):
         recent = [] if not cfg.get("show_recent", True) else dash.visible_recent(
             cfg["recent"], menu, shown=dash.recent_shown(width, dp(1)))
         sig = (tuple(menu), query, tuple(recent), tuple(pinned),
-               tuple(cfg["collapsed"]), cols)
+               tuple(cfg["collapsed"]), cols, tuple(sorted(cfg["group_overrides"].items())))
         if sig == getattr(self, "_list_sig", None) and not force:
             return                      # nothing changed: no flash on Back
         self._list_sig = sig
@@ -209,7 +211,7 @@ class Dashboard(Screen):
             grid.add_widget(self._section_title("Recent"))
             grid.add_widget(self._tiles(recent, len(recent), 12, pin_set))
 
-        for key, title, members in dash.group_menu(menu, GROUPS):
+        for key, title, members in dash.group_menu(menu, GROUPS, cfg["group_overrides"]):
             folded = key in cfg["collapsed"]
             head = Button(text=f"[{'+' if folded else '-'}]  {title}  "
                                f"({len(members)})",

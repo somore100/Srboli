@@ -143,3 +143,48 @@ from kivy.metrics import sp
 tiles = [w for w in d3.walk() if isinstance(w, ToolButton)]
 assert tiles and all(t.font_size in (sp(14), sp(12)) for t in tiles), {t.font_size for t in tiles}
 print("tile font OK")
+
+# ---- moving tools between categories, folded start ---------------------------------------
+m3 = [(r, LABELS[r]) for r in ("chess", "text_editor", "music", "spin")]
+base = {k: [r for r, _l in ms] for k, _t, ms in dash.group_menu(m3, GROUPS)}
+assert base["fun"] == ["chess", "spin"] and base["media"] == ["music"], base
+moved = {k: [r for r, _l in ms] for k, _t, ms in dash.group_menu(m3, GROUPS, {"chess": "media"})}
+assert moved["fun"] == ["spin"] and moved["media"] == ["chess", "music"] or moved["media"] == ["music", "chess"], moved
+assert sorted(moved["media"]) == ["chess", "music"]
+toother = {k: [r for r, _l in ms] for k, _t, ms in dash.group_menu(m3, GROUPS, {"music": "other"})}
+assert toother["other"] == ["music"] and "media" not in toother, toother
+junk = {k: [r for r, _l in ms] for k, _t, ms in dash.group_menu(m3, GROUPS, {"chess": "nowhere"})}
+assert junk["fun"] == ["chess", "spin"]
+assert sum(len(v) for v in moved.values()) == 4          # nothing lost or doubled
+assert dash.clean_overrides({"chess": "files", "nope": "files", "spin": "zzz", 5: "x"}, ["chess", "spin"],
+                            dash.all_group_keys(GROUPS)) == {"chess": "files"}
+assert dash.clean_overrides(None, ["chess"], ["files"]) == {} and dash.all_group_keys(GROUPS)[-1] == "other"
+
+cfg_ = st.load_settings(); assert cfg_["start_collapsed"] is False and cfg_["group_overrides"] == {}
+cfg_["group_overrides"] = {"chess": "writing", "ghost": "files"}; st.save_settings(cfg_)
+assert st.load_settings()["group_overrides"] == {"chess": "writing"}
+cfg_ = st.load_settings(); cfg_["collapsed"] = []; st.save_settings(cfg_)
+st.update_dashboard_state(collapsed=[])
+d4 = Dashboard(name="d4"); d4.manager = MagicMock()
+heads = [w.text for w in reversed(d4._grid.children) if isinstance(w, Button) and w.text.startswith("[")]
+assert any("Writing  (6)" in h for h in heads) and any("Fun  (5)" in h for h in heads), heads
+cfg_ = st.load_settings(); cfg_["group_overrides"] = {}; cfg_["start_collapsed"] = True; st.save_settings(cfg_)
+d5 = Dashboard(name="d5"); d5.manager = MagicMock()
+heads = [w.text for w in reversed(d5._grid.children) if isinstance(w, Button) and w.text.startswith("[")]
+assert heads and all(h.startswith("[+]") for h in heads), heads
+assert "Chess" not in [t for t in tool_labels(d5) if not t.startswith(("R:", "P:"))]
+d5._toggle_section("fun")
+assert "Chess" in [t for t in tool_labels(d5) if not t.startswith(("R:", "P:"))]
+cfg_ = st.load_settings(); cfg_["start_collapsed"] = False; st.save_settings(cfg_)
+ssc = st.SettingsScreen(name="s_cat")
+ssc._selected = None; ssc._move_category()
+assert "Tap a tool" in ssc._status.text
+ssc.set_category("chess", "media", "Media")
+assert st.load_settings()["group_overrides"] == {"chess": "media"} and "moved to Media" in ssc._status.text
+ssc.set_category("chess", None)
+assert st.load_settings()["group_overrides"] == {}
+ssc._selected = "chess"; ssc._move_category()
+ssc._toggle_start_collapsed(None, True); assert st.load_settings()["start_collapsed"] is True
+ssc._toggle_start_collapsed(None, False)
+ssc._cfg["group_overrides"] = {"chess": "files"}; ssc._reset_defaults(); assert st.load_settings()["group_overrides"] == {}
+print("categories OK")

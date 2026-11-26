@@ -134,6 +134,9 @@ ov.popup.dismiss()
 ov.edit(1)
 check("drag editor has two rows", set(ov._fields) == {"interval", "duration"})
 ov.popup.dismiss()
+ov.edit(0)
+check("click editor offers hold time too", set(ov._fields) == {"interval", "duration"})
+ov.popup.dismiss()
 check("apply interval seconds", ov.apply_edit(0, "2", "seconds") and ov.macro.actions[0]["interval_ms"] == 2000)
 check("apply drag duration", ov.apply_edit(1, "300", "ms", "1", "seconds") and ov.macro.actions[1]["duration_ms"] == 1000
       and ov.macro.actions[1]["interval_ms"] == 300)
@@ -180,11 +183,42 @@ chip = sb.targets.chip_rect()
 ov.macro.update(len(ov.macro.actions) - 1, x=ov.frac_of(chip[0] + 5, chip[1] + 5)[0], y=ov.frac_of(chip[0] + 5, chip[1] + 5)[1],
                 x2=0.9, y2=ov.frac_of(0, chip[1])[1])
 ov.running = True
-ov.fire([e for e in mc.plan(ov.macro, sb.width, sb.height) if e[1] == "drag"][0])
-check("playback drag moves chip", sb.targets.chip_f > 0.5, sb.targets.chip_f)
+dev = [e for e in mc.plan(ov.macro, sb.width, sb.height) if e[1] == "drag"][0]
+f0 = sb.targets.chip_f
+ov.fire(dev)
+check("drag is progressive, not a jump", sb.targets.chip_f == f0 and sb.targets._anim is not None)
+sb.targets._step(dev[6] / 2000.0)
+check("half way through the drag", f0 < sb.targets.chip_f < 0.9, (f0, sb.targets.chip_f))
+half = sb.targets.chip_f
+sb.targets._step(dev[6] / 4000.0)
+check("keeps moving", sb.targets.chip_f > half)
+sb.targets.finish_drag()
+check("playback drag ends at the target", sb.targets.chip_f > 0.5, sb.targets.chip_f)
+check("only the performed action lights up", ov.active_idx == dev[7]
+      and all(ov.is_active(m.idx) == (m.idx == dev[7]) for m in ov.markers))
+ov.stop()
+check("stop clears the highlight", ov.active_idx is None and not any(ov.is_active(i) for i in range(5)))
+ov.running = True
 ov.running = False
 ov.fire(mc.plan(ov.macro, sb.width, sb.height)[0])
 check("fire ignored when stopped", sb.targets.counts[0] == 1)
+# long press: held click is counted as a hold, not a tap
+sb.targets.reset()
+tile = sb.targets.tile_rects()[2]
+cx, cy = tile[0] + tile[2] / 2, tile[1] + tile[3] / 2
+sb.inject_click(cx, cy, 800)
+sb.inject_click(cx, cy, 0)
+check("hold vs tap", sb.targets.holds[2] == 1 and sb.targets.counts[2] == 1, (sb.targets.holds, sb.targets.counts))
+check("hold text", "held" in sb.targets.labels[2].text)
+ov.macro.actions.clear(); ov.rebuild()
+ov.add_click()
+check("click has hold field", ov.macro.actions[0]["hold_ms"] == 0)
+ov.apply_edit(0, "1", "seconds", "2", "seconds")
+check("hold edit applied", ov.macro.actions[0]["hold_ms"] == 2000 and ov.macro.actions[0]["interval_ms"] == 1000)
+ev = mc.plan(ov.macro, sb.width, sb.height)[0]
+check("plan carries the hold (scaled by speed)", ev[6] == int(2000 / ov.macro.speed), ev)
+ov.macro.actions.clear(); ov.rebuild()
+ov.add_click(); ov.add_drag()
 ov.btn["undo"].dispatch("on_release"); ov.btn["undo"].dispatch("on_release")
 ov.btn["run"].dispatch("on_release")
 check("empty macro will not run", not ov.running)
@@ -205,6 +239,7 @@ check("manual tap counted", sb.targets.counts[1] == 1)
 chip = sb.targets.chip_rect()
 drag((chip[0] + 5, chip[1] + 5), (sb.right - 20, chip[1] + 5))
 check("manual chip drag", sb.targets.chip_f > 0.9, sb.targets.chip_f)
+check("bubbles start on the left, clear of the toolbar", sb.bubbles["master"].center_x < sb.center_x)
 
 # ---- simulated recorder ----------------------------------------------------------------
 rb = sb.bubbles["rec"]

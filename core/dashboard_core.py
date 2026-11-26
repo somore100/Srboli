@@ -14,16 +14,21 @@ RECENT_KEPT = 8           # remembered (some may be hidden later)
 OTHER_KEY, OTHER_TITLE = "other", "Other"
 
 
-def group_menu(menu, groups):
+def group_menu(menu, groups, overrides=None):
     """-> [(key, title, [(route, label), ...])]. Sections in `groups` order,
     tools inside in menu (= the user's) order, empty sections left out, and any
-    tool no section lists collected in a last "Other" section."""
+    tool no section lists collected in a last "Other" section.
+    `overrides` {route: section key} moves a tool to another section (or to
+    "other") whatever the registry says."""
     by_route = dict(menu)
     order = {r: i for i, (r, _l) in enumerate(menu)}
+    keys = {k for k, _t, _r in groups}
+    ov = {r: g for r, g in (overrides or {}).items() if g in keys or g == OTHER_KEY}
     claimed = set()
     out = []
     for key, title, routes in groups:
-        members = [r for r in routes if r in by_route]
+        members = [r for r in routes if r in by_route and ov.get(r, key) == key]
+        members += [r for r, g in ov.items() if g == key and r in by_route and r not in members]
         claimed.update(members)
         members.sort(key=order.__getitem__)    # the USER's order, not the registry's
         if members:
@@ -65,6 +70,19 @@ def toggle_collapsed(collapsed, key):
     """A new list with `key` collapsed, or expanded if it was collapsed."""
     return [k for k in collapsed if k != key] if key in collapsed \
         else list(collapsed) + [key]
+
+
+def all_group_keys(groups):
+    """Every section key the Dashboard can show, "Other" included."""
+    return [k for k, _t, _r in groups] + [OTHER_KEY]
+
+
+def clean_overrides(d, known_routes, known_groups):
+    """Only {known route: known section key} pairs from saved settings."""
+    known_routes, known_groups = set(known_routes), set(known_groups)
+    return {r: g for r, g in (d.items() if isinstance(d, dict) else [])
+            if isinstance(r, str) and isinstance(g, str)
+            and r in known_routes and g in known_groups}
 
 
 def clean_state(recent, collapsed, known_routes, known_groups):

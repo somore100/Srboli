@@ -239,15 +239,25 @@ class LearnScreen(Screen):
         box.add_widget(out)
 
         def refresh(*a):
-            out.text = L.build_prompt(topic.text, level.text, _mode_of(mode_sp))
+            text = L.build_prompt(topic.text, level.text, _mode_of(mode_sp))
+            if out.text != text:                # re-laying out the long box is the slow part
+                out.text = text
 
-        topic.bind(text=refresh)
-        level.bind(text=refresh)
-        mode_sp.bind(text=refresh)
+        def refresh_soon(*a):
+            # Rebuilding the prompt box on every keystroke made typing lag on phones;
+            # wait until the typing pauses.
+            Clock.unschedule(refresh)
+            Clock.schedule_once(refresh, 0.5)
+
+        topic.bind(text=refresh_soon)
+        level.bind(text=refresh_soon)
+        mode_sp.bind(text=refresh_soon)
         refresh()
+        self._prompt_refresh = refresh
 
         def copy():
             try:
+                Clock.unschedule(refresh)
                 Clipboard.copy(L.build_prompt(topic.text, level.text, _mode_of(mode_sp)))
                 msg.text = "Copied. Paste it into your AI chat."
             except Exception:
@@ -262,6 +272,8 @@ class LearnScreen(Screen):
         box.add_widget(row)
         p = Popup(title="Prompt for the AI", content=box,
                   size_hint=(0.95, 0.9))
+        p.bind(on_dismiss=lambda *a: Clock.unschedule(refresh))
+        self._prompt = (p, topic, level, out)
         p.open()
 
     # ---- course view -----------------------------------------------------

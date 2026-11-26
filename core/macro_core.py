@@ -30,6 +30,8 @@ def clean_action(a):
     out = {"kind": a["kind"],
            "x": _num(a.get("x"), 0, 1, 0.5), "y": _num(a.get("y"), 0, 1, 0.5),
            "interval_ms": int(_num(a.get("interval_ms"), MIN_MS, MAX_MS, DEFAULT_INTERVAL))}
+    if out["kind"] == "click":
+        out["hold_ms"] = int(_num(a.get("hold_ms"), 0, MAX_MS, 0))      # 0 = a quick tap
     if out["kind"] == "drag":
         out["x2"] = _num(a.get("x2"), 0, 1, out["x"])
         out["y2"] = _num(a.get("y2"), 0, 1, out["y"])
@@ -44,8 +46,9 @@ class Macro:
         self.loops = int(_num(loops, 0, MAX_LOOPS, 1))      # 0 = until stopped
         self.speed = _num(speed, 0.25, 4.0, 1.0)
 
-    def add_click(self, x, y, interval_ms=DEFAULT_INTERVAL):
-        return self._add({"kind": "click", "x": x, "y": y, "interval_ms": interval_ms})
+    def add_click(self, x, y, interval_ms=DEFAULT_INTERVAL, hold_ms=0):
+        return self._add({"kind": "click", "x": x, "y": y, "interval_ms": interval_ms,
+                          "hold_ms": hold_ms})
 
     def add_drag(self, x, y, x2, y2, duration_ms=DEFAULT_DRAG_MS, interval_ms=DEFAULT_INTERVAL):
         return self._add({"kind": "drag", "x": x, "y": y, "x2": x2, "y2": y2,
@@ -96,7 +99,8 @@ class Macro:
 
 
 def plan(macro, w, h):
-    """Timed events [(t_ms, kind, x, y, x2, y2, duration_ms, index)] in pixels for a w*h screen.
+    """Timed events [(t_ms, kind, x, y, x2, y2, duration_ms, index)] in pixels for a w*h screen
+    (duration_ms is the drag time, or how long a click is held).
     Every loop repeats the actions; speed scales every wait and drag. loops == 0 plans one pass
     (the player repeats it)."""
     events, t = [], 0.0
@@ -108,7 +112,9 @@ def plan(macro, w, h):
                 events.append((int(t), "drag", x, y, a["x2"] * w, a["y2"] * h, int(dur), i))
                 t += dur
             else:
-                events.append((int(t), "click", x, y, x, y, 0, i))
+                hold = a["hold_ms"] / macro.speed
+                events.append((int(t), "click", x, y, x, y, int(hold), i))
+                t += hold
             t += a["interval_ms"] / macro.speed
     return events
 
