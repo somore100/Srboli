@@ -1,12 +1,13 @@
 # core/image_tools_core.py - batch image work for the Image Tools screen. Needs Pillow.
 #
 #   process_file: shrink / compress / convert one picture
+#   resize_file:  make a picture bigger or smaller (percent, longest side, exact size)
 #   combine:      stitch several pictures into one (vertical, horizontal, grid)
 # Originals are never changed: results go to a "srboli_images" folder next to the
 # first picture, with names that never overwrite anything.
 import os
 
-from PIL import Image, ImageOps
+from PIL import Image, ImageFilter, ImageOps
 
 OUT_DIR_NAME = "srboli_images"
 FORMATS = {"keep": None, "JPG": "JPEG", "PNG": "PNG", "WEBP": "WEBP"}
@@ -83,6 +84,102 @@ def process_file(src, out_dir, max_side=0, fmt_choice="keep", quality=85):
     out = unique_path(out_dir, stem, EXT[fmt])
     save_image(img, out, fmt, quality)
     return out, os.path.getsize(src), os.path.getsize(out)
+
+
+# ---- resize / upscale -------------------------------------------------------------
+RESIZE_MODES = ("percent", "longest", "exact")
+FITS = ("fit", "fill", "stretch")
+MAX_PIXELS = 100_000_000          # about 100 megapixels: more would run out of memory
+
+
+def image_size(path):
+    """(width, height) as the picture is shown upright, without decoding all of it."""
+    with Image.open(path) as im:
+        w, h = im.size
+        try:
+            if im.getexif().get(274) in (5, 6, 7, 8):
+                w, h = h, w
+        except Exception:
+            pass
+    return w, h
+
+
+def plan_size(w, h, mode, value=100, width=0, height=0, fit="fit"):
+    """Output (w, h) for an input of w x h. Raises ValueError for unusable settings.
+
+    percent:  value is a percentage of the original size (200 = twice as big)
+    longest:  the longer side becomes `value` px (up or down), ratio kept
+    exact:    width x height; fit = inside the box, fill = covers the box (cropped),
+              stretch = exactly the box, ratio ignored. One of width/height may be 0
+              (then the other decides and the ratio is kept)."""
+    if w < 1 or h < 1:
+        raise ValueError("The picture has no size.")
+    if mode == "percent":
+        k = float(value) / 100.0
+        if k <= 0:
+            raise ValueError("Percent must be more than 0.")
+        nw, nh = max(1, round(w * k)), max(1, round(h * k))
+    elif mode == "longest":
+        if not value or value < 1:
+            raise ValueError("Give the length in pixels.")
+        k = float(value) / max(w, h)
+        nw, nh = max(1, round(w * k)), max(1, round(h * k))
+    elif mode == "exact":
+        width, height = int(width or 0), int(height or 0)
+        if width < 1 and height < 1:
+            raise ValueError("Give a width or a height.")
+        if width < 1:
+            width = max(1, round(w * height / h))
+        elif height < 1:
+            height = max(1, round(h * width / w))
+        if fit == "stretch" or fit == "fill":
+            nw, nh = width, height
+        else:
+            k = min(width / w, height / h)
+            nw, nh = max(1, round(w * k)), max(1, round(h * k))
+    else:
+        raise ValueError("Unknown resize mode.")
+    if max(nw, nh) > MAX_SIDE_LIMIT or nw * nh > MAX_PIXELS:
+        raise ValueError(f"{nw} x {nh} px is too big for this device "
+                         f"(limit {MAX_SIDE_LIMIT} px a side, 100 megapixels).")
+    return nw, nh
+
+
+def resize_image(img, mode, value=100, width=0, height=0, fit="fit", sharpen=0):
+    """A resized copy. sharpen 0 (off) to 3 (strong) crispens an enlarged picture; it adds no
+    new detail, it only makes edges look cleaner."""
+    w, h = img.size
+    nw, nh = plan_size(w, h, mode, value, width, height, fit)
+    if mode == "exact" and fit == "fill":
+        k = max(nw / w, nh / h)
+        sw, sh = max(nw, round(w * k)), max(nh, round(h * k))
+        out = img.resize((sw, sh), Image.LANCZOS)
+        left, top = (sw - nw) // 2, (sh - nh) // 2
+        out = out.crop((left, top, left + nw, top + nh))
+    elif (nw, nh) == (w, h):
+        out = img.copy()
+    else:
+        out = img.resize((nw, nh), Image.LANCZOS)
+    if sharpen and 1 <= int(sharpen) <= 3:
+        out = out.filter(ImageFilter.UnsharpMask(radius=1.4, percent=int(sharpen) * 55, threshold=2))
+    return out
+
+
+def describe_resize(w, h, nw, nh):
+    k = (nw * nh) / float(w * h)
+    kind = "bigger" if k > 1.0001 else "smaller" if k < 0.9999 else "same size"
+    return f"{w} x {h} -> {nw} x {nh} px ({kind})"
+
+
+def resize_file(src, out_dir, mode, value=100, width=0, height=0, fit="fit", sharpen=0,
+                fmt_choice="keep", quality=85):
+    """Returns (out_path, bytes_before, bytes_after, (new_w, new_h))."""
+    img = resize_image(load(src), mode, value, width, height, fit, sharpen)
+    fmt = _target_format(src, fmt_choice)
+    stem = os.path.splitext(os.path.basename(src))[0]
+    out = unique_path(out_dir, f"{stem}-{img.width}x{img.height}", EXT[fmt])
+    save_image(img, out, fmt, quality)
+    return out, os.path.getsize(src), os.path.getsize(out), img.size
 
 
 def _parse_bg(bg):

@@ -1,5 +1,6 @@
 # screens/image_tools_screen.py - Image Tools: shrink / compress / convert many pictures at
-# once, or combine them into one image. Originals are never changed; results go to a
+# once, make them bigger or smaller by percent / longest side / exact size (with optional
+# sharpening), or combine them into one image. Originals are never changed; results go to a
 # "srboli_images" folder next to the first picture. Logic: core/image_tools_core.py.
 import os
 import threading
@@ -15,6 +16,7 @@ from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.slider import Slider
 from kivy.uix.spinner import Spinner
+from kivy.uix.textinput import TextInput
 from kivy.uix.widget import Widget
 
 from core import image_tools_core as core
@@ -26,6 +28,10 @@ SIDES = {"Keep size": 0, "3840 px": 3840, "2560 px": 2560, "1920 px": 1920,
          "1280 px": 1280, "1024 px": 1024, "800 px": 800, "640 px": 640}
 SIZES = {"800 px": 800, "1200 px": 1200, "1600 px": 1600, "2400 px": 2400, "3200 px": 3200}
 GAPS = {"No gap": 0, "Small gap": 12, "Big gap": 40}
+RESIZE_HOW = {"By percent": "percent", "Longest side": "longest", "Exact size": "exact"}
+FIT_NAMES = {"Fit inside": "fit", "Fill (crop)": "fill", "Stretch": "stretch"}
+SHARPEN = {"No sharpening": 0, "Light sharpening": 1, "Medium sharpening": 2, "Strong sharpening": 3}
+PERCENTS = (50, 150, 200, 300, 400)
 LAYOUT_NAMES = {"Stack (top to bottom)": "vertical", "Side by side": "horizontal",
                 "Grid": "grid"}
 
@@ -54,8 +60,8 @@ class ImageToolsScreen(ToolScreen):
 
         tabs = _row()
         self.tab_btns = {}
-        for key, label in (("each", "Each file (shrink, compress, convert)"),
-                           ("combine", "Combine into one image")):
+        for key, label in (("each", "Shrink / compress"), ("resize", "Resize / upscale"),
+                           ("combine", "Combine")):
             b = Button(text=label, font_size=sp(12))
             b.bind(on_release=lambda *a, k=key: self.set_mode(k))
             tabs.add_widget(b)
@@ -91,6 +97,23 @@ class ImageToolsScreen(ToolScreen):
         self.gap_sp = Spinner(text="No gap", values=list(GAPS), font_size=sp(12))
         self.size_sp = Spinner(text="1600 px", values=list(SIZES), font_size=sp(12))
         self.cfmt_sp = Spinner(text="JPG", values=["JPG", "PNG"], font_size=sp(12))
+        self.rhow_sp = Spinner(text="By percent", values=list(RESIZE_HOW), font_size=sp(12))
+        self.rval_in = TextInput(text="200", multiline=False, input_filter="int", font_size=sp(13),
+                                 size_hint_x=None, width=dp(90))
+        self.rw_in = TextInput(text="", hint_text="width", multiline=False, input_filter="int",
+                               font_size=sp(13))
+        self.rh_in = TextInput(text="", hint_text="height", multiline=False, input_filter="int",
+                               font_size=sp(13))
+        self.fit_sp = Spinner(text="Fit inside", values=list(FIT_NAMES), font_size=sp(12))
+        self.sharp_sp = Spinner(text="No sharpening", values=list(SHARPEN), font_size=sp(12))
+        self.rprev = Label(text="", font_size=sp(12), color=theme.MUTED, size_hint_y=None,
+                           height=dp(36), halign="left", valign="middle")
+        self.rprev.bind(size=lambda w, v: setattr(w, "text_size", v))
+        for w in (self.rval_in, self.rw_in, self.rh_in):
+            w.bind(text=lambda *a: self.update_preview())
+        for w in (self.fit_sp, self.sharp_sp):
+            w.bind(text=lambda *a: self.update_preview())
+        self.rhow_sp.bind(text=lambda *a: self.set_mode("resize"))
         self.q_label = Label(text="", font_size=sp(12), size_hint_x=None, width=dp(110))
         self.q_slider = Slider(min=10, max=100, step=1, value=85)
         self.q_slider.bind(value=lambda *a: self._sync_q())
@@ -115,11 +138,60 @@ class ImageToolsScreen(ToolScreen):
         if mode == "each":
             self.opts.add_widget(_put(_row(), self.side_sp, self.fmt_sp))
             self.run_btn.text = "Shrink / compress / convert"
+        elif mode == "resize":
+            how = RESIZE_HOW[self.rhow_sp.text]
+            self.opts.add_widget(_put(_row(), self.rhow_sp, self.sharp_sp))
+            if how == "exact":
+                self.opts.add_widget(_put(_row(), self.rw_in, Label(text="x", size_hint_x=None, width=dp(20)),
+                                          self.rh_in, self.fit_sp))
+            else:
+                unit = Label(text="%" if how == "percent" else "px", size_hint_x=None, width=dp(30))
+                row = _put(_row(), self.rval_in, unit)
+                if how == "percent":
+                    for pc in PERCENTS:
+                        b = Button(text=f"{pc}%", font_size=sp(11))
+                        b.bind(on_release=lambda w, pc=pc: setattr(self.rval_in, "text", str(pc)))
+                        row.add_widget(b)
+                self.opts.add_widget(row)
+            self.opts.add_widget(_put(_row(34), self.fmt_sp))
+            self.opts.add_widget(self.rprev)
+            self.run_btn.text = "Resize"
         else:
             self.opts.add_widget(_put(_row(), self.layout_sp, self.cols_sp))
             self.opts.add_widget(_put(_row(), self.gap_sp, self.size_sp, self.cfmt_sp))
             self.run_btn.text = "Combine into one image"
         self.opts.add_widget(_put(_row(34), self.q_label, self.q_slider))
+        self.update_preview()
+
+    def resize_settings(self):
+        def num(w):
+            try:
+                return int(w.text)
+            except ValueError:
+                return 0
+        return {"mode": RESIZE_HOW[self.rhow_sp.text], "value": num(self.rval_in),
+                "width": num(self.rw_in), "height": num(self.rh_in),
+                "fit": FIT_NAMES[self.fit_sp.text], "sharpen": SHARPEN[self.sharp_sp.text]}
+
+    def update_preview(self):
+        """What the first picture will become, or why the settings do not work."""
+        if self.mode != "resize":
+            return None
+        self.rprev.color = theme.MUTED
+        if not self.paths:
+            self.rprev.text = "Add pictures to see the new size."
+            return None
+        r = self.resize_settings()
+        try:
+            w, h = core.image_size(self.paths[0])
+            nw, nh = core.plan_size(w, h, r["mode"], r["value"], r["width"], r["height"], r["fit"])
+        except Exception as e:
+            self.rprev.color = theme.DANGER
+            self.rprev.text = str(e)
+            return None
+        more = f"  (+{len(self.paths) - 1} more)" if len(self.paths) > 1 else ""
+        self.rprev.text = core.describe_resize(w, h, nw, nh) + more
+        return (nw, nh)
 
     def _sync_q(self):
         self.q_label.text = f"Quality {int(self.q_slider.value)}"
@@ -170,6 +242,7 @@ class ImageToolsScreen(ToolScreen):
         self.refresh()
 
     def refresh(self):
+        self.update_preview()
         self.grid.clear_widgets()
         if not self.paths:
             self.grid.add_widget(Label(text="No pictures yet. Tap Add pictures.",
@@ -209,11 +282,15 @@ class ImageToolsScreen(ToolScreen):
         if self.mode == "combine" and len(self.paths) < 2:
             self.status.text = "Add at least two pictures to combine."
             return
+        if self.mode == "resize" and self.update_preview() is None:
+            self.status.text = self.rprev.text
+            return
         self._running = True
         self.run_btn.disabled = True
         self.status.text = "Working..."
         self.status.color = theme.MUTED
         paths, s, mode = list(self.paths), self.settings(), self.mode
+        s["resize"] = self.resize_settings()
         threading.Thread(target=self._work, args=(paths, s, mode), daemon=True).start()
 
     def _work(self, paths, s, mode):
@@ -229,8 +306,14 @@ class ImageToolsScreen(ToolScreen):
                 errors = []
                 for p in paths:
                     try:
-                        _o, b, a = core.process_file(p, out_dir, s["max_side"], s["fmt"],
-                                                     s["quality"])
+                        if mode == "resize":
+                            r = s["resize"]
+                            _o, b, a, _sz = core.resize_file(
+                                p, out_dir, r["mode"], r["value"], r["width"], r["height"],
+                                r["fit"], r["sharpen"], s["fmt"], s["quality"])
+                        else:
+                            _o, b, a = core.process_file(p, out_dir, s["max_side"], s["fmt"],
+                                                         s["quality"])
                         before += b
                         after += a
                         done += 1
