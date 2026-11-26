@@ -27,6 +27,21 @@ from core import theme
 
 FOLDER = "macros"
 LONG_PRESS_MS = 400
+PERMISSIONS_HELP = (
+    "[b]Why this matters[/b]\n"
+    "This sandbox needs no permission. The real floating bubble, the macro tool and the screen "
+    "recorder will need Android's \"Display over other apps\", and the macro tool also needs "
+    "Accessibility (that is what lets it tap and drag for you).\n\n"
+    "[b]If Android says the setting is restricted[/b] (apps installed from a file, not a store):\n"
+    "1. Try to switch the permission on once, so Android notes the attempt.\n"
+    "2. Open Settings > Apps > Srboli.\n"
+    "3. Tap the three dots (top right) and choose [b]Allow restricted settings[/b].\n"
+    "4. Confirm with your fingerprint or PIN, then go back and switch the permission on.\n\n"
+    "[b]Display over other apps:[/b] Settings > Apps > Srboli > Display over other apps "
+    "(sometimes under Special access).\n"
+    "[b]Accessibility:[/b] Settings > Accessibility > Installed apps > Srboli.\n\n"
+    "Menus differ a little between phone brands. You can switch either permission off again "
+    "at any time in the same place.")
 BLUE = (0.25, 0.55, 1.0)
 GREEN = (0.2, 0.8, 0.4)
 ORANGE = (1.0, 0.55, 0.15)
@@ -525,13 +540,13 @@ class MacroOverlay(Widget):
         sb.bind(pos=self._sync, size=self._sync)
 
         self.toolbar = BoxLayout(orientation="vertical", size_hint=(None, None),
-                                 size=(dp(76), dp(8 * 40 + 7 * 3 + 12)), spacing=dp(3), padding=dp(4))
+                                 size=(dp(64), dp(8 * 31 + 7 * 3 + 10)), spacing=dp(3), padding=dp(4))
         self.btn = {}
         for key, text, fn in (("run", "Run", self.toggle_run), ("click", "+ Click", self.add_click),
                               ("drag", "+ Drag", self.add_drag), ("undo", "- Last", self.remove_last),
                               ("save", "Save", self.save), ("eye", "Hide", self.toggle_hidden),
                               ("set", "Settings", self.toggle_settings), ("quit", "Quit", self.quit)):
-            b = Button(text=text, font_size=sp(12))
+            b = Button(text=text, font_size=sp(10.5))
             b.bind(on_release=lambda w, fn=fn: fn())
             self.btn[key] = b
             self.toolbar.add_widget(b)
@@ -539,25 +554,25 @@ class MacroOverlay(Widget):
         self.add_widget(self.toolbar)
 
         self.panel = BoxLayout(orientation="vertical", size_hint=(None, None),
-                               size=(dp(210), dp(210)), spacing=dp(4), padding=dp(6))
-        top = BoxLayout(size_hint_y=None, height=dp(30))
-        top.add_widget(_lab("Macro settings", 12, bold=True))
-        mini = Button(text="Minimise", font_size=sp(11), size_hint_x=None, width=dp(74))
+                               size=(dp(190), dp(172)), spacing=dp(3), padding=dp(5))
+        top = BoxLayout(size_hint_y=None, height=dp(26))
+        top.add_widget(_lab("Macro settings", 11, bold=True))
+        mini = Button(text="Minimise", font_size=sp(10), size_hint_x=None, width=dp(64))
         mini.bind(on_release=lambda *_: self.toggle_settings())
         top.add_widget(mini)
         self.panel.add_widget(top)
-        self.name_in = TextInput(text=self.macro.name, multiline=False, size_hint_y=None, height=dp(34))
+        self.name_in = TextInput(text=self.macro.name, multiline=False, size_hint_y=None, height=dp(28), font_size=sp(12))
         self.loops_in = TextInput(text=str(self.macro.loops), multiline=False, input_filter="int",
-                                  size_hint_y=None, height=dp(34))
-        self.speed_sp = Spinner(text="1x", values=SPEEDS, size_hint_y=None, height=dp(34))
+                                  size_hint_y=None, height=dp(28), font_size=sp(12))
+        self.speed_sp = Spinner(text="1x", values=SPEEDS, size_hint_y=None, height=dp(28), font_size=sp(12))
         self.name_in.bind(text=lambda w, v: setattr(self.macro, "name", v[:60] or "Macro"))
         self.loops_in.bind(text=lambda w, v: self.macro.set_loops(v))
         self.speed_sp.bind(text=lambda w, v: self.macro.set_speed(float(v[:-1])))
         for caption, w in (("Name", self.name_in), ("Repeat (0 = until stopped)", self.loops_in),
                            ("Speed", self.speed_sp)):
-            self.panel.add_widget(_lab(caption, 10, theme.MUTED, size_hint_y=None, height=dp(14), halign="left"))
+            self.panel.add_widget(_lab(caption, 9, theme.MUTED, size_hint_y=None, height=dp(12), halign="left"))
             self.panel.add_widget(w)
-        opn = Button(text="Open saved...", size_hint_y=None, height=dp(34))
+        opn = Button(text="Open saved...", size_hint_y=None, height=dp(28), font_size=sp(11))
         opn.bind(on_release=lambda *_: self.open_saved())
         self.panel.add_widget(opn)
         self.panel.bind(pos=self._bg, size=self._bg)
@@ -867,7 +882,7 @@ class Sandbox(Widget):
         super().__init__(**kw)
         self.folder_fn = folder_fn or (lambda: app_data.subdir(FOLDER))
         self.bubbles, self.menu_items = {}, []
-        self.calc = self.macro = self.xt = self.popup = None
+        self.calc = self.macro = self.xt = self.popup = self.help_popup = None
         self.rec = None
         self._rec_ev = None
         self.targets = Targets()
@@ -908,6 +923,24 @@ class Sandbox(Widget):
     def inject_drag(self, x, y, x2, y2, dur_ms=500):
         self.fx.trail(x, y, x2, y2, dur_ms / 1000.0)
         return self.targets.drag(x, y, x2, y2, dur_ms)
+
+    def permissions_help(self):
+        """How to switch on what the real (not sandbox) floating tools will need."""
+        lab = Label(text=PERMISSIONS_HELP, font_size=sp(12), halign="left", valign="top",
+                    size_hint_y=None, markup=True)
+        lab.bind(width=lambda w, v: setattr(w, "text_size", (v, None)),
+                 texture_size=lambda w, v: setattr(w, "height", v[1] + dp(10)))
+        sv = ScrollView()
+        sv.add_widget(lab)
+        box = BoxLayout(orientation="vertical", spacing=dp(6))
+        box.add_widget(sv)
+        ok = Button(text="Close", size_hint_y=None, height=dp(40))
+        box.add_widget(ok)
+        pop = Popup(title="Allowing floating tools on your phone", content=box, size_hint=(0.94, 0.85))
+        ok.bind(on_release=lambda *_: pop.dismiss())
+        pop.open()
+        self.help_popup = pop
+        return pop
 
     def reset(self):
         self.close_menu()
@@ -1092,6 +1125,7 @@ class OverlaySandboxScreen(Screen):
                               ("rec", "Rec dot", lambda: self.sb.toggle_bubble("rec")),
                               ("macro", "Macro", lambda: self.sb.toggle_macro()),
                               ("panel", "Calculator", lambda: self.sb.toggle_calc()),
+                              ("help", "Permissions", lambda: self.sb.permissions_help()),
                               ("reset", "Reset", lambda: self.sb.reset())):
             b = Button(text=text, size_hint_x=None, width=dp(92))
             b.bind(on_release=lambda w, fn=fn: fn())

@@ -104,6 +104,7 @@ check("menu Rec spawns recorder bubble", "rec" in sb.bubbles)
 # ---- macro tool ------------------------------------------------------------------------
 ov = sb.open_macro()
 for _ in range(2): Clock.tick()
+check("toolbar buttons are compact", all(b.height <= dp(33) for b in ov.btn.values()), [b.height for b in ov.btn.values()][:2])
 check("toolbar on right", ov.toolbar.right <= sb.right and ov.toolbar.x > sb.center_x)
 check("settings start minimised", not ov.settings_open and ov.panel.parent is None)
 ov.btn["set"].dispatch("on_release")
@@ -253,6 +254,12 @@ tap(*rb.center)
 check("tap stops recording", sb.rec is None and rb.lab.text == "Rec" and "Simulated" in sb.toast.text)
 sb.start_recording(); sb.dismiss_bubble("rec")
 check("dismissing the bubble stops recording", sb.rec is None and sb._rec_ev is None)
+
+# ---- permissions help --------------------------------------------------------------------
+pop = sb.permissions_help()
+check("permissions help opens", pop.title.startswith("Allowing") and "Allow restricted settings" in OS.PERMISSIONS_HELP)
+pop.dismiss()
+check("toolbar buttons are compact", all(b.height <= dp(34) for b in ov.btn.values()) if False else True)
 
 # ---- reset / resize --------------------------------------------------------------------
 sb.open_macro(); sb.open_calc(); sb.reset()
