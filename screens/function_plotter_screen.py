@@ -77,6 +77,22 @@ _CONSTS = {"pi": math.pi, "e": math.e, "tau": math.tau}
 PARAMS = {}
 
 
+def _fit_text(btn):
+    """Make a toolbar button cut a too-long label with "..." instead of spilling over the
+    next button (phones: nine buttons share one row)."""
+    btn.shorten = True
+    btn.halign = "center"
+    btn.valign = "middle"
+    btn.bind(size=lambda w, sz: setattr(w, "text_size", (max(0, sz[0] - dp(4)), sz[1])))
+    return btn
+
+
+def _row_weights(buttons):
+    """Give longer labels a bit more of the row (1 to 1.7 units)."""
+    for b in buttons:
+        b.size_hint_x = max(1.0, min(1.7, len(b.text) / 6.0))
+
+
 class _DarkInput(TextInput):
     """Expression fields. Row code colours valid text white (errors red),
     which is invisible on Kivy's default white TextInput - give them a dark
@@ -2067,7 +2083,7 @@ class FunctionPlotterScreen(Screen):
         self.graph_col.add_widget(self.graph)
 
         tb = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(4))
-        b_view = Button(text="View v  (0/0)", font_size=sp(11))
+        b_view = _fit_text(Button(text="View v (0/0)", font_size=sp(10)))
         b_view.bind(on_release=lambda *a: self._open_view_menu())
         self._b_view = b_view
         tb.add_widget(b_view)
@@ -2078,37 +2094,41 @@ class FunctionPlotterScreen(Screen):
             ("Fill", lambda *a: self._open_fill_popup()),
             ("PNG", lambda *a: self._export_png()),
         ):
-            b = Button(text=label, font_size=sp(11))
+            b = _fit_text(Button(text=label, font_size=sp(10)))
             b.bind(on_release=cb)
             tb.add_widget(b)
+        _row_weights(tb.children)
         self.graph_col.add_widget(tb)
 
         mode_bar = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(4))
-        b_undo = Button(text="Undo", font_size=sp(12), size_hint_x=None,
-                        width=dp(54))
+        b_undo = _fit_text(Button(text="Undo", font_size=sp(11), size_hint_x=None,
+                                  width=dp(38)))
         b_undo.bind(on_release=lambda *a: self._do_undo())
-        b_redo = Button(text="Redo", font_size=sp(12), size_hint_x=None,
-                        width=dp(54))
+        b_redo = _fit_text(Button(text="Redo", font_size=sp(11), size_hint_x=None,
+                                  width=dp(38)))
         b_redo.bind(on_release=lambda *a: self._do_redo())
-        b_hist = Button(text="Hist", font_size=sp(12), size_hint_x=None,
-                        width=dp(54))
+        b_hist = _fit_text(Button(text="Hist", font_size=sp(11), size_hint_x=None,
+                                  width=dp(34)))
         b_hist.bind(on_release=lambda *a: self._open_history())
         mode_bar.add_widget(b_undo)
         mode_bar.add_widget(b_redo)
         mode_bar.add_widget(b_hist)
         for mode_name, label in (("pan", "Pan"), ("drag", "Drag"),
                                  ("point", "Point"), ("pencil", "Pencil")):
-            b = ToggleButton(text=label, font_size=sp(11), group="mode")
+            b = _fit_text(ToggleButton(text=label, font_size=sp(10), group="mode"))
             if mode_name == "pan":
                 b.state = "down"
             b.bind(on_release=lambda btn, m=mode_name: self._set_mode(m))
             mode_bar.add_widget(b)
-        self.special_btn = ToggleButton(text="Special pts", font_size=sp(11), state="down")
+        self.special_btn = _fit_text(ToggleButton(text="Special", font_size=sp(10),
+                                                  state="down"))
         self.special_btn.bind(on_release=lambda *a: self._toggle_special())
         mode_bar.add_widget(self.special_btn)
-        b_an = Button(text="Analyze", font_size=sp(11))
+        b_an = _fit_text(Button(text="Analyze", font_size=sp(10)))
         b_an.bind(on_release=lambda *a: self._open_analysis())
         mode_bar.add_widget(b_an)
+        _row_weights([w for w in mode_bar.children if w.size_hint_x is not None
+                      ])
         self.graph_col.add_widget(mode_bar)
 
         # ---- algebra side: the object list, the single input bar, the add buttons
@@ -2861,7 +2881,7 @@ class FunctionPlotterScreen(Screen):
         if b is not None:
             u = len(self._view_undo)
             r = len(self._view_redo)
-            b.text = f"View v  ({u}/{r})"
+            b.text = f"View v ({u}/{r})"
 
     def _open_view_menu(self):
         layout = BoxLayout(orientation="vertical", spacing=dp(6),
@@ -3642,7 +3662,7 @@ class FunctionPlotterScreen(Screen):
             "• Points: drag them on the graph (Pan mode). Fill [i]on curve[/i] to slide along "
             "y=f(x). [i]A_x[/i] and [i]A_y[/i] work in other expressions\n"
             "• Tangent: the tangent line and its slope at x\n"
-            "• Special pts: roots, maxima / minima, y-intercepts and intersections of the "
+            "• Special (special points): roots, maxima / minima, y-intercepts and intersections of the "
             "visible curves, found numerically. Analyze lists them\n"
             "• The coloured dot of a row shows / hides it\n\n"
             "[b]Controls[/b]\n"

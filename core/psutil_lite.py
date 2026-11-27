@@ -118,13 +118,47 @@ def disk_usage(path):
         total, used, free, pct)
 
 
+def _traffic_stats():
+    """Android: the system's own byte counters (/proc/net/dev is closed to apps since
+    Android 10). Returns (sent, recv) or raises RuntimeError."""
+    try:
+        from jnius import autoclass
+        ts = autoclass("android.net.TrafficStats")
+        sent, recv = int(ts.getTotalTxBytes()), int(ts.getTotalRxBytes())
+    except Exception:
+        raise RuntimeError("not available on this device")
+    if sent < 0 or recv < 0:                       # TrafficStats.UNSUPPORTED
+        raise RuntimeError("not available on this device")
+    return sent, recv
+
+
 def net_io_counters():
+    net = collections.namedtuple("net", "bytes_sent bytes_recv")
+    try:
+        text = _read("/proc/net/dev")
+    except RuntimeError:
+        return net(*_traffic_stats())
     sent = recv = 0
-    for line in _read("/proc/net/dev").splitlines()[2:]:
+    for line in text.splitlines()[2:]:
         name, _, rest = line.partition(":")
         if name.strip() == "lo":
             continue
         f = rest.split()
         recv += int(f[0])
         sent += int(f[8])
-    return collections.namedtuple("net", "bytes_sent bytes_recv")(sent, recv)
+    return net(sent, recv)
+
+
+_own = {}
+
+
+def process_cpu_percent():
+    """This process's CPU use, % of the whole CPU (all cores = 100). Android hides the
+    system-wide figure, so this is what an app can honestly show. First call returns 0."""
+    import time
+    now, used = time.monotonic(), time.process_time()
+    prev = _own.get("t")
+    _own["t"] = (now, used)
+    if not prev or now <= prev[0]:
+        return 0.0
+    return max(0.0, min(100.0, 100.0 * (used - prev[1]) / (now - prev[0]) / cpu_count()))

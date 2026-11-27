@@ -364,7 +364,8 @@ class SystemStatsScreen(Screen):
                 f"Cores ({psutil.cpu_count()}): {cores}")
             self._sys_labels["cpu"].height = dp(90)
         except Exception as e:
-            self._sys_labels["cpu"].text = f"Error: {e}"
+            self._sys_labels["cpu"].text = self._cpu_fallback(e)
+            self._sys_labels["cpu"].height = dp(90)
         try:
             vm = psutil.virtual_memory()
             sw = psutil.swap_memory()
@@ -375,10 +376,13 @@ class SystemStatsScreen(Screen):
         except Exception as e:
             self._sys_labels["ram"].text = f"Error: {e}"
         try:
-            lines = []
+            lines, seen = [], set()
             for part in psutil.disk_partitions(all=False):
                 try:
                     u = psutil.disk_usage(part.mountpoint)
+                    if (u.total, u.used) in seen:     # same storage under two names
+                        continue
+                    seen.add((u.total, u.used))
                     lines.append(f"{part.mountpoint}: "
                                  f"{u.used/1e9:.1f}/{u.total/1e9:.1f} GB "
                                  f"({u.percent:.0f}%)")
@@ -405,6 +409,22 @@ class SystemStatsScreen(Screen):
                 f"Ping ({self._ping_host}): {ps}")
         except Exception as e:
             self._sys_labels["net"].text = f"Error: {e}"
+
+    @staticmethod
+    def _cpu_fallback(err):
+        """Android 8+ closes /proc/stat to apps, so the whole-system load cannot be read.
+        Show what can be: this app's own use, core count and (if readable) frequency."""
+        lines = ["System-wide load is hidden by Android."]
+        try:
+            own = getattr(psutil, "process_cpu_percent", None)
+            if own:
+                lines.append(f"Srboli itself: {own():.1f}%")
+            freq = psutil.cpu_freq()
+            lines.append(f"Cores: {psutil.cpu_count()}"
+                         + (f"   Freq: {freq.current:.0f} MHz" if freq else ""))
+        except Exception:
+            lines.append(f"({err})")
+        return "\n".join(lines)
 
     def _go_back(self, *a):
         if self.manager:

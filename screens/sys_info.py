@@ -63,6 +63,16 @@ def gpu_info_lines():
                 return lines
         except Exception:
             pass
+    try:                                  # phones: the GL driver names the GPU
+        from kivy.graphics.opengl import glGetString, GL_RENDERER, GL_VENDOR
+        name = glGetString(GL_RENDERER)
+        name = name.decode(errors="replace") if isinstance(name, bytes) else str(name or "")
+        vendor = glGetString(GL_VENDOR)
+        vendor = vendor.decode(errors="replace") if isinstance(vendor, bytes) else str(vendor or "")
+        if name:
+            return [f"[b]{name}[/b]", f"  {vendor}", "  (load / temperature are not shared by Android)"]
+    except Exception:
+        pass
     lines.append("GPU info not available")
     return lines
 
