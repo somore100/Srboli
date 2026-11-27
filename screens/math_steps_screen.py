@@ -14,6 +14,7 @@ from kivy.uix.textinput import TextInput
 
 from core import math_steps_core as ms
 from core import theme
+from core.keyboard_inset import KeyboardLift
 from screens.scaffold import ToolScreen
 
 GOOD, BAD, NOTE = "7fdc94", "ff8a80", "9fb0c8"
@@ -29,6 +30,7 @@ class MathStepsScreen(ToolScreen):
         self._hint_level = 0
         self._active = None                    # the input the keypad types into
         root = self.body
+        self._lift = KeyboardLift(root)        # the keyboard must not cover the step box
 
         prow = BoxLayout(size_hint_y=None, height=dp(44), spacing=theme.PAD["s"])
         self.problem_in = self._input("Problem, e.g.  3(x+2)=15  or  2x+3x")
@@ -78,6 +80,7 @@ class MathStepsScreen(ToolScreen):
 
         srow = BoxLayout(size_hint_y=None, height=dp(44), spacing=theme.PAD["s"])
         self.step_in = self._input("Your next step")
+        self._lift.watch(self.step_in, self.problem_in)
         self.step_in.bind(on_text_validate=lambda *a: self.check())
         check = Button(text="Check", size_hint_x=None, width=dp(84),
                        font_size=sp(13), background_color=theme.ACCENT)
@@ -99,7 +102,7 @@ class MathStepsScreen(ToolScreen):
     # ── small widget helpers ──────────────────────────────────────────────
     def _input(self, hint):
         ti = TextInput(hint_text=hint, multiline=False, font_size=sp(15),
-                       write_tab=False, keyboard_suggestions=False)  # see learn_screen
+                       write_tab=False)
         ti.bind(focus=lambda w, f: f and setattr(self, "_active", w))
         return ti
 

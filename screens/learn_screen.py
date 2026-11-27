@@ -17,6 +17,7 @@ from kivy.uix.widget import Widget
 from kivy.utils import escape_markup as esc
 
 from core import learn_core as L
+from core.keyboard_inset import KeyboardLift
 
 BG_BTN = (0.17, 0.18, 0.21, 1)
 GOOD = (0.25, 0.65, 0.35, 1)
@@ -72,6 +73,7 @@ class LearnScreen(Screen):
         self._root = BoxLayout(orientation="vertical", padding=dp(10),
                                spacing=dp(8))
         self.add_widget(self._root)
+        self._lift = KeyboardLift(self._root)      # keyboard must not cover answer boxes
         self._plan = None
         self._les = None
         self._locked = False
@@ -519,12 +521,9 @@ class LearnScreen(Screen):
                 self._opt_btns.append(b)
                 col.add_widget(b)
         else:
-            # keyboard_suggestions=False: phone keyboards keep the word being typed
-            # in a "composing" state that Kivy only sees when the box loses focus
-            # (tapping Check), so answers looked untypeable until then
             self._input = TextInput(hint_text="Your answer", multiline=False,
-                                    size_hint_y=None, height=dp(44),
-                                    keyboard_suggestions=False)
+                                    size_hint_y=None, height=dp(44))
+            self._lift.watch(self._input)    # the keyboard must not cover this box
             self._input.bind(on_text_validate=lambda *a: self._check(item))
             col.add_widget(self._input)
         self._feedback = _wrap_label("", 15)
