@@ -447,15 +447,16 @@ class GallerySorterScreen(Screen):
 
         # ── top bar ───────────────────────────────────────────────────────
         top = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(4))
-        add_src = Button(text="+ Source", size_hint_x=None, width=dp(95))
+        add_src = Button(text="+ Source", size_hint_x=0.2, font_size=sp(12))
         add_src.bind(on_release=self._add_source)
-        self._src_lbl = Label(text="No sources", font_size=sp(11), halign="left")
+        self._src_lbl = Label(text="No sources", font_size=sp(11), halign="left",
+                              size_hint_x=0.3, shorten=True)
         self._src_lbl.bind(size=self._src_lbl.setter("text_size"))
-        save_c = Button(text="Save cfg", size_hint_x=None, width=dp(78))
+        save_c = Button(text="Save cfg", size_hint_x=0.17, font_size=sp(11))
         save_c.bind(on_release=self._save_config)
-        load_c = Button(text="Load cfg", size_hint_x=None, width=dp(78))
+        load_c = Button(text="Load cfg", size_hint_x=0.17, font_size=sp(11))
         load_c.bind(on_release=self._load_config)
-        undo_b = Button(text="Undo", size_hint_x=None, width=dp(60),
+        undo_b = Button(text="Undo", size_hint_x=0.16, font_size=sp(12),
                         background_color=(0.5, 0.3, 0.1, 1))
         undo_b.bind(on_release=self._undo)
         top.add_widget(add_src); top.add_widget(self._src_lbl)
@@ -464,19 +465,18 @@ class GallerySorterScreen(Screen):
         root.add_widget(top)
 
         # ── options ───────────────────────────────────────────────────────
-        opts = BoxLayout(size_hint_y=None, height=dp(26), spacing=dp(8))
+        opts = BoxLayout(size_hint_y=None, height=dp(32), spacing=dp(6))
         self._instant_cb = CheckBox(active=True, size_hint_x=None,
                                     size=(dp(20), dp(20)))
         self._instant_cb.bind(active=lambda cb, v: setattr(self, "_instant", v))
         opts.add_widget(self._instant_cb)
-        opts.add_widget(Label(text="Instant move", size_hint_x=None,
-                              width=dp(90), font_size=sp(11)))
-        self._commit_btn = Button(text="Commit (0)", size_hint_x=None,
-                                  width=dp(100), font_size=sp(11), disabled=True)
+        opts.add_widget(Label(text="Instant move", size_hint_x=0.34, font_size=sp(11),
+                              halign="left", shorten=True))
+        self._commit_btn = Button(text="Commit (0)", size_hint_x=0.36,
+                                  font_size=sp(11), disabled=True)
         self._commit_btn.bind(on_release=self._commit)
         opts.add_widget(self._commit_btn)
-        rescan_b = Button(text="Rescan", size_hint_x=None, width=dp(80),
-                          font_size=sp(11))
+        rescan_b = Button(text="Rescan", size_hint_x=0.3, font_size=sp(11))
         rescan_b.bind(on_release=lambda *a: self._reload_files(force=True))
         opts.add_widget(rescan_b)
         root.add_widget(opts)
@@ -553,17 +553,19 @@ class GallerySorterScreen(Screen):
         dpan = BoxLayout(orientation="vertical", size_hint_x=0.40, spacing=dp(3))
         dpan.add_widget(Label(text="Destinations", size_hint_y=None,
                               height=dp(18), font_size=sp(12), bold=True))
-        da = BoxLayout(size_hint_y=None, height=dp(28), spacing=dp(3))
+        # two rows: the label box and three buttons did not fit side by side in a
+        # 40% column on a phone, so Create / Albums were squeezed out of sight
         self._dest_in = TextInput(hint_text="Label", multiline=False,
-                                  font_size=sp(11), size_hint_x=0.38)
-        pb = Button(text="Pick", size_hint_x=None, width=dp(58), font_size=sp(10))
-        cb2 = Button(text="Create", size_hint_x=None, width=dp(64), font_size=sp(10))
+                                  font_size=sp(11), size_hint_y=None, height=dp(30))
+        da = BoxLayout(size_hint_y=None, height=dp(32), spacing=dp(3))
+        pb = Button(text="Pick", font_size=sp(11))
+        cb2 = Button(text="Create", font_size=sp(11))
         pb.bind(on_release=self._add_dest_pick)
         cb2.bind(on_release=self._add_dest_create)
-        ab = Button(text="Albums", size_hint_x=None, width=dp(62), font_size=sp(10))
+        ab = Button(text="Albums", font_size=sp(11))
         ab.bind(on_release=self._add_albums)
-        da.add_widget(self._dest_in); da.add_widget(pb); da.add_widget(cb2)
-        da.add_widget(ab)
+        da.add_widget(pb); da.add_widget(cb2); da.add_widget(ab)
+        dpan.add_widget(self._dest_in)
         dpan.add_widget(da)
         sv_d = ScrollView()
         self._dest_grid = GridLayout(cols=1, spacing=dp(2), size_hint_y=None)

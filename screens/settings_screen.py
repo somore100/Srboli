@@ -9,7 +9,7 @@
 #     "removed":    [route, ...],          # routes removed for good (Manage tools screen)
 #     "lazy_load":  bool,                  # build screens on first visit (default True)
 #     "transition": "fade" | "none",       # screen change effect (default fade)
-#     "loading_style": "text" | "logo" | "none",  # what shows while a tool builds
+#     "loading_style": "text" | "logo" | "none",  # what shows while a tool builds ("none" = nothing, the default)
 #     "rounded": bool,                     # rounded buttons (default True)
 #     "theme": "dark" | "blue" | "light",   # colour preset, applied at startup
 #     "show_recent": bool,                 # show the Dashboard "Recent" row (default True)
@@ -56,7 +56,7 @@ CONFIG_FILE_NAME = "app_settings.json"
 # written only by the Dashboard / onboarding; save_settings keeps them as on disk
 TRANSITIONS = {"fade": "Fade", "none": "Instant"}
 LOADING_STYLES = {"text": "Plain text", "logo": "Logo",
-                  "none": "Stay on screen"}
+                  "none": "Nothing"}
 DASHBOARD_KEYS = ("recent", "collapsed", "pinned", "onboarded", "removed")
 
 
@@ -112,7 +112,7 @@ def load_settings():
     data["onboarded"] = bool(data.get("onboarded", False))
     data["rounded"] = bool(data.get("rounded", True))
     data["transition"] = data.get("transition") if data.get("transition") in TRANSITIONS else "fade"
-    data["loading_style"] = data.get("loading_style") if data.get("loading_style") in LOADING_STYLES else "text"
+    data["loading_style"] = data.get("loading_style") if data.get("loading_style") in LOADING_STYLES else "none"
     from core import theme as _theme
     data["theme"] = data.get("theme") if data.get("theme") in _theme.PRESETS \
         else _theme.DEFAULT_THEME

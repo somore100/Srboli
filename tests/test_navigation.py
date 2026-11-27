@@ -8,6 +8,8 @@ from kivy.core.window import Window
 from kivy.uix.screenmanager import Screen, NoTransition
 from kivy.uix.modalview import ModalView
 from core.navigation import GuardedScreenManager, open_screen, install_keys, LOADING
+import core.navigation as _nav
+_nav.LOADING_STYLE = "text"      # the default is "none" (nothing shown); test the loading screen
 
 def pump(n=6):
     for _ in range(n): EventLoop.idle(); time.sleep(0.03)

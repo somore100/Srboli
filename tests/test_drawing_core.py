@@ -35,4 +35,12 @@ except ValueError: pass
 with tempfile.TemporaryDirectory() as t:
     p = d2.save(os.path.join(t, "sub", "a.png")); assert os.path.getsize(p) > 0
 assert hex_rgb("#FF8000") == (255, 128, 0)
+from core.drawing_core import clamp_zoom, clamp_pan, zoom_about
+# zoom / pan maths
+assert clamp_zoom(0.2) == 1.0 and clamp_zoom(99) == 8.0
+assert clamp_pan((50, 50), (100, 100), 2) == (0, 0)            # cannot leave a gap at the top-left
+assert clamp_pan((-500, -500), (100, 100), 2) == (-100, -100)  # nor at the bottom-right
+pan, z = zoom_about((0, 0), (100, 100), 1, 2, (50, 50))
+assert z == 2 and pan == (-50, -50)                            # the centre point stays put
+pan, z = zoom_about(pan, (100, 100), 2, 1, (50, 50)); assert z == 1 and pan == (0, 0)
 print("drawing core OK")

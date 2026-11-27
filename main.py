@@ -393,7 +393,7 @@ class SrboliApp(App):
         self.title = "Srboli"
         _cfg0 = load_settings()
         import core.navigation as _nav
-        _nav.LOADING_STYLE = _cfg0.get("loading_style", "text")
+        _nav.LOADING_STYLE = _cfg0.get("loading_style", "none")
         if _cfg0.get("transition", "fade") == "fade":
             from kivy.uix.screenmanager import FadeTransition
             _trans = FadeTransition(duration=0.12)

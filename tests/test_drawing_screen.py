@@ -31,4 +31,15 @@ sc.undo(); assert not d.is_empty()
 sc.bg_sp.text = "Black"; assert d.bg == (0, 0, 0)
 sc.save(); assert "Saved:" in sc.status.text, sc.status.text
 sc.size_slider.value = 20; assert c.brush == 20
+# stays inside the panel, zooms, pans
+from kivy.uix.stencilview import StencilView
+assert isinstance(c, StencilView), "strokes must be clipped to the panel"
+sc.clear(); sc.zoom_by(2); assert c.zoom == 2 and "200" in sc.zoom_label.text
+p0 = c.to_pic(c.x + 60, c.y + 60); w0 = c.to_widget(*p0)
+assert abs(w0[0] - (c.x + 60)) < 1e-6 and abs(w0[1] - (c.y + 60)) < 1e-6   # view maths round-trips
+sc.toggle_hand(); n = len(d.strokes); before = c.pan
+t3 = T(c.x + 100, c.y + 100); c.on_touch_down(t3); t3.pos = (c.x + 130, c.y + 100); c.on_touch_move(t3); c.on_touch_up(t3)
+assert len(d.strokes) == n, (len(d.strokes), n, c.hand)
+assert abs(c.pan[0] - min(0, before[0] + 30)) < 1e-6 and c.pan[1] == before[1], (before, c.pan)
+sc.toggle_hand(); sc.zoom_fit(); assert c.zoom == 1 and c.pan == (0, 0)
 print("drawing screen OK")

@@ -17,6 +17,7 @@ import re
 
 import app_data
 from core.jsonio import read_json, write_json_atomic
+from core.json_repair import loads_tolerant
 
 LEARN_DIR = "learn"
 PROGRESS_FILE = "progress.json"
@@ -103,23 +104,9 @@ def ai_course(topic, level="beginner", cfg=None, mode="course"):
 
 # ---- parsing / validation ------------------------------------------------
 def _extract_json(text):
-    """Accept raw JSON, or JSON wrapped in ``` fences / chatter."""
-    text = (text or "").strip()
-    if not text:
-        raise ValueError("Nothing to import - the text is empty.")
-    m = re.search(r"```(?:json)?\s*(.*?)```", text, re.S)
-    if m:
-        text = m.group(1).strip()
-    try:
-        return json.loads(text)
-    except ValueError:
-        a, b = text.find("{"), text.rfind("}")
-        if a != -1 and b > a:
-            try:
-                return json.loads(text[a:b + 1])
-            except ValueError as e:
-                raise ValueError(f"That is not valid JSON: {e}")
-        raise ValueError("That is not JSON (no { ... } found).")
+    """Accept raw JSON, or JSON wrapped in ``` fences / chatter, with the usual
+    chatbot slips (curly quotes, trailing commas) repaired."""
+    return loads_tolerant(text, openers=("{",))[0]
 
 
 def _s(v, default=""):
@@ -632,22 +619,7 @@ def parse_items(text):
 
 
 def _extract_json_any(text):
-    text = (text or "").strip()
-    m = re.search(r"```(?:json)?\s*(.*?)```", text, re.S)
-    if m:
-        text = m.group(1).strip()
-    try:
-        return json.loads(text)
-    except ValueError:
-        pass
-    for o, c in (("{", "}"), ("[", "]")):
-        a, b = text.find(o), text.rfind(c)
-        if a != -1 and b > a:
-            try:
-                return json.loads(text[a:b + 1])
-            except ValueError:
-                continue
-    raise ValueError("That is not JSON.")
+    return loads_tolerant(text)[0]
 
 
 def ai_followups(plan, wrong, n=4, cfg=None):

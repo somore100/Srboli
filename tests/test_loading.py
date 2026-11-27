@@ -13,7 +13,7 @@ from core import theme; theme.install()
 import core.navigation as nav
 from screens import settings_screen as ss
 
-assert ss.load_settings()["transition"] == "fade" and ss.load_settings()["loading_style"] == "text"
+assert ss.load_settings()["transition"] == "fade" and ss.load_settings()["loading_style"] == "none"
 d = ss.load_settings(); d["transition"] = "bogus"; d["loading_style"] = "none"; ss.save_settings(d)
 assert ss.load_settings()["transition"] == "fade" and ss.load_settings()["loading_style"] == "none"
 assert os.path.isfile(os.path.join(os.path.dirname(nav.__file__), "..", "loading.png"))

@@ -10,8 +10,8 @@ from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.slider import Slider
 from kivy.uix.spinner import Spinner
+from kivy.uix.stencilview import StencilView
 from kivy.uix.textinput import TextInput
-from kivy.uix.widget import Widget
 
 import app_data
 from core import color_core
@@ -23,8 +23,9 @@ OFF = (0.25, 0.25, 0.25, 1)
 TOOL_LABELS = {"brush": "Brush", "eraser": "Eraser", "line": "Line", "rect": "Box", "oval": "Oval"}
 
 
-class DrawCanvas(Widget):
-    """Shows a Drawing and turns touches into strokes."""
+class DrawCanvas(StencilView):
+    """Shows a Drawing and turns touches into strokes. A StencilView, so nothing (a
+    stroke dragged past the edge, a zoomed picture) is ever painted outside the panel."""
 
     def __init__(self, **kw):
         super().__init__(**kw)
@@ -35,21 +36,36 @@ class DrawCanvas(Widget):
         self.filled = False
         self.on_change = lambda: None
         self._touch = None
+        self.zoom = 1.0
+        self.pan = (0.0, 0.0)           # picture's top-left, in panel pixels (y down)
+        self.hand = False               # one finger moves the picture instead of drawing
+        self._last = None
         self.bind(pos=self.redraw, size=self.redraw)
 
-    # coordinates: widget (y up) <-> picture (y down from the top)
+    # coordinates: widget (y up) <-> picture (y down from the top), through the zoom view
     def to_pic(self, x, y):
-        return (x - self.x, self.height - (y - self.y))
+        return ((x - self.x - self.pan[0]) / self.zoom,
+                (self.height - (y - self.y) - self.pan[1]) / self.zoom)
 
     def to_widget(self, px, py):
-        return (self.x + px, self.y + self.height - py)
+        return (self.x + self.pan[0] + px * self.zoom,
+                self.y + self.height - (self.pan[1] + py * self.zoom))
+
+    def set_zoom(self, z):
+        self.pan, self.zoom = core.zoom_about(self.pan, (self.width, self.height),
+                                              self.zoom, z)
+        self.redraw()
+
+    def fit(self):
+        self.zoom, self.pan = 1.0, (0.0, 0.0)
+        self.redraw()
 
     def redraw(self, *a):
         self.drawing.size = (max(1, int(self.width)), max(1, int(self.height)))
         self.canvas.clear()
         with self.canvas:
             Color(*(v / 255 for v in self.drawing.bg), 1)
-            Rectangle(pos=self.pos, size=self.size)
+            Rectangle(pos=self.pos, size=self.size)   # (the stencil clips to the panel)
             for s in self.drawing.visible():
                 self._paint(s)
             if self.drawing.live:
@@ -58,7 +74,7 @@ class DrawCanvas(Widget):
     def _paint(self, s):
         col = self.drawing.bg if s["color"] is None else s["color"]
         Color(*(v / 255 for v in col), 1)
-        w = s["width"]
+        w = s["width"] * self.zoom
         pts = s["points"]
         wp = [c for p in pts for c in self.to_widget(*p)]
         t = s["tool"]
@@ -72,8 +88,8 @@ class DrawCanvas(Widget):
         elif len(pts) > 1:
             (x0, y0), (x1, y1) = pts
             x, y = min(x0, x1), min(y0, y1)
-            bw, bh = abs(x1 - x0), abs(y1 - y0)
-            wx, wy = self.to_widget(x, y + bh)       # lower-left in widget space
+            bw, bh = abs(x1 - x0) * self.zoom, abs(y1 - y0) * self.zoom
+            wx, wy = self.to_widget(x, y + abs(y1 - y0))   # lower-left in widget space
             if s["filled"]:
                 (Rectangle if t == "rect" else Ellipse)(pos=(wx, wy), size=(bw, bh))
             elif t == "rect":
@@ -87,12 +103,22 @@ class DrawCanvas(Widget):
             return super().on_touch_down(touch)
         self._touch = touch
         touch.grab(self)
+        if self.hand:
+            self._last = touch.pos
+            return True
         self.drawing.begin(self.tool, self.color, self.brush, self.filled,
                            self.to_pic(*touch.pos))
         self.redraw()
         return True
 
     def on_touch_move(self, touch):
+        if touch is self._touch and self.hand:
+            dx, dy = touch.pos[0] - self._last[0], touch.pos[1] - self._last[1]
+            self._last = touch.pos
+            self.pan = core.clamp_pan((self.pan[0] + dx, self.pan[1] - dy),
+                                      (self.width, self.height), self.zoom)
+            self.redraw()
+            return True
         if touch is self._touch:
             self.drawing.move(self.to_pic(*touch.pos))
             self.redraw()
@@ -103,6 +129,8 @@ class DrawCanvas(Widget):
         if touch is self._touch:
             touch.ungrab(self)
             self._touch = None
+            if self.hand:
+                return True
             self.drawing.end()
             self.redraw()
             self.on_change()
@@ -152,6 +180,21 @@ class DrawingScreen(ToolScreen):
         size_row.add_widget(self.bg_sp)
         self.body.add_widget(size_row)
 
+        view = BoxLayout(size_hint_y=None, height=dp(34), spacing=dp(3))
+        self.zoom_label = Label(text="Zoom 100%", font_size=sp(12), size_hint_x=None,
+                                width=dp(80))
+        view.add_widget(self.zoom_label)
+        for text, fn in (("-", lambda: self.zoom_by(1 / core.ZOOM_STEP)),
+                         ("+", lambda: self.zoom_by(core.ZOOM_STEP)),
+                         ("Fit", lambda: self.zoom_fit())):
+            b = Button(text=text, font_size=sp(13))
+            b.bind(on_release=lambda *a, f=fn: f())
+            view.add_widget(b)
+        self.hand_btn = Button(text="Move: off", font_size=sp(12))
+        self.hand_btn.bind(on_release=lambda *a: self.toggle_hand())
+        view.add_widget(self.hand_btn)
+        self.body.add_widget(view)
+
         self.canvas_w = DrawCanvas()
         self.canvas_w.on_change = self._changed
         self.body.add_widget(self.canvas_w)
@@ -181,6 +224,22 @@ class DrawingScreen(ToolScreen):
         self.canvas_w.tool = t
         for k, b in self.tool_btns.items():
             b.background_color = theme.ACCENT if k == t else OFF
+
+    def zoom_by(self, k):
+        self.canvas_w.set_zoom(self.canvas_w.zoom * k)
+        self._sync_zoom()
+
+    def zoom_fit(self):
+        self.canvas_w.fit()
+        self._sync_zoom()
+
+    def toggle_hand(self):
+        self.canvas_w.hand = not self.canvas_w.hand
+        self.hand_btn.text = "Move: on" if self.canvas_w.hand else "Move: off"
+        self.hand_btn.background_color = theme.ACCENT if self.canvas_w.hand else OFF
+
+    def _sync_zoom(self):
+        self.zoom_label.text = f"Zoom {round(self.canvas_w.zoom * 100)}%"
 
     def toggle_fill(self):
         self.canvas_w.filled = not self.canvas_w.filled

@@ -99,7 +99,7 @@ class MathStepsScreen(ToolScreen):
     # ── small widget helpers ──────────────────────────────────────────────
     def _input(self, hint):
         ti = TextInput(hint_text=hint, multiline=False, font_size=sp(15),
-                       write_tab=False)
+                       write_tab=False, keyboard_suggestions=False)  # see learn_screen
         ti.bind(focus=lambda w, f: f and setattr(self, "_active", w))
         return ti
 

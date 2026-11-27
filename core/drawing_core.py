@@ -121,3 +121,27 @@ def draw_stroke(d, s, bg):
             d.rectangle(box, outline=col, fill=fill, width=w)
         else:
             d.ellipse(box, outline=col, fill=fill, width=w)
+
+
+# ---- zoom / pan (the view onto the picture; the picture itself never changes) ---------
+MIN_ZOOM, MAX_ZOOM, ZOOM_STEP = 1.0, 8.0, 1.5
+
+
+def clamp_zoom(z):
+    return max(MIN_ZOOM, min(MAX_ZOOM, float(z)))
+
+
+def clamp_pan(pan, size, zoom):
+    """Keep the zoomed picture covering the panel. `pan` is the picture's top-left
+    offset in panel pixels (y measured down): between size*(1-zoom) and 0."""
+    return tuple(min(0.0, max(s * (1 - zoom), p)) for p, s in zip(pan, size))
+
+
+def zoom_about(pan, size, zoom, new_zoom, centre=None):
+    """New (pan, zoom) after zooming so the point `centre` (panel pixels, y down;
+    default the middle) stays under the finger."""
+    new_zoom = clamp_zoom(new_zoom)
+    cx, cy = centre if centre is not None else (size[0] / 2, size[1] / 2)
+    k = new_zoom / zoom
+    pan = (cx - (cx - pan[0]) * k, cy - (cy - pan[1]) * k)
+    return clamp_pan(pan, size, new_zoom), new_zoom

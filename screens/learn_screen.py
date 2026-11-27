@@ -36,9 +36,21 @@ def _wrap_label(text, font_size=sp(15), **kw):
     return lb
 
 
-def _mode_spinner():
-    return Spinner(text=L.MODE_LABELS["course"], values=list(L.MODE_LABELS.values()),
-                   size_hint_y=None, height=dp(40))
+def _mode_spinner(*inputs):
+    """The course-mode picker. Pass the popup's TextInputs: with the keyboard up, the
+    tap that opens the dropdown also closes it (window resize), so the choice could not
+    be picked - take focus off the inputs first (same fix as Script Mode)."""
+    sp_ = Spinner(text=L.MODE_LABELS["course"], values=list(L.MODE_LABELS.values()),
+                  size_hint_y=None, height=dp(40))
+
+    def defocus(w, touch):
+        if w.collide_point(*touch.pos):
+            for ti in inputs:
+                ti.focus = False
+        return False
+
+    sp_.bind(on_touch_down=defocus)
+    return sp_
 
 
 def _mode_of(sp_):
@@ -148,7 +160,7 @@ class LearnScreen(Screen):
                           height=dp(40))
         box.add_widget(topic)
         box.add_widget(level)
-        mode_sp = _mode_spinner()
+        mode_sp = _mode_spinner(topic, level)
         box.add_widget(mode_sp)
         box.add_widget(_wrap_label(
             "A whole course is a lot to write: a local model can take several "
@@ -194,6 +206,14 @@ class LearnScreen(Screen):
         msg = _wrap_label("", 13, color=(1, 0.6, 0.5, 1))
         box.add_widget(msg)
         row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
+        err = {"text": ""}
+
+        def copy_error():
+            try:
+                Clipboard.copy(err["text"])
+                msg.text = err["text"] + "\n(copied - paste it to the AI and ask it to fix the JSON)"
+            except Exception:
+                pass
 
         def paste():
             try:
@@ -206,7 +226,9 @@ class LearnScreen(Screen):
                 plan, warns = L.parse_plan(ti.text)
             except ValueError as e:
                 msg.color = (1, 0.6, 0.5, 1)
+                err["text"] = "The course JSON has an error. " + str(e)
                 msg.text = str(e)
+                copy_btn.disabled = False
                 return
             L.save_plan(plan)
             p.dismiss()
@@ -216,6 +238,9 @@ class LearnScreen(Screen):
                             + "\n".join(warns[:8]))
 
         row.add_widget(_btn("Paste", paste))
+        copy_btn = _btn("Copy error", copy_error)
+        copy_btn.disabled = True
+        row.add_widget(copy_btn)
         row.add_widget(_btn("Import", do_import, color=ACCENT))
         row.add_widget(_btn("Cancel", lambda: p.dismiss()))
         box.add_widget(row)
@@ -230,7 +255,7 @@ class LearnScreen(Screen):
                           size_hint_y=None, height=dp(40))
         box.add_widget(topic)
         box.add_widget(level)
-        mode_sp = _mode_spinner()
+        mode_sp = _mode_spinner(topic, level)
         box.add_widget(mode_sp)
         # read-only TextInput: stays put, drag selects text, scrolls inside
         out = TextInput(text="", readonly=True, font_size=sp(12),
@@ -494,8 +519,12 @@ class LearnScreen(Screen):
                 self._opt_btns.append(b)
                 col.add_widget(b)
         else:
+            # keyboard_suggestions=False: phone keyboards keep the word being typed
+            # in a "composing" state that Kivy only sees when the box loses focus
+            # (tapping Check), so answers looked untypeable until then
             self._input = TextInput(hint_text="Your answer", multiline=False,
-                                    size_hint_y=None, height=dp(44))
+                                    size_hint_y=None, height=dp(44),
+                                    keyboard_suggestions=False)
             self._input.bind(on_text_validate=lambda *a: self._check(item))
             col.add_widget(self._input)
         self._feedback = _wrap_label("", 15)
