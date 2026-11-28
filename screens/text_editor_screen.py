@@ -27,6 +27,7 @@ from kivy.metrics import dp, sp
 from kivy.core.clipboard import Clipboard
 
 import app_data
+from core import safe_write
 
 try:
     from screens.md_view import MarkdownView
@@ -636,8 +637,15 @@ class TextEditorScreen(Screen):
     def _save_internal(self, *a):
         """Save to app data folder (quick save, no dialog)."""
         saves_dir = app_data.subdir("text_saves")
-        name = os.path.basename(self._file) if self._file else "untitled.txt"
-        path = os.path.join(saves_dir, name)
+        cur = self._file
+        if cur and os.path.dirname(os.path.abspath(cur)) == os.path.abspath(saves_dir):
+            path = cur                    # already an internal save: update it
+        else:
+            # a new document (or a file opened from elsewhere) gets its own
+            # slot; it never replaces another saved note
+            name = os.path.basename(cur) if cur else "untitled.txt"
+            path = safe_write.unique_path(saves_dir, name)
+        name = os.path.basename(path)
         self._write(path)
         self._file = path
         self._status.text = f"Saved internally: {name}"
@@ -764,8 +772,7 @@ padding:24px;line-height:1.6}}</style></head>
 
     def _write(self, path):
         try:
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(self._ed.text)
+            safe_write.write_text_atomic(path, self._ed.text)
             self._dirty = False
             self._status.text = os.path.basename(path)
         except Exception as e:

@@ -239,6 +239,7 @@ srboli/
 │   ├── startup_core.py          # Startup Manager: list/switch login-start entries (Linux .desktop, Windows Run + StartupApproved)
 │   ├── when_done_core.py        # Power Off When Done: quiet-detection state machine, process/network/CPU/disk sampler, power commands
 │   ├── json_repair.py           # reads AI-written JSON: fixes code fences, curly quotes, trailing commas; errors name line and column
+│   ├── safe_write.py            # never-clobber helpers: unique names, no-overwrite rename, atomic text and image saves (Gallery, Text Editor, Metadata)
 │   ├── gallery_session.py       # Gallery Sorter: remembers the last session for "Continue where you left off?"
 │   ├── clean_env.py             # Launch system programs without the AppImage's bundled libraries
 │   ├── file_inspect_core.py     # File type by contents, dates, permissions, checksums and previews for File Inspector

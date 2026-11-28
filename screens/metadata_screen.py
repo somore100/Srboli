@@ -33,6 +33,7 @@ except ImportError:
     HAS_CV2 = False
 
 import app_data
+from core import safe_write
 from core.jsonio import read_json, write_json_atomic
 
 
@@ -616,6 +617,7 @@ class MetadataScreen(Screen):
         def worker():
             try:
                 img = PILImage.open(path)
+                img.load()
                 exif = img.getexif()
 
                 for name, tag_id in EDITABLE_TAGS.items():
@@ -640,7 +642,9 @@ class MetadataScreen(Screen):
                 if strip_gps and GPS_IFD_TAG in exif:
                     del exif[GPS_IFD_TAG]
 
-                img.save(path, exif=exif)
+                # lossless for JPEG (quality tables and ICC profile kept),
+                # written through a temp file so a failed write keeps the original
+                safe_write.save_image_atomic(img, path, exif=exif)
                 Clock.schedule_once(lambda dt: callback(True, None))
             except Exception as e:
                 Clock.schedule_once(lambda dt: callback(False, str(e)))
@@ -656,7 +660,8 @@ class MetadataScreen(Screen):
                 # re-saving the original) drops EXIF, ICC profile, XMP -
                 # everything, not just the fields this screen knows about.
                 clean = PILImage.frombytes(img.mode, img.size, img.tobytes())
-                clean.save(path)
+                kw = {"quality": 95} if (img.format or "") == "JPEG" else {}
+                safe_write.save_image_atomic(clean, path, format_hint=img.format, **kw)
                 Clock.schedule_once(lambda dt: callback(True, None))
             except Exception as e:
                 Clock.schedule_once(lambda dt: callback(False, str(e)))

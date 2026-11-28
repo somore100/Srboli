@@ -46,6 +46,7 @@ except ImportError:
 import app_data
 from core.jsonio import read_json, write_json_atomic
 from core import gallery_session as gsess
+from core import safe_write, file_safety
 from core.android_storage import shared_storage_root
 from kivy.utils import platform as _plat
 ANDROID = (_plat == "android")
@@ -1104,14 +1105,9 @@ class GallerySorterScreen(Screen):
         """Runs on a worker thread in instant mode: must not touch widgets."""
         self._move_err = ""
         try:
-            os.makedirs(dst_folder, exist_ok=True)
-            dst = os.path.join(dst_folder, os.path.basename(src))
-            if os.path.exists(dst):
-                base, ext = os.path.splitext(os.path.basename(src))
-                dst = os.path.join(dst_folder,
-                                   f"{base}_{int(time.time())}{ext}")
-            shutil.move(src, dst)
-            return dst
+            # never replaces a photo already in the folder: a clash gets
+            # "name (1).jpg", "name (2).jpg"... and the move is verified
+            return safe_write.move_keep_both(src, dst_folder)
         except Exception as e:
             self._move_err = str(e)
             return None
@@ -1128,7 +1124,7 @@ class GallerySorterScreen(Screen):
             # collision, so restoring to the folder alone would leave it
             # under that renamed name while self._files still points at
             # the old `src` path, silently orphaning the file.
-            shutil.move(moved_to, src)
+            file_safety.safe_move(moved_to, src)
             self._cache_add(src)
             self._files.insert(self._index, src)
             self._show_current()
@@ -1162,10 +1158,8 @@ class GallerySorterScreen(Screen):
         new = self._ren_in.text.strip()
         if not new: return
         old = self._files[self._index]
-        ext = os.path.splitext(old)[1]
-        new_path = os.path.join(os.path.dirname(old), new + ext)
         try:
-            os.rename(old, new_path)
+            new_path = safe_write.rename_no_overwrite(old, new)
             self._cache_replace(old, new_path)
             self._files[self._index] = new_path
             self._ren_in.text = ""
